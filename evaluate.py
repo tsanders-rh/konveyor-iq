@@ -400,6 +400,7 @@ def main():
 
     print()
     print(f"Raw results saved to: {results_file}")
+    print(f"  → file://{results_file.absolute()}")
 
     # Generate reports
     report_config = {
@@ -410,12 +411,16 @@ def main():
     if args.format in ["markdown", "both"]:
         md_reporter = MarkdownReporter(str(output_dir))
         md_report = md_reporter.generate_report(results, report_config)
+        md_path = Path(md_report).absolute()
         print(f"Markdown report: {md_report}")
+        print(f"  → file://{md_path}")
 
     if args.format in ["html", "both"]:
         html_reporter = HTMLReporter(str(output_dir))
         html_report = html_reporter.generate_report(results, report_config)
+        html_path = Path(html_report).absolute()
         print(f"HTML report: {html_report}")
+        print(f"  → file://{html_path}")
 
     print()
     print("=" * 60)
