@@ -67,6 +67,34 @@ python evaluate.py \
   --format html
 ```
 
+### Viewing Results
+
+After running evaluation, the script outputs clickable `file://` URLs:
+
+```
+HTML report: results/evaluation_report_20241010_142530.html
+  → file:///Users/tsanders/Workspace/konveyor-iq/results/evaluation_report_20241010_142530.html
+```
+
+**Click the URL** (Cmd+Click on Mac, Ctrl+Click on Windows/Linux) to open the report directly in your browser.
+
+This works in:
+- ✅ VS Code integrated terminal
+- ✅ iTerm2
+- ✅ Most modern terminal emulators
+
+Alternatively, use shell commands:
+```bash
+# Open HTML report in default browser
+open results/evaluation_report_*.html
+
+# View markdown report
+cat results/evaluation_report_*.md
+
+# View JSON results
+cat results/results_*.json | jq
+```
+
 ## Creating Test Cases
 
 ### Test Suite Structure

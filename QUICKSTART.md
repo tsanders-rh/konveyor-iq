@@ -49,6 +49,10 @@ This will:
 
 ## 5. View Results
 
+The evaluation script outputs clickable file:// URLs that you can **Cmd+Click** (Mac) or **Ctrl+Click** (Windows/Linux) to open directly.
+
+Alternatively, use these commands:
+
 ```bash
 # Open HTML report in browser
 open results/evaluation_report_*.html
@@ -144,13 +148,18 @@ Rule: java-ee-001-stateless-to-cdi (2 test cases)
 ...
 
 Raw results saved to: results/results_20241010_142530.json
+  → file:///Users/tsanders/Workspace/konveyor-iq/results/results_20241010_142530.json
 Markdown report: results/evaluation_report_20241010_142530.md
+  → file:///Users/tsanders/Workspace/konveyor-iq/results/evaluation_report_20241010_142530.md
 HTML report: results/evaluation_report_20241010_142530.html
+  → file:///Users/tsanders/Workspace/konveyor-iq/results/evaluation_report_20241010_142530.html
 
 ============================================================
 Evaluation Complete
 ============================================================
 ```
+
+**💡 Tip:** The `file://` URLs are clickable in most terminals (VS Code, iTerm2, etc.). Just Cmd+Click (Mac) or Ctrl+Click (Windows/Linux) to open reports directly!
 
 ## Understanding the Reports
 
@@ -159,7 +168,7 @@ Evaluation Complete
 - 📊 **Overall metrics**: Pass rates, costs, response times
 - 📈 **Interactive charts**: Model comparison, time distributions
 - 📋 **Detailed tables**: Per-model and per-rule breakdowns
-- ❌ **Failure analysis**: Examples of failed test cases
+- 🔍 **Interactive failure analysis**: Click-to-expand failures with code comparison and filtering
 
 ### Key Metrics to Watch:
 
