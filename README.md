@@ -96,12 +96,22 @@ Edit `config.yaml` to specify:
 
 ## Reports
 
-Reports include:
+### HTML Reports (Interactive)
+- 📊 Model comparison charts with Plotly
+- 📈 Response time distributions
+- 🎯 Per-rule performance breakdown
+- 🔍 **Interactive failure analysis**:
+  - Click-to-expand failure cards
+  - Side-by-side code comparison
+  - Filter by failure type (compilation, regression, security)
+  - Color-coded badges for quick identification
+  - Detailed metrics per failure
+
+### Markdown Reports
 - Per-model performance summary
 - Per-rule accuracy breakdown
 - Comparative analysis across models
-- Failure case categorization
-- Response time distributions
+- Failure examples with code snippets
 - Cost analysis (tokens/requests)
 
 ## License
