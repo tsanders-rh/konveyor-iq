@@ -146,6 +146,32 @@ class HTMLReporter:
             margin: 15px 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }}
+        .success-card {{
+            background: #fff;
+            border: 1px solid #4CAF50;
+            border-left: 4px solid #4CAF50;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .test-card {{
+            background: #fff;
+            border: 1px solid #ddd;
+            border-left: 4px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .test-card.passed {{
+            border-color: #4CAF50;
+            border-left-color: #4CAF50;
+        }}
+        .test-card.failed {{
+            border-color: #f44336;
+            border-left-color: #f44336;
+        }}
         .failure-header {{
             cursor: pointer;
             display: flex;
@@ -248,6 +274,15 @@ class HTMLReporter:
             background: #e91e63;
             color: white;
         }}
+        .badge-success {{
+            background: #4CAF50;
+            color: white;
+        }}
+        .success-message {{
+            color: #4CAF50;
+            font-size: 14px;
+            margin: 5px 0;
+        }}
     </style>
 </head>
 <body>
@@ -277,6 +312,9 @@ class HTMLReporter:
 
         <h2>Detailed Results</h2>
         {self._build_results_table(model_stats)}
+
+        <h2>All Test Results</h2>
+        {self._build_all_results_section(results)}
 
         <h2>Failure Analysis</h2>
         {self._build_failure_section(results)}
@@ -457,6 +495,75 @@ class HTMLReporter:
         // Add per-rule chart implementation here
         """
 
+    def _build_all_results_section(self, results: List[Dict[str, Any]]) -> str:
+        """Build section showing all test results (both passing and failing)."""
+
+        if not results:
+            return "<p>No test results available.</p>"
+
+        passed_count = sum(1 for r in results if r.get("passed", False))
+        failed_count = len(results) - passed_count
+
+        # Build filter buttons
+        filter_html = '<div class="filter-buttons">'
+        filter_html += f'<button class="result-filter-btn active" onclick="filterResults(\'all\')">All ({len(results)})</button>'
+        filter_html += f'<button class="result-filter-btn" onclick="filterResults(\'passed\')">Passed ({passed_count})</button>'
+        filter_html += f'<button class="result-filter-btn" onclick="filterResults(\'failed\')">Failed ({failed_count})</button>'
+        filter_html += '</div>'
+
+        # Build result cards
+        cards_html = '<div id="all-results">'
+
+        for i, result in enumerate(results):
+            passed = result.get("passed", False)
+            status = "passed" if passed else "failed"
+            card_class = f"test-card {status}"
+
+            status_icon = "✓" if passed else "✗"
+            status_class = "success-message" if passed else "failure-reason"
+            status_text = "Test passed" if passed else result.get("failure_reason", "Test failed")
+
+            cards_html += f'''
+            <div class="{card_class}" data-status="{status}">
+                <div class="failure-header" onclick="toggleResult({i})">
+                    <div>
+                        <span class="failure-title">
+                            {result.get("model_name", "Unknown")} -
+                            {result.get("rule_id", "Unknown")} -
+                            {result.get("test_case_id", "Unknown")}
+                        </span>
+                        <span class="badge {'badge-success' if passed else 'badge-error'}">{status.upper()}</span>
+                    </div>
+                    <span class="expand-icon" id="result-icon-{i}">▼</span>
+                </div>
+                <div class="{status_class}">
+                    {status_icon} {status_text}
+                </div>
+                <div class="failure-details" id="result-details-{i}">
+                    <div class="code-comparison">
+                        <div class="code-block">
+                            <h4>Generated Code</h4>
+                            <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
+                        </div>
+                        <div class="code-block">
+                            <h4>Explanation</h4>
+                            <pre>{self._escape_html(result.get("generated_explanation", "No explanation provided"))}</pre>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                        <strong>Metrics:</strong><br>
+                        Response Time: {result.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
+                        Cost: ${result.get("estimated_cost", 0):.4f}
+                        {self._build_metric_details(result.get("metrics", {}))}
+                    </div>
+                </div>
+            </div>
+            '''
+
+        cards_html += '</div>'
+
+        return filter_html + cards_html
+
     def _build_failure_section(self, results: List[Dict[str, Any]]) -> str:
         """Build interactive failure analysis section."""
 
@@ -606,6 +713,34 @@ class HTMLReporter:
             // Filter cards
             cards.forEach(card => {
                 if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Toggle all results
+        function toggleResult(index) {
+            const details = document.getElementById('result-details-' + index);
+            const icon = document.getElementById('result-icon-' + index);
+
+            details.classList.toggle('expanded');
+            icon.classList.toggle('expanded');
+        }
+
+        // Filter all results by status
+        function filterResults(status) {
+            const cards = document.querySelectorAll('.test-card');
+            const buttons = document.querySelectorAll('.result-filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter cards
+            cards.forEach(card => {
+                if (status === 'all' || card.dataset.status === status) {
                     card.style.display = 'block';
                 } else {
                     card.style.display = 'none';
