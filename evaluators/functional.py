@@ -11,6 +11,18 @@ from typing import Dict, Any
 from .base import BaseEvaluator
 
 
+# Common imports to auto-inject if missing
+COMMON_JAVA_IMPORTS = {
+    "@Stateless": "import javax.ejb.Stateless;",
+    "@EJB": "import javax.ejb.EJB;",
+    "@ApplicationScoped": "import jakarta.enterprise.context.ApplicationScoped;",
+    "@Inject": "import jakarta.inject.Inject;",
+    "@PersistenceContext": ["import javax.persistence.PersistenceContext;", "import jakarta.persistence.PersistenceContext;"],
+    "EntityManager": ["import javax.persistence.EntityManager;", "import jakarta.persistence.EntityManager;"],
+    "@Transactional": ["import javax.transaction.Transactional;", "import jakarta.transaction.Transactional;"],
+}
+
+
 class FunctionalCorrectnessEvaluator(BaseEvaluator):
     """Evaluates functional correctness of generated code."""
 
@@ -86,6 +98,9 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
 
     def _compile_java(self, code: str) -> bool:
         """Compile Java code."""
+        # Auto-inject missing imports
+        code = self._inject_missing_imports(code)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # Extract class name from code
             class_name = self._extract_java_class_name(code)
@@ -95,9 +110,18 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
             java_file = Path(tmpdir) / f"{class_name}.java"
             java_file.write_text(code)
 
+            # Get stub JAR path
+            stub_jar = Path(__file__).parent / "stubs" / "stubs.jar"
+
             try:
+                # Build javac command with classpath if stub JAR exists
+                javac_cmd = ["javac"]
+                if stub_jar.exists():
+                    javac_cmd.extend(["-cp", str(stub_jar)])
+                javac_cmd.append(str(java_file))
+
                 result = subprocess.run(
-                    ["javac", str(java_file)],
+                    javac_cmd,
                     capture_output=True,
                     timeout=30
                 )
@@ -119,6 +143,68 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
         import re
         match = re.search(r'public\s+class\s+(\w+)', code)
         return match.group(1) if match else None
+
+    def _inject_missing_imports(self, code: str) -> str:
+        """
+        Auto-inject common imports if they're missing.
+
+        Checks for annotations/types in code and adds corresponding imports
+        if not already present.
+        """
+        import re
+
+        # Skip if code already has a package declaration (likely complete)
+        if re.search(r'^package\s+', code, re.MULTILINE):
+            return code
+
+        # Check what imports are already present
+        existing_imports = set(re.findall(r'^import\s+([\w.]+);', code, re.MULTILINE))
+
+        # Find what needs to be imported
+        imports_to_add = []
+
+        for pattern, import_stmt in COMMON_JAVA_IMPORTS.items():
+            if pattern in code:
+                # Handle both single and multiple import options
+                if isinstance(import_stmt, list):
+                    # Check if ANY of the imports is already present
+                    import_classes = [stmt.replace("import ", "").replace(";", "") for stmt in import_stmt]
+                    if not any(imp in existing_imports for imp in import_classes):
+                        # Add the first option (could be smarter here)
+                        # Choose based on what's already in code
+                        if "jakarta" in code:
+                            imports_to_add.extend([s for s in import_stmt if "jakarta" in s])
+                        else:
+                            imports_to_add.extend([s for s in import_stmt if "javax" in s])
+                else:
+                    # Single import
+                    import_class = import_stmt.replace("import ", "").replace(";", "")
+                    if import_class not in existing_imports:
+                        imports_to_add.append(import_stmt)
+
+        # If we have imports to add, inject them at the top
+        if imports_to_add:
+            # Remove duplicates
+            imports_to_add = list(dict.fromkeys(imports_to_add))
+
+            # Find the position to insert imports (after package, before class)
+            lines = code.split('\n')
+            insert_pos = 0
+
+            # Skip empty lines and comments at the top
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped and not stripped.startswith('//') and not stripped.startswith('/*'):
+                    insert_pos = i
+                    break
+
+            # Insert imports
+            import_lines = [imp for imp in imports_to_add]
+            lines = lines[:insert_pos] + import_lines + [''] + lines[insert_pos:]
+
+            code = '\n'.join(lines)
+
+        return code
 
     def _check_violations(
         self,

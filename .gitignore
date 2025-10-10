@@ -32,6 +32,9 @@ results/
 .cache/
 *.log
 
+# Stub builds
+evaluators/stubs/build/
+
 # IDE
 .vscode/
 .idea/

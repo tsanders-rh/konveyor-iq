@@ -24,6 +24,8 @@ rules:
 
           @Stateless
           public class UserService {
+              private Database database = new Database();
+
               public User findUser(Long id) {
                   return database.find(id);
               }
@@ -34,6 +36,8 @@ rules:
 
           @ApplicationScoped
           public class UserService {
+              private Database database = new Database();
+
               public User findUser(Long id) {
                   return database.find(id);
               }
