@@ -1,0 +1,117 @@
+# Konveyor AI Evaluation Configuration
+
+# Models to evaluate
+models:
+  - name: "gpt-4-turbo"
+    provider: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    temperature: 0.2
+    max_tokens: 2000
+
+  - name: "claude-3-5-sonnet"
+    provider: "anthropic"
+    api_key: "${ANTHROPIC_API_KEY}"
+    temperature: 0.2
+    max_tokens: 2000
+
+  - name: "gpt-3.5-turbo"
+    provider: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    temperature: 0.2
+    max_tokens: 2000
+
+# Evaluation dimensions (enable/disable)
+evaluation_dimensions:
+  functional_correctness:
+    enabled: true
+    compile_check: true
+    static_analysis_rerun: true
+
+  code_quality:
+    enabled: true
+    tools:
+      - pylint
+      - radon  # Cyclomatic complexity
+      - black  # Style checking
+    thresholds:
+      max_complexity: 10
+      min_pylint_score: 7.0
+
+  security:
+    enabled: true
+    tools:
+      - bandit  # Python security linter
+    fail_on_high_severity: true
+
+  efficiency:
+    enabled: false  # Requires runtime execution
+    timeout_seconds: 30
+    memory_limit_mb: 512
+
+  explainability:
+    enabled: true
+    require_comments: true
+    use_llm_grader: true  # Use another LLM to grade explanations
+    grader_model: "gpt-4-turbo"
+
+  robustness:
+    enabled: true
+    prompt_variations: 3
+
+  response_time:
+    enabled: true
+    trials: 3
+
+# Static analysis configuration
+static_analysis:
+  # Path to Konveyor analyzer or custom rule engine
+  analyzer_command: "konveyor-analyzer"
+  rules_path: "benchmarks/rules/"
+
+# Prompt templates
+prompts:
+  default: |
+    You are helping migrate code based on static analysis rules.
+
+    Rule Violation:
+    {rule_description}
+
+    Original Code:
+    ```{language}
+    {code_snippet}
+    ```
+
+    Context: {context}
+
+    Please provide:
+    1. The corrected code that resolves the violation
+    2. A brief explanation of the changes made
+
+    Format your response as:
+    FIXED CODE:
+    ```{language}
+    [your fixed code here]
+    ```
+
+    EXPLANATION:
+    [your explanation here]
+
+  variations:
+    - "Fix the following code to resolve the static analysis violation: {rule_description}\n\n{code_snippet}"
+    - "The code below violates rule {rule_id}. Please correct it.\n\n{code_snippet}"
+
+# Reporting
+reporting:
+  formats:
+    - html
+    - markdown
+  output_dir: "results/"
+  include_failure_examples: true
+  max_failure_examples: 10
+
+# Execution
+execution:
+  parallel_requests: 5
+  retry_on_failure: 2
+  cache_responses: true
+  cache_dir: ".cache/"

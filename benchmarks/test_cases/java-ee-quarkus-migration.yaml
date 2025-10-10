@@ -1,0 +1,143 @@
+name: "Java EE to Quarkus Migration"
+description: "Test cases for migrating Java EE applications to Quarkus framework"
+version: "1.0.0"
+
+metadata:
+  source: "Konveyor AI Migration Rules"
+  language: "java"
+  framework_from: "Java EE"
+  framework_to: "Quarkus"
+
+rules:
+  - rule_id: "java-ee-001-stateless-to-cdi"
+    description: "Replace @Stateless EJB annotation with @ApplicationScoped CDI"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "@Stateless -> @ApplicationScoped"
+
+    test_cases:
+      - id: "tc001"
+        language: "java"
+        context: "Simple stateless bean migration"
+        code_snippet: |
+          import javax.ejb.Stateless;
+
+          @Stateless
+          public class UserService {
+              public User findUser(Long id) {
+                  return database.find(id);
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+
+          @ApplicationScoped
+          public class UserService {
+              public User findUser(Long id) {
+                  return database.find(id);
+              }
+          }
+
+        expected_metrics:
+          functional_correctness: true
+          introduces_violations: false
+
+      - id: "tc002"
+        language: "java"
+        context: "Stateless bean with dependency injection"
+        code_snippet: |
+          import javax.ejb.Stateless;
+          import javax.ejb.EJB;
+
+          @Stateless
+          public class OrderService {
+              @EJB
+              private UserService userService;
+
+              public Order createOrder(Long userId) {
+                  User user = userService.findUser(userId);
+                  return new Order(user);
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import jakarta.inject.Inject;
+
+          @ApplicationScoped
+          public class OrderService {
+              @Inject
+              private UserService userService;
+
+              public Order createOrder(Long userId) {
+                  User user = userService.findUser(userId);
+                  return new Order(user);
+              }
+          }
+
+  - rule_id: "java-ee-002-persistence-context"
+    description: "Update @PersistenceContext to use jakarta.persistence"
+    severity: "high"
+    category: "migration"
+
+    test_cases:
+      - id: "tc003"
+        language: "java"
+        context: "Entity Manager injection"
+        code_snippet: |
+          import javax.persistence.EntityManager;
+          import javax.persistence.PersistenceContext;
+
+          public class UserRepository {
+              @PersistenceContext
+              private EntityManager em;
+
+              public User save(User user) {
+                  em.persist(user);
+                  return user;
+              }
+          }
+
+        expected_fix: |
+          import jakarta.persistence.EntityManager;
+          import jakarta.persistence.PersistenceContext;
+
+          public class UserRepository {
+              @PersistenceContext
+              private EntityManager em;
+
+              public User save(User user) {
+                  em.persist(user);
+                  return user;
+              }
+          }
+
+  - rule_id: "java-ee-003-transaction-annotation"
+    description: "Replace javax.transaction with jakarta.transaction"
+    severity: "medium"
+    category: "migration"
+
+    test_cases:
+      - id: "tc004"
+        language: "java"
+        context: "Transactional method"
+        code_snippet: |
+          import javax.transaction.Transactional;
+
+          public class PaymentService {
+              @Transactional
+              public void processPayment(Payment payment) {
+                  // process payment
+              }
+          }
+
+        expected_fix: |
+          import jakarta.transaction.Transactional;
+
+          public class PaymentService {
+              @Transactional
+              public void processPayment(Payment payment) {
+                  // process payment
+              }
+          }
