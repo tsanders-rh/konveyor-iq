@@ -137,6 +137,117 @@ class HTMLReporter:
             font-size: 14px;
             margin-top: 5px;
         }}
+        .failure-card {{
+            background: #fff;
+            border: 1px solid #f44336;
+            border-left: 4px solid #f44336;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .failure-header {{
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }}
+        .failure-header:hover {{
+            background: #f9f9f9;
+            margin: -5px;
+            padding: 5px;
+            border-radius: 3px;
+        }}
+        .failure-title {{
+            font-weight: bold;
+            color: #333;
+        }}
+        .failure-reason {{
+            color: #f44336;
+            font-size: 14px;
+            margin: 5px 0;
+        }}
+        .failure-details {{
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }}
+        .failure-details.expanded {{
+            display: block;
+        }}
+        .code-comparison {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }}
+        .code-block {{
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-x: auto;
+        }}
+        .code-block h4 {{
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+        }}
+        .code-block pre {{
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }}
+        .expand-icon {{
+            transition: transform 0.3s;
+        }}
+        .expand-icon.expanded {{
+            transform: rotate(180deg);
+        }}
+        .filter-buttons {{
+            margin: 20px 0;
+        }}
+        .filter-btn {{
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }}
+        .filter-btn.active {{
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }}
+        .badge-error {{
+            background: #f44336;
+            color: white;
+        }}
+        .badge-regression {{
+            background: #ff9800;
+            color: white;
+        }}
+        .badge-compilation {{
+            background: #9c27b0;
+            color: white;
+        }}
+        .badge-security {{
+            background: #e91e63;
+            color: white;
+        }}
     </style>
 </head>
 <body>
@@ -167,10 +278,14 @@ class HTMLReporter:
         <h2>Detailed Results</h2>
         {self._build_results_table(model_stats)}
 
+        <h2>Failure Analysis</h2>
+        {self._build_failure_section(results)}
+
     </div>
 
     <script>
         {self._build_charts_script(results, model_stats)}
+        {self._build_interaction_script()}
     </script>
 </body>
 </html>
@@ -340,4 +455,161 @@ class HTMLReporter:
 
         // Per-rule performance (placeholder)
         // Add per-rule chart implementation here
+        """
+
+    def _build_failure_section(self, results: List[Dict[str, Any]]) -> str:
+        """Build interactive failure analysis section."""
+
+        failures = [r for r in results if not r.get("passed", False)]
+
+        if not failures:
+            return """
+            <p style="color: #4CAF50; font-size: 18px; text-align: center; padding: 40px;">
+                🎉 No failures detected! All test cases passed.
+            </p>
+            """
+
+        # Categorize failures
+        failure_categories = self._categorize_failures(failures)
+
+        # Build filter buttons
+        filter_html = '<div class="filter-buttons">'
+        filter_html += '<button class="filter-btn active" onclick="filterFailures(\'all\')">All ({0})</button>'.format(len(failures))
+
+        for category, count in failure_categories.items():
+            filter_html += f'<button class="filter-btn" onclick="filterFailures(\'{category}\')">{category.title()} ({count})</button>'
+
+        filter_html += '</div>'
+
+        # Build failure cards
+        cards_html = '<div id="failure-cards">'
+
+        for i, failure in enumerate(failures):
+            category = self._get_failure_category(failure)
+            badge_class = f"badge-{category}"
+
+            cards_html += f'''
+            <div class="failure-card" data-category="{category}">
+                <div class="failure-header" onclick="toggleFailure({i})">
+                    <div>
+                        <span class="failure-title">
+                            {failure.get("model_name", "Unknown")} -
+                            {failure.get("rule_id", "Unknown")} -
+                            {failure.get("test_case_id", "Unknown")}
+                        </span>
+                        <span class="badge {badge_class}">{category.upper()}</span>
+                    </div>
+                    <span class="expand-icon" id="icon-{i}">▼</span>
+                </div>
+                <div class="failure-reason">
+                    ❌ {failure.get("failure_reason", "Unknown failure")}
+                </div>
+                <div class="failure-details" id="details-{i}">
+                    <div class="code-comparison">
+                        <div class="code-block">
+                            <h4>Generated Code</h4>
+                            <pre>{self._escape_html(failure.get("generated_code", "N/A"))}</pre>
+                        </div>
+                        <div class="code-block">
+                            <h4>Explanation</h4>
+                            <pre>{self._escape_html(failure.get("generated_explanation", "No explanation provided"))}</pre>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                        <strong>Metrics:</strong><br>
+                        Response Time: {failure.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
+                        Cost: ${failure.get("estimated_cost", 0):.4f}
+                        {self._build_metric_details(failure.get("metrics", {}))}
+                    </div>
+                </div>
+            </div>
+            '''
+
+        cards_html += '</div>'
+
+        return filter_html + cards_html
+
+    def _categorize_failures(self, failures: List[Dict[str, Any]]) -> Dict[str, int]:
+        """Categorize failures by type."""
+        categories = {}
+
+        for failure in failures:
+            category = self._get_failure_category(failure)
+            categories[category] = categories.get(category, 0) + 1
+
+        return categories
+
+    def _get_failure_category(self, failure: Dict[str, Any]) -> str:
+        """Determine failure category from failure reason."""
+        reason = failure.get("failure_reason", "").lower()
+
+        if "compil" in reason:
+            return "compilation"
+        elif "regression" in reason or "introduc" in reason:
+            return "regression"
+        elif "security" in reason:
+            return "security"
+        elif "resolve" in reason or "violation" in reason:
+            return "error"
+        else:
+            return "error"
+
+    def _build_metric_details(self, metrics: Dict[str, Any]) -> str:
+        """Build additional metric details for failure card."""
+        details = []
+
+        if metrics.get("compiles") is not None:
+            details.append(f"Compiles: {'✓' if metrics['compiles'] else '✗'}")
+
+        if metrics.get("functional_correctness") is not None:
+            details.append(f"Functional: {'✓' if metrics['functional_correctness'] else '✗'}")
+
+        if metrics.get("introduces_violations"):
+            details.append(f"⚠️ Introduces {metrics.get('new_violation_count', 0)} new violations")
+
+        if details:
+            return " | " + " | ".join(details)
+        return ""
+
+    def _escape_html(self, text: str) -> str:
+        """Escape HTML special characters."""
+        if not text:
+            return ""
+        return (text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#39;"))
+
+    def _build_interaction_script(self) -> str:
+        """Build JavaScript for interactive features."""
+        return """
+        // Toggle failure details
+        function toggleFailure(index) {
+            const details = document.getElementById('details-' + index);
+            const icon = document.getElementById('icon-' + index);
+
+            details.classList.toggle('expanded');
+            icon.classList.toggle('expanded');
+        }
+
+        // Filter failures by category
+        function filterFailures(category) {
+            const cards = document.querySelectorAll('.failure-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter cards
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
         """
