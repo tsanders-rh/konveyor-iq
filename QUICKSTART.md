@@ -2,13 +2,25 @@
 
 Get started with Konveyor AI evaluation in 5 minutes!
 
-## 1. Install Dependencies
+## 1. Create Virtual Environment
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# On Windows, use: venv\Scripts\activate
+```
+
+## 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 2. Set Up Configuration
+## 3. Set Up Configuration
 
 ```bash
 # Copy example config
@@ -24,7 +36,7 @@ export ANTHROPIC_API_KEY="sk-ant-your-key-here"
 # Replace ${OPENAI_API_KEY} with your actual key
 ```
 
-## 3. Run Your First Evaluation
+## 4. Run Your First Evaluation
 
 ```bash
 python evaluate.py --benchmark benchmarks/test_cases/java-ee-quarkus-migration.yaml
@@ -35,7 +47,7 @@ This will:
 - Generate HTML and Markdown reports
 - Save results to `results/` directory
 
-## 4. View Results
+## 5. View Results
 
 ```bash
 # Open HTML report in browser
@@ -176,7 +188,15 @@ export OPENAI_API_KEY="your-key"
 
 ### "No module named..."
 ```bash
+# Make sure you activated the virtual environment
+source venv/bin/activate
 pip install -r requirements.txt
+```
+
+### Deactivate Virtual Environment
+When you're done working:
+```bash
+deactivate
 ```
 
 Happy evaluating! 🚀

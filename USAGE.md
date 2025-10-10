@@ -2,13 +2,25 @@
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Create Virtual Environment (Recommended)
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# On Windows: venv\Scripts\activate
+```
+
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure API Keys
+### 3. Configure API Keys
 
 ```bash
 cp config.example.yaml config.yaml
