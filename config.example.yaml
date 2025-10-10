@@ -1,23 +1,34 @@
 # Konveyor AI Evaluation Configuration
 
 # Models to evaluate
+# Each model will be tested against all test cases
 models:
   - name: "gpt-4-turbo"
-    provider: "openai"
-    api_key: "${OPENAI_API_KEY}"
+    provider: "openai"  # Options: openai, anthropic
+    api_key: "${OPENAI_API_KEY}"  # Use env var or set directly "sk-..."
+
+    # temperature: Controls randomness (0.0-2.0)
+    #   0.0 = Deterministic, consistent responses
+    #   0.2 = Slightly varied (recommended for code)
+    #   1.0 = Balanced creativity
+    #   2.0 = Very creative/random
     temperature: 0.2
+
+    # max_tokens: Maximum response length (~4 chars per token)
+    #   2000 = ~8000 characters (~500-1000 lines)
+    #   Increase for larger code fixes
     max_tokens: 2000
 
   - name: "claude-3-5-sonnet"
     provider: "anthropic"
     api_key: "${ANTHROPIC_API_KEY}"
-    temperature: 0.2
+    temperature: 0.2  # Low temperature for consistent code fixes
     max_tokens: 2000
 
   - name: "gpt-3.5-turbo"
     provider: "openai"
     api_key: "${OPENAI_API_KEY}"
-    temperature: 0.2
+    temperature: 0.2  # Low temperature for consistent code fixes
     max_tokens: 2000
 
 # Evaluation dimensions (enable/disable)
