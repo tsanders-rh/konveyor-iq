@@ -32,16 +32,18 @@ from reporters import HTMLReporter, MarkdownReporter
 class EvaluationEngine:
     """Main evaluation engine."""
 
-    def __init__(self, config: Dict[str, Any], max_workers: int = 1):
+    def __init__(self, config: Dict[str, Any], max_workers: int = 1, limit: int = None):
         """
         Initialize evaluation engine.
 
         Args:
             config: Configuration dictionary
             max_workers: Maximum number of parallel workers (1 = sequential)
+            limit: Maximum number of test cases to evaluate (None = all)
         """
         self.config = config
         self.max_workers = max_workers
+        self.limit = limit
 
         # Initialize models
         self.models = self._initialize_models()
@@ -119,20 +121,33 @@ class EvaluationEngine:
         all_results = []
 
         # Calculate total evaluations
-        total_evals = sum(len(rule.test_cases) for rule in test_suite.rules) * len(self.models)
+        total_test_cases = sum(len(rule.test_cases) for rule in test_suite.rules)
+        total_evals = total_test_cases * len(self.models)
         completed_evals = 0
+        completed_test_cases = 0
 
         print(f"Evaluating test suite: {test_suite.name}")
         print(f"Total rules: {len(test_suite.rules)}")
         print(f"Total models: {len(self.models)}")
         print(f"Total evaluations: {total_evals}")
+        if self.limit:
+            print(f"Limit: {self.limit} test case(s)")
         print(f"Parallelization: {self.max_workers} worker(s)")
         print()
 
         for rule in test_suite.rules:
+            # Check if we've reached the limit
+            if self.limit and completed_test_cases >= self.limit:
+                print(f"\n✓ Reached test case limit ({self.limit})")
+                break
             print(f"Rule: {rule.rule_id} ({len(rule.test_cases)} test cases)")
 
             for test_case in rule.test_cases:
+                # Check if we've reached the limit
+                if self.limit and completed_test_cases >= self.limit:
+                    print(f"\n✓ Reached test case limit ({self.limit})")
+                    break
+
                 print(f"  Test case: {test_case.id}")
 
                 # Prepare evaluation tasks
@@ -188,6 +203,9 @@ class EvaluationEngine:
                         status = "✓ PASS" if result["passed"] else "✗ FAIL"
                         model_name = result["model_name"]
                         print(f"      {model_name:25s} {status}")
+
+                # Increment test case counter (after all models have evaluated this test case)
+                completed_test_cases += 1
 
         return all_results
 
@@ -438,6 +456,13 @@ def main():
         metavar="N",
         help="Number of parallel workers for evaluation (default: 1 = sequential)"
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Limit evaluation to first N test cases (useful for quick testing)"
+    )
 
     args = parser.parse_args()
 
@@ -458,7 +483,7 @@ def main():
     test_suite = load_test_suite(str(benchmark_path))
 
     # Initialize engine
-    engine = EvaluationEngine(config, max_workers=args.parallel)
+    engine = EvaluationEngine(config, max_workers=args.parallel, limit=args.limit)
 
     # Run evaluation
     print("=" * 60)
