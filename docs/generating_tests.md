@@ -35,9 +35,38 @@ python scripts/generate_tests.py \
 
 Shows what will be generated without writing files.
 
-### GitHub API Rate Limits ⚠️
+### Using Local Rulesets (Recommended!) 🚀
 
-When using `--all-rulesets` (337+ rulesets), you'll need a GitHub token to avoid rate limits:
+**For best performance**, clone the Konveyor rulesets repo locally and use `--local-rulesets`:
+
+**Benefits:**
+- ⚡ **100x faster** - No network latency
+- 🔓 **No rate limits** - No GitHub API calls
+- 🌐 **Works offline** - No internet required
+- 🎯 **More reliable** - No timeouts or errors
+
+**Setup (one time):**
+```bash
+cd ~/projects  # or wherever you keep repos
+git clone https://github.com/konveyor/rulesets.git
+```
+
+**Usage:**
+```bash
+python scripts/generate_tests.py --all-rulesets \
+    --source java-ee --target quarkus \
+    --local-rulesets ~/projects/rulesets
+```
+
+**Update rulesets periodically:**
+```bash
+cd ~/projects/rulesets
+git pull
+```
+
+### GitHub API Rate Limits (if not using local) ⚠️
+
+If you can't use `--local-rulesets`, you'll need a GitHub token when using `--all-rulesets` (337+ rulesets):
 
 **Without token**: 60 requests/hour (will hit limit immediately)
 **With token**: 5,000 requests/hour (plenty for all rulesets)
@@ -110,6 +139,7 @@ Fetching list of rulesets...
 | `--auto-generate` | **Auto-generate code using LLM** (requires `--model`) |
 | `--model NAME` | LLM model for auto-generation (e.g., `gpt-4-turbo`) |
 | `--api-key KEY` | API key for LLM (or use env vars) |
+| `--local-rulesets PATH` | **Path to local rulesets repo** (much faster, no rate limits!) |
 | `--github-token TOKEN` | GitHub token for 5,000 req/hour limit (or use `GITHUB_TOKEN` env var) |
 
 ## What Gets Generated

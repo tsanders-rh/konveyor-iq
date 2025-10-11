@@ -94,6 +94,11 @@ python scripts/generate_tests.py --all-rulesets --target eap8
 python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
     --auto-generate --model gpt-4-turbo
 # Generates complete code_snippet and expected_fix for every rule!
+
+# ⚡ Use local rulesets repo (100x faster, no rate limits!)
+git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
+python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+    --local-rulesets ~/projects/rulesets
 ```
 
 ### Label-Based Filtering

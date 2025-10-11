@@ -36,6 +36,11 @@ Usage:
     python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
         --auto-generate --model gpt-4-turbo
 
+    # Use local rulesets repo (MUCH FASTER, no rate limits!)
+    git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+        --local-rulesets ~/projects/rulesets
+
 Label-Based Filtering:
     Use --source and --target to filter rules by konveyor.io/source and
     konveyor.io/target labels. When filtering with --all-quarkus, all matching
@@ -70,23 +75,31 @@ class TestCaseGenerator:
                  auto_generate: bool = False,
                  model_name: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 github_token: Optional[str] = None):
+                 github_token: Optional[str] = None,
+                 local_rulesets_path: Optional[str] = None):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.source_filter = source_filter
         self.target_filter = target_filter
         self.auto_generate = auto_generate
         self.model = None
+        self.local_rulesets_path = Path(local_rulesets_path) if local_rulesets_path else None
 
-        # Setup GitHub token for higher API rate limits
-        self.github_token = github_token or os.getenv("GITHUB_TOKEN")
-        self.github_headers = {}
-        if self.github_token:
-            self.github_headers = {"Authorization": f"token {self.github_token}"}
-            print("Using GitHub token for API requests (5,000 req/hour limit)")
+        # Setup GitHub token for higher API rate limits (only if not using local)
+        if not self.local_rulesets_path:
+            self.github_token = github_token or os.getenv("GITHUB_TOKEN")
+            self.github_headers = {}
+            if self.github_token:
+                self.github_headers = {"Authorization": f"token {self.github_token}"}
+                print("Using GitHub token for API requests (5,000 req/hour limit)")
+            else:
+                print("Warning: No GitHub token provided. Rate limited to 60 req/hour.")
+                print("Set GITHUB_TOKEN env var or use --github-token for higher limits.")
         else:
-            print("Warning: No GitHub token provided. Rate limited to 60 req/hour.")
-            print("Set GITHUB_TOKEN env var or use --github-token for higher limits.")
+            print(f"Using local rulesets from: {self.local_rulesets_path}")
+            if not self.local_rulesets_path.exists():
+                print(f"Warning: Local rulesets path does not exist: {self.local_rulesets_path}")
+            self.github_headers = {}  # Not needed for local files
 
         # Initialize model for auto-generation if requested
         if auto_generate:
@@ -439,6 +452,40 @@ Respond with ONLY the fixed Java code, no explanations."""
 
         return generated_files
 
+    def _scan_local_rulesets(self) -> List[Dict[str, Any]]:
+        """Scan local rulesets directory for all YAML files.
+
+        Returns:
+            List of dicts with 'name', 'path', and 'category' keys
+        """
+        if not self.local_rulesets_path:
+            return []
+
+        # Look in default/generated subdirectory
+        generated_path = self.local_rulesets_path / "default" / "generated"
+        if not generated_path.exists():
+            print(f"Error: {generated_path} does not exist")
+            return []
+
+        all_yaml_files = []
+
+        # Iterate through each category subdirectory
+        for category_dir in generated_path.iterdir():
+            if not category_dir.is_dir():
+                continue
+
+            category = category_dir.name
+
+            # Find all YAML files in this category
+            for yaml_file in category_dir.glob("*.yaml"):
+                all_yaml_files.append({
+                    'name': yaml_file.name,
+                    'path': yaml_file,
+                    'category': category
+                })
+
+        return all_yaml_files
+
     def _fetch_all_rulesets_recursive(self) -> List[Dict[str, Any]]:
         """
         Recursively fetch all YAML rulesets from all subdirectories in default/generated.
@@ -446,6 +493,10 @@ Respond with ONLY the fixed Java code, no explanations."""
         Returns:
             List of dicts with 'name', 'url', and 'category' keys
         """
+        # Use local files if available
+        if self.local_rulesets_path:
+            return self._scan_local_rulesets()
+
         base_url = "https://api.github.com/repos/konveyor/rulesets/contents/default/generated"
         all_yaml_files = []
 
@@ -497,29 +548,45 @@ Respond with ONLY the fixed Java code, no explanations."""
         total_rules_scanned = 0
 
         for i, file_info in enumerate(yaml_files, 1):
-            # Handle both old format (just dict from API) and new format (with url/category)
-            if 'url' in file_info:
+            # Handle local path vs remote URL
+            if 'path' in file_info:
+                # Local file
+                file_path = file_info['path']
+                file_name = file_info['name']
+                category = file_info.get('category', '')
+                display_name = f"{file_name} ({category})" if category else file_name
+                file_ref = str(file_path)  # For source reference
+            elif 'url' in file_info:
+                # Remote URL
                 file_url = file_info['url']
                 file_name = file_info['name']
                 category = file_info.get('category', '')
                 display_name = f"{file_name} ({category})" if category else file_name
+                file_ref = file_url
             else:
+                # Old format (fallback)
                 file_url = f"https://github.com/konveyor/rulesets/blob/main/{base_path}/{file_info['name']}"
                 display_name = file_info['name']
+                file_ref = file_url
 
             print(f"[{i}/{len(yaml_files)}] Scanning {display_name}")
 
-            # Fetch ruleset
-            raw_url = self._convert_to_raw_url(file_url)
-            if not raw_url:
-                continue
-
+            # Load ruleset (from local file or remote URL)
             try:
-                response = requests.get(raw_url, headers=self.github_headers, timeout=10)
-                response.raise_for_status()
-                ruleset_data = yaml.safe_load(response.text)
+                if 'path' in file_info:
+                    # Read local file
+                    with open(file_info['path'], 'r') as f:
+                        ruleset_data = yaml.safe_load(f)
+                else:
+                    # Fetch from URL
+                    raw_url = self._convert_to_raw_url(file_ref)
+                    if not raw_url:
+                        continue
+                    response = requests.get(raw_url, headers=self.github_headers, timeout=10)
+                    response.raise_for_status()
+                    ruleset_data = yaml.safe_load(response.text)
             except Exception as e:
-                print(f"  Error fetching: {e}")
+                print(f"  Error loading: {e}")
                 continue
 
             if not isinstance(ruleset_data, list):
@@ -530,12 +597,12 @@ Respond with ONLY the fixed Java code, no explanations."""
             # Filter rules
             for rule in ruleset_data:
                 if isinstance(rule, dict) and self._matches_filters(rule):
-                    # Add source URL to rule for reference
-                    rule['_source_ruleset'] = file_url
+                    # Add source reference to rule
+                    rule['_source_ruleset'] = file_ref
                     all_matching_rules.append(rule)
 
             if all_matching_rules:
-                print(f"  Found {len([r for r in all_matching_rules if r.get('_source_ruleset') == file_url])} matching rules")
+                print(f"  Found {len([r for r in all_matching_rules if r.get('_source_ruleset') == file_ref])} matching rules")
 
         print(f"\nScanned {total_rules_scanned} total rules across {len(yaml_files)} rulesets")
         print(f"Found {len(all_matching_rules)} matching rules")
@@ -1064,6 +1131,10 @@ Examples:
   python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \\
       --auto-generate --model gpt-4-turbo
 
+  # Use local rulesets repo (much faster, no rate limits!)
+  python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \\
+      --local-rulesets ~/projects/rulesets
+
   # Specify output directory
   python scripts/generate_tests.py --all-rulesets --output benchmarks/test_cases/auto_generated/
         """
@@ -1142,6 +1213,13 @@ Examples:
         help='GitHub personal access token for higher API rate limits (optional, can use GITHUB_TOKEN env var)'
     )
 
+    parser.add_argument(
+        '--local-rulesets',
+        type=str,
+        metavar='PATH',
+        help='Path to local clone of konveyor/rulesets repo (much faster, no rate limits)'
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -1159,7 +1237,8 @@ Examples:
         auto_generate=args.auto_generate,
         model_name=args.model,
         api_key=args.api_key,
-        github_token=args.github_token
+        github_token=args.github_token,
+        local_rulesets_path=args.local_rulesets
     )
 
     # Generate test cases
