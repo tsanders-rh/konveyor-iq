@@ -32,6 +32,10 @@ Usage:
     # Preview without writing files
     python scripts/generate_tests.py --ruleset URL --preview
 
+    # Auto-generate code examples using LLM
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+        --auto-generate --model gpt-4-turbo
+
 Label-Based Filtering:
     Use --source and --target to filter rules by konveyor.io/source and
     konveyor.io/target labels. When filtering with --all-quarkus, all matching
@@ -50,6 +54,11 @@ import requests
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import re
+import os
+
+# Add parent directory to path to import models
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from models import OpenAIModel, AnthropicModel
 
 
 class TestCaseGenerator:
@@ -57,11 +66,158 @@ class TestCaseGenerator:
 
     def __init__(self, output_dir: str = "benchmarks/test_cases/generated",
                  source_filter: Optional[str] = None,
-                 target_filter: Optional[str] = None):
+                 target_filter: Optional[str] = None,
+                 auto_generate: bool = False,
+                 model_name: Optional[str] = None,
+                 api_key: Optional[str] = None):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.source_filter = source_filter
         self.target_filter = target_filter
+        self.auto_generate = auto_generate
+        self.model = None
+
+        # Initialize model for auto-generation if requested
+        if auto_generate:
+            if not model_name:
+                print("Warning: --auto-generate requires --model. Using gpt-4-turbo by default.")
+                model_name = "gpt-4-turbo"
+
+            self.model = self._initialize_model(model_name, api_key)
+            if self.model:
+                print(f"Auto-generation enabled with model: {model_name}")
+            else:
+                print("Warning: Failed to initialize model. Auto-generation disabled.")
+                self.auto_generate = False
+
+    def _initialize_model(self, model_name: str, api_key: Optional[str]):
+        """Initialize LLM model for code generation."""
+        try:
+            # Determine provider from model name
+            if "gpt" in model_name.lower() or "o1" in model_name.lower():
+                provider = "openai"
+            elif "claude" in model_name.lower():
+                provider = "anthropic"
+            else:
+                print(f"Warning: Unknown model provider for '{model_name}'. Assuming OpenAI.")
+                provider = "openai"
+
+            # Get API key from argument or environment
+            if not api_key:
+                if provider == "openai":
+                    api_key = os.getenv("OPENAI_API_KEY")
+                elif provider == "anthropic":
+                    api_key = os.getenv("ANTHROPIC_API_KEY")
+
+            if not api_key:
+                print(f"Error: No API key found for {provider}. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.")
+                return None
+
+            # Initialize model
+            config = {
+                "api_key": api_key,
+                "temperature": 0.3,  # Low temperature for more deterministic code generation
+                "max_tokens": 2000
+            }
+
+            if provider == "openai":
+                return OpenAIModel(model_name, config)
+            elif provider == "anthropic":
+                return AnthropicModel(model_name, config)
+
+        except Exception as e:
+            print(f"Error initializing model: {e}")
+            return None
+
+    def _generate_code_snippet(self, rule: Dict[str, Any], konveyor_message: str) -> str:
+        """Generate violating code snippet using LLM."""
+        if not self.auto_generate or not self.model:
+            return self._create_code_snippet_placeholder(rule, include_when=True)
+
+        rule_id = rule.get('ruleID', 'unknown')
+        description = rule.get('description', 'No description')
+
+        prompt = f"""Generate a Java code example that violates the following migration rule.
+
+Rule ID: {rule_id}
+Description: {description}
+Konveyor Guidance: {konveyor_message}
+
+Requirements:
+- Generate ONLY the violating code (before migration)
+- Include necessary imports
+- Make it a complete, realistic code example
+- Keep it concise (10-30 lines)
+- Include the specific patterns mentioned in the rule
+
+Respond with ONLY the Java code, no explanations."""
+
+        try:
+            print(f"    Generating code snippet for {rule_id}...", end=" ")
+            result = self.model.generate(prompt)
+            code = self._extract_code_from_response(result)
+            print("✓")
+            return code
+        except Exception as e:
+            print(f"✗ (Error: {e})")
+            return self._create_code_snippet_placeholder(rule, include_when=True)
+
+    def _generate_expected_fix(self, rule: Dict[str, Any], code_snippet: str, konveyor_message: str) -> str:
+        """Generate expected fix using LLM."""
+        if not self.auto_generate or not self.model:
+            return "TODO: Add expected fix code here"
+
+        if code_snippet.startswith("TODO"):
+            return "TODO: Add expected fix code here"
+
+        rule_id = rule.get('ruleID', 'unknown')
+        description = rule.get('description', 'No description')
+
+        prompt = f"""Fix the following Java code to resolve the migration violation.
+
+Rule ID: {rule_id}
+Description: {description}
+Konveyor Guidance: {konveyor_message}
+
+Original Code (violating):
+```java
+{code_snippet}
+```
+
+Requirements:
+- Provide the COMPLETE fixed code
+- Include all necessary imports
+- Follow the migration guidance exactly
+- Keep the same structure and logic, only fix the violation
+
+Respond with ONLY the fixed Java code, no explanations."""
+
+        try:
+            print(f"    Generating expected fix for {rule_id}...", end=" ")
+            result = self.model.generate(prompt)
+            code = self._extract_code_from_response(result)
+            print("✓")
+            return code
+        except Exception as e:
+            print(f"✗ (Error: {e})")
+            return "TODO: Add expected fix code here"
+
+    def _extract_code_from_response(self, response: str) -> str:
+        """Extract code block from LLM response."""
+        # Try to find code between ```java and ```
+        java_pattern = r'```java\s*(.*?)\s*```'
+        match = re.search(java_pattern, response, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+
+        # Try to find code between ``` and ```
+        code_pattern = r'```\s*(.*?)\s*```'
+        match = re.search(code_pattern, response, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+
+        # No code blocks found, return as-is (might be plain code)
+        return response.strip()
 
     def generate_from_ruleset(
         self,
@@ -550,13 +706,21 @@ class TestCaseGenerator:
             if migration_pattern:
                 rule_entry['migration_pattern'] = migration_pattern
 
+        # Generate or create placeholder for code snippet
+        if self.auto_generate:
+            code_snippet = self._generate_code_snippet(rule, message)
+            expected_fix = self._generate_expected_fix(rule, code_snippet, message)
+        else:
+            code_snippet = self._create_code_snippet_placeholder(rule, include_when)
+            expected_fix = 'TODO: Add expected fix code here'
+
         # Create test case template
         test_case = {
             'id': 'tc001',
             'language': 'java',
             'context': f'TODO: Add context for {rule_id}',
-            'code_snippet': self._create_code_snippet_placeholder(rule, include_when),
-            'expected_fix': 'TODO: Add expected fix code here',
+            'code_snippet': code_snippet,
+            'expected_fix': expected_fix,
         }
 
         # Add comments with guidance
@@ -871,6 +1035,10 @@ Examples:
   # Preview without writing files
   python scripts/generate_tests.py --ruleset URL --preview
 
+  # Auto-generate code examples using LLM
+  python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \\
+      --auto-generate --model gpt-4-turbo
+
   # Specify output directory
   python scripts/generate_tests.py --all-rulesets --output benchmarks/test_cases/auto_generated/
         """
@@ -925,6 +1093,24 @@ Examples:
         help='Filter rules by migration target (e.g., quarkus, jakarta-ee)'
     )
 
+    parser.add_argument(
+        '--auto-generate',
+        action='store_true',
+        help='Automatically generate code_snippet and expected_fix using LLM (requires --model)'
+    )
+
+    parser.add_argument(
+        '--model',
+        type=str,
+        help='LLM model to use for auto-generation (e.g., gpt-4-turbo, claude-3-5-sonnet)'
+    )
+
+    parser.add_argument(
+        '--api-key',
+        type=str,
+        help='API key for LLM (optional, can use OPENAI_API_KEY or ANTHROPIC_API_KEY env vars)'
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -938,7 +1124,10 @@ Examples:
     generator = TestCaseGenerator(
         output_dir=args.output,
         source_filter=args.source,
-        target_filter=args.target
+        target_filter=args.target,
+        auto_generate=args.auto_generate,
+        model_name=args.model,
+        api_key=args.api_key
     )
 
     # Generate test cases

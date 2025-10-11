@@ -89,6 +89,11 @@ python scripts/generate_tests.py --all-rulesets --source java-ee --target quarku
 # 🎯 Filter by target only (any source → EAP8) - scans ALL rulesets
 python scripts/generate_tests.py --all-rulesets --target eap8
 # Creates: eap8.yaml with 235 rules from 2,680 total rules across 337 rulesets
+
+# 🤖 AUTO-GENERATE code examples with LLM (no manual TODO-filling!)
+python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+    --auto-generate --model gpt-4-turbo
+# Generates complete code_snippet and expected_fix for every rule!
 ```
 
 ### Label-Based Filtering
@@ -110,15 +115,18 @@ This creates test case templates with:
 - ✅ Rule metadata (ID, description, severity) pre-filled
 - ✅ Source URL for automatic Konveyor guidance integration
 - ✅ Code hints extracted from rule conditions
-- ✅ TODO placeholders for code examples
+- ✅ TODO placeholders for code examples (or auto-generated with `--auto-generate`)
 - ✅ Konveyor migration guidance as comments
 
 **Output:** `benchmarks/test_cases/generated/*.yaml`
 
-Then simply:
-1. Fill in the `code_snippet` with violating code
-2. Fill in the `expected_fix` with corrected code
-3. Run evaluation!
+**Without `--auto-generate`:** Fill in TODOs manually
+**With `--auto-generate`:** Code examples are generated automatically using LLM!
+
+Then simply run evaluation:
+```bash
+python evaluate.py --benchmark benchmarks/test_cases/generated/java-ee-to-quarkus.yaml
+```
 
 See [docs/generating_tests.md](docs/generating_tests.md) for full documentation.
 

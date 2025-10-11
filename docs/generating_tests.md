@@ -35,17 +35,58 @@ python scripts/generate_tests.py \
 
 Shows what will be generated without writing files.
 
+### Auto-Generate Code Examples with LLM 🚀
+
+**NEW:** Automatically generate `code_snippet` and `expected_fix` using an LLM!
+
+```bash
+python scripts/generate_tests.py \
+    --all-rulesets --source java-ee --target quarkus \
+    --auto-generate --model gpt-4-turbo
+```
+
+This uses an LLM to:
+1. Generate realistic Java code that violates each rule
+2. Generate the corrected code that resolves the violation
+3. Fill in both `code_snippet` and `expected_fix` automatically
+
+**No manual TODO-filling required!**
+
+**Supported models:**
+- `gpt-4-turbo` (recommended for best quality)
+- `gpt-4o`
+- `gpt-3.5-turbo` (faster, lower cost)
+- `claude-3-5-sonnet`
+- `claude-3-opus`
+
+**Requirements:**
+- Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` environment variable
+- Or use `--api-key` argument
+
+**Example output:**
+```bash
+Auto-generation enabled with model: gpt-4-turbo
+Fetching list of rulesets...
+[1/39] Processing ee-to-quarkus-00000...
+    Generating code snippet for ee-to-quarkus-00000... ✓
+    Generating expected fix for ee-to-quarkus-00000... ✓
+```
+
 ## Command-Line Options
 
 | Option | Description |
 |--------|-------------|
 | `--ruleset URL` | Generate from a specific Konveyor ruleset URL |
 | `--all-quarkus` | Generate from all Quarkus rulesets |
+| `--all-rulesets` | Generate from ALL Konveyor rulesets (all categories) |
 | `--source VALUE` | Filter rules by migration source (e.g., `java-ee`, `springboot`) |
 | `--target VALUE` | Filter rules by migration target (e.g., `quarkus`, `jakarta-ee`) |
 | `--output DIR` | Output directory (default: `benchmarks/test_cases/generated`) |
 | `--preview` | Preview output without writing files |
 | `--no-when` | Exclude `when` condition hints from code snippets |
+| `--auto-generate` | **Auto-generate code using LLM** (requires `--model`) |
+| `--model NAME` | LLM model for auto-generation (e.g., `gpt-4-turbo`) |
+| `--api-key KEY` | API key for LLM (or use env vars) |
 
 ## What Gets Generated
 
