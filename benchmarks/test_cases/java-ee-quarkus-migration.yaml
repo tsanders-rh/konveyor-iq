@@ -9,11 +9,12 @@ metadata:
   framework_to: "Quarkus"
 
 rules:
-  - rule_id: "java-ee-001-stateless-to-cdi"
+  - rule_id: "ee-to-quarkus-00000"
     description: "Replace @Stateless EJB annotation with @ApplicationScoped CDI"
     severity: "high"
     category: "migration"
     migration_pattern: "@Stateless -> @ApplicationScoped"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc001"
@@ -80,10 +81,11 @@ rules:
               }
           }
 
-  - rule_id: "java-ee-002-persistence-context"
+  - rule_id: "jakarta-package-00000"
     description: "Update @PersistenceContext to use jakarta.persistence"
     severity: "high"
     category: "migration"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus"
 
     test_cases:
       - id: "tc003"
@@ -117,10 +119,11 @@ rules:
               }
           }
 
-  - rule_id: "java-ee-003-transaction-annotation"
+  - rule_id: "jakarta-transaction-00000"
     description: "Replace javax.transaction with jakarta.transaction"
     severity: "medium"
     category: "migration"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus"
 
     test_cases:
       - id: "tc004"
@@ -151,6 +154,7 @@ rules:
     severity: "high"
     category: "migration"
     migration_pattern: "@Stateful -> @SessionScoped or @ApplicationScoped"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc005"
@@ -193,6 +197,7 @@ rules:
     severity: "high"
     category: "migration"
     migration_pattern: "EJB transaction -> @Transactional"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc006"
@@ -231,6 +236,7 @@ rules:
     severity: "medium"
     category: "migration"
     migration_pattern: "@PersistenceContext @Produces -> Direct injection"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/201-persistence-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc007"
@@ -260,11 +266,12 @@ rules:
               private EntityManager em;
           }
 
-  - rule_id: "java-ee-004-ejb-inject-to-cdi"
+  - rule_id: "ee-to-quarkus-00001"
     description: "Replace @EJB injection with @Inject"
     severity: "high"
     category: "migration"
     migration_pattern: "@EJB -> @Inject"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc008"
@@ -306,11 +313,12 @@ rules:
               }
           }
 
-  - rule_id: "java-ee-005-singleton-to-cdi"
+  - rule_id: "ee-to-quarkus-00030"
     description: "Replace @Singleton EJB with CDI @Singleton or @ApplicationScoped"
     severity: "high"
     category: "migration"
     migration_pattern: "@Singleton (EJB) -> @Singleton or @ApplicationScoped (CDI)"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc009"
@@ -344,11 +352,12 @@ rules:
               }
           }
 
-  - rule_id: "java-ee-006-message-driven-bean"
+  - rule_id: "remote-ejb-to-quarkus-00000"
     description: "Message-driven beans require manual migration"
     severity: "high"
     category: "migration"
     migration_pattern: "@MessageDriven -> Quarkus messaging"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/202-remote-ejb-to-quarkus.windup.yaml"
 
     test_cases:
       - id: "tc010"
