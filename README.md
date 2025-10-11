@@ -75,6 +75,7 @@ rules:
   - rule_id: "java-deprecated-api-001"
     description: "Replace javax.ejb with CDI annotations"
     severity: "high"
+    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"  # Optional: Link to Konveyor rule
     test_cases:
       - id: "tc001"
         code_snippet: |
@@ -92,6 +93,20 @@ rules:
           functional_correctness: true
           introduces_violations: false
 ```
+
+### Konveyor Rule Integration
+
+When you provide a `source` URL pointing to a Konveyor ruleset, the framework automatically:
+1. Fetches the corresponding rule from the Konveyor repository
+2. Extracts the official migration guidance (`message` field)
+3. Includes it in the LLM prompt under "Konveyor Migration Guidance"
+
+This ensures the LLM receives authoritative migration guidance directly from Konveyor's ruleset definitions.
+
+**Example:** For rule `ee-to-quarkus-00000`, the framework fetches:
+> "Stateless EJBs can be converted to a CDI bean by replacing the `@Stateless` annotation with a scope eg `@ApplicationScoped`"
+
+And includes it in the prompt sent to the LLM, improving migration accuracy.
 
 ## Configuration
 

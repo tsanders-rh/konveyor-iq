@@ -15,6 +15,7 @@ from typing import List, Dict, Any
 import os
 
 from benchmarks.schema import TestSuite, EvaluationResult, EvaluationMetrics
+from benchmarks.rule_fetcher import get_rule_fetcher
 from models import OpenAIModel, AnthropicModel
 from evaluators import (
     FunctionalCorrectnessEvaluator,
@@ -226,9 +227,18 @@ class EvaluationEngine:
         """Build prompt for model."""
         template = self.config.get("prompts", {}).get("default", "")
 
+        # Fetch Konveyor rule message if source is available
+        konveyor_message = ""
+        if hasattr(rule, 'source') and rule.source:
+            fetcher = get_rule_fetcher()
+            konveyor_rule = fetcher.fetch_rule(rule.source, rule.rule_id)
+            if konveyor_rule and konveyor_rule.get("message"):
+                konveyor_message = konveyor_rule["message"]
+
         return template.format(
             rule_id=rule.rule_id,
             rule_description=rule.description,
+            konveyor_message=konveyor_message,
             language=test_case.language.value,
             code_snippet=test_case.code_snippet,
             context=test_case.context

@@ -49,6 +49,10 @@ class Rule(BaseModel):
         None,
         description="Expected transformation pattern"
     )
+    source: Optional[str] = Field(
+        None,
+        description="URL to Konveyor ruleset source"
+    )
 
 
 class TestSuite(BaseModel):

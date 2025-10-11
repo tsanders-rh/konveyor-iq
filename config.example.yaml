@@ -87,6 +87,9 @@ prompts:
     Rule Violation:
     {rule_description}
 
+    Konveyor Migration Guidance:
+    {konveyor_message}
+
     Original Code:
     ```{language}
     {code_snippet}
