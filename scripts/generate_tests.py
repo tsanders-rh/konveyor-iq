@@ -912,7 +912,7 @@ Respond with ONLY the fixed Java code, no explanations."""
         test_case = {
             'id': 'tc001',
             'language': 'java',
-            'context': f'TODO: Add context for {rule_id}',
+            'context': description,  # Use rule description as context
             'code_snippet': code_snippet,
             'expected_fix': expected_fix,
         }
