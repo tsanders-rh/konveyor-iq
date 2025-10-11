@@ -157,6 +157,38 @@ cd evaluators/stubs/src
 - MicroProfile Reactive Messaging (@Incoming)
 - Common domain objects (User, Order, Payment, Database)
 
+### Security Analysis
+
+**Hybrid approach** - uses best available method:
+
+1. **Semgrep** (if installed): Comprehensive Java security analysis with OWASP Top 10 coverage
+2. **Pattern-based** (fallback): Fast, built-in security checks for common vulnerabilities
+
+**Pattern-based security checks:**
+- **SQL Injection**: String concatenation in queries
+- **Hardcoded Credentials**: Passwords, API keys in code
+- **XXE Vulnerabilities**: Unsafe XML parsers
+- **Weak Random**: Using `Random` instead of `SecureRandom` for security
+- **Path Traversal**: Unsafe file operations
+- **Insecure Deserialization**: ObjectInputStream without validation
+
+**Migration-specific checks:**
+- **Missing Authorization**: Lost @RolesAllowed in EJB → CDI migration
+- **Unprotected Endpoints**: JAX-RS endpoints without security
+- **Missing Transactions**: Lost @Transactional for data integrity
+- **CSRF Protection**: Disabled CSRF on state-changing endpoints
+- **Insecure HTTP**: Custom SSL configuration without validation
+
+**Enable Semgrep** (optional):
+```bash
+pip install semgrep
+
+# Update config.yaml
+security:
+  tools:
+    - semgrep
+```
+
 ## Reports
 
 ### HTML Reports (Interactive)

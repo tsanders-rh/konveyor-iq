@@ -11,8 +11,12 @@ langchain>=0.1.0
 # Code analysis
 pylint>=3.0
 radon>=6.0  # Complexity metrics
-bandit>=1.7  # Security linting
+bandit>=1.7  # Security linting (Python)
 black>=24.0  # Code formatting check
+
+# Optional: Enhanced security analysis for Java
+# Uncomment to enable comprehensive Java security scanning with Semgrep
+# semgrep>=1.0.0
 
 # Testing & validation
 pytest>=7.4
