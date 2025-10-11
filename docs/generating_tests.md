@@ -108,7 +108,29 @@ code_snippet: |
   // Example pattern: ...
 ```
 
-### 4. Konveyor Guidance Included
+### 4. Migration-Specific Prompts
+
+**NEW:** When using `--source` and `--target` filters, the generator automatically includes technology-appropriate prompts in the test suite:
+
+```yaml
+prompt: |
+  You are helping migrate JBoss EAP 7 code to JBoss EAP 8 based on static analysis rules.
+
+  MIGRATION TARGET: JBoss EAP 8 with Jakarta EE 10
+  - Use Jakarta EE 10 packages (jakarta.*) instead of Java EE (javax.*)
+  - Follow EAP 8 configuration best practices
+  ...
+```
+
+**Supported migrations:**
+- `--source java-ee --target quarkus` → Quarkus/Jakarta EE prompt
+- `--source eap7 --target eap8` → EAP8/Jakarta EE 10 prompt
+- `--source springboot --target quarkus` → Spring to Quarkus migration prompt
+- Others → Generic migration prompt
+
+This ensures LLMs receive appropriate guidance for each migration scenario (e.g., don't suggest Spring Framework when migrating to Quarkus).
+
+### 5. Konveyor Guidance Included
 
 The official Konveyor rule message is included as a comment:
 

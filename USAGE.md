@@ -277,7 +277,37 @@ done
 
 ### Custom Prompts
 
-Modify prompts in `config.yaml`:
+**RECOMMENDED:** Define prompts in your test case YAML files for technology-specific guidance:
+
+```yaml
+name: "My Migration Test Suite"
+description: "Test cases for my migration"
+version: "1.0.0"
+
+prompt: |
+  You are helping migrate code based on static analysis rules.
+
+  Rule Violation:
+  {rule_description}
+
+  Konveyor Migration Guidance:
+  {konveyor_message}
+
+  Original Code:
+  ```{language}
+  {code_snippet}
+  ```
+
+  Context: {context}
+
+  Provide the COMPLETE corrected code and a brief explanation.
+
+rules:
+  - rule_id: "..."
+    # ... your rules
+```
+
+**Alternatively (not recommended):** You can modify the fallback prompt in `config.yaml`, but this applies to all test suites without custom prompts:
 
 ```yaml
 prompts:
@@ -291,6 +321,8 @@ prompts:
 
     Provide the fixed code and explanation.
 ```
+
+**Auto-generated prompts:** When using `--all-rulesets` with `--source` and `--target` filters, appropriate technology-specific prompts are automatically generated (e.g., Java EE→Quarkus, EAP7→EAP8, Spring Boot→Quarkus).
 
 ## Integrating with Konveyor Analyzer
 

@@ -79,7 +79,13 @@ static_analysis:
   analyzer_command: "konveyor-analyzer"
   rules_path: "benchmarks/rules/"
 
-# Prompt templates
+# Prompt templates (FALLBACK ONLY - prefer defining prompts in test case YAML files)
+#
+# NOTE: Prompts are now primarily defined in test case files for technology-specific guidance.
+# When using --all-rulesets with --source/--target filters, appropriate prompts are auto-generated.
+# This section only serves as a fallback for test cases without custom prompts.
+#
+# See benchmarks/test_cases/java-ee-quarkus-migration.yaml for examples.
 prompts:
   default: |
     You are helping migrate code based on static analysis rules.

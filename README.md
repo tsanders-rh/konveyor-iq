@@ -381,17 +381,50 @@ patterns = {
 
 ### Customizing Prompts
 
-Edit `config.yaml` to customize the system prompt and user prompt templates:
+**Prompts are now defined in test case files**, not `config.yaml`. This allows each migration scenario to have technology-appropriate guidance.
+
+Add a `prompt` field to your test suite YAML:
 
 ```yaml
-prompts:
-  default: |
-    You are helping migrate Java EE code to Quarkus...
+name: "Java EE to Quarkus Migration"
+description: "Test cases for Java EE to Quarkus"
+version: "1.0.0"
 
-    IMPORTANT:
-    - Use Jakarta EE (jakarta.*) NOT Spring Framework
-    - Follow Quarkus best practices
+prompt: |
+  You are helping migrate Java EE code to Quarkus based on static analysis rules.
+
+  MIGRATION TARGET: Quarkus with Jakarta EE APIs
+  - Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
+  - Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
+  - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
+
+  Rule Violation:
+  {rule_description}
+
+  Konveyor Migration Guidance:
+  {konveyor_message}
+
+  Original Code:
+  ```{language}
+  {code_snippet}
+  ```
+
+  Context: {context}
+
+  Please provide the COMPLETE corrected code and a brief explanation.
+
+rules:
+  - rule_id: "..."
+    # ... your rules
 ```
+
+**Auto-generated prompts:** When using `--all-rulesets` with `--source` and `--target` filters, appropriate prompts are automatically generated for:
+- Java EE → Quarkus
+- EAP7 → EAP8
+- Spring Boot → Quarkus
+- And more...
+
+**Fallback:** If no prompt is specified in the test suite, the framework falls back to `config.yaml` prompts for backward compatibility.
 
 ## License
 
