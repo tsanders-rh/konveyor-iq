@@ -1175,11 +1175,13 @@ class HTMLReporter:
         if metrics.get("introduces_violations"):
             details.append(f"⚠️ Introduces {metrics.get('new_violation_count', 0)} new violations")
 
-        # Security metrics
-        if metrics.get("security_issues", 0) > 0:
-            high = metrics.get("high_severity_security", 0)
+        # Security metrics (always show)
+        if "security_issues" in metrics:
             total = metrics.get("security_issues", 0)
-            if high > 0:
+            high = metrics.get("high_severity_security", 0)
+            if total == 0:
+                details.append(f"Security: ✓")
+            elif high > 0:
                 details.append(f"🔒 {high} HIGH security issues")
             else:
                 details.append(f"🔒 {total} security issues")
