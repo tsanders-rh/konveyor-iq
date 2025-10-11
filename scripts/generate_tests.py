@@ -45,6 +45,11 @@ Usage:
     python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
         --auto-generate --model gpt-4-turbo --batch-size 20
 
+    # Resume interrupted generation (automatically skips already-generated rules)
+    # If generation fails at rule 150, just re-run the same command - it will resume!
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+        --auto-generate --model gpt-4-turbo
+
 Label-Based Filtering:
     Use --source and --target to filter rules by konveyor.io/source and
     konveyor.io/target labels. When filtering with --all-quarkus, all matching
@@ -679,22 +684,58 @@ Respond with ONLY the fixed Java code, no explanations."""
         output_filename = f"{migration_path}.yaml"
         output_file = self.output_dir / output_filename
 
+        # Check if file exists and load existing rules for resume capability
+        existing_rule_ids = set()
+        if output_file.exists() and self.auto_generate:
+            print(f"\n✓ Found existing file: {output_file}")
+            print("  Loading previously generated rules...")
+            try:
+                with open(output_file, 'r') as f:
+                    existing_data = yaml.safe_load(f)
+                    if existing_data and 'rules' in existing_data:
+                        for rule_entry in existing_data['rules']:
+                            # Check if this rule has been fully generated (not TODO)
+                            if rule_entry.get('test_cases'):
+                                code_snippet = rule_entry['test_cases'][0].get('code_snippet', '')
+                                # Consider it generated if it doesn't start with TODO
+                                if not code_snippet.startswith('TODO') and not code_snippet.startswith('// TODO'):
+                                    existing_rule_ids.add(rule_entry['rule_id'])
+
+                        # Preserve existing rules in test_suite
+                        test_suite = existing_data
+
+                        print(f"  Found {len(existing_rule_ids)} already-generated rules")
+                        print(f"  Will skip these and continue with remaining rules\n")
+            except Exception as e:
+                print(f"  Warning: Could not load existing file: {e}")
+                print(f"  Will start from scratch\n")
+
         # If auto-generating, process in batches and write incrementally
         if self.auto_generate:
-            print(f"\nAuto-generation enabled - processing {len(all_matching_rules)} rules in batches of {self.batch_size}")
+            # Filter out already-generated rules
+            rules_to_process = [r for r in all_matching_rules if r.get('ruleID') not in existing_rule_ids]
+
+            if len(rules_to_process) == 0:
+                print("✓ All rules already generated! Nothing to do.")
+                return [str(output_file)]
+
+            print(f"Auto-generation enabled - processing {len(rules_to_process)} rules in batches of {self.batch_size}")
+            if existing_rule_ids:
+                print(f"  (skipping {len(existing_rule_ids)} already-generated rules)")
             print(f"Writing progress incrementally to: {output_file}\n")
 
-            total_rules = len(all_matching_rules)
+            total_rules = len(rules_to_process)
             for batch_start in range(0, total_rules, self.batch_size):
                 batch_end = min(batch_start + self.batch_size, total_rules)
-                batch_rules = all_matching_rules[batch_start:batch_end]
+                batch_rules = rules_to_process[batch_start:batch_end]
 
                 print(f"Processing batch {batch_start//self.batch_size + 1}/{(total_rules + self.batch_size - 1)//self.batch_size} (rules {batch_start+1}-{batch_end}/{total_rules})")
 
                 # Process this batch
                 for i, rule in enumerate(batch_rules, start=batch_start+1):
                     source_url = rule.pop('_source_ruleset', 'unknown')
-                    print(f"  [{i}/{total_rules}] {rule.get('ruleID', 'unknown')}")
+                    rule_id = rule.get('ruleID', 'unknown')
+                    print(f"  [{i}/{total_rules}] {rule_id}")
                     rule_entry = self._create_rule_entry(rule, source_url, include_when=True)
                     if rule_entry:
                         test_suite['rules'].append(rule_entry)
@@ -702,7 +743,7 @@ Respond with ONLY the fixed Java code, no explanations."""
                 # Write progress after each batch
                 yaml_content = yaml.dump(test_suite, sort_keys=False, default_flow_style=False, width=120)
                 output_file.write_text(yaml_content)
-                print(f"  ✓ Saved batch progress ({len(test_suite['rules'])} rules completed)\n")
+                print(f"  ✓ Saved batch progress ({len(test_suite['rules'])} total rules in file)\n")
         else:
             # Non-auto-generate: process all at once (fast)
             for rule in all_matching_rules:
