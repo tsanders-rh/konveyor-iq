@@ -65,9 +65,38 @@ python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml
 python evaluate.py --report results/latest/
 ```
 
-## Adding Test Cases
+## Generating Test Cases Automatically ⚡
 
-Create YAML files in `benchmarks/test_cases/`:
+**NEW:** Automatically generate test case templates from Konveyor rulesets!
+
+```bash
+# Generate from a single ruleset
+python scripts/generate_tests.py \
+    --ruleset https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
+
+# Generate from ALL Quarkus rulesets (25+ rulesets)
+python scripts/generate_tests.py --all-quarkus
+```
+
+This creates test case templates with:
+- ✅ Rule metadata (ID, description, severity) pre-filled
+- ✅ Source URL for automatic Konveyor guidance integration
+- ✅ Code hints extracted from rule conditions
+- ✅ TODO placeholders for code examples
+- ✅ Konveyor migration guidance as comments
+
+**Output:** `benchmarks/test_cases/generated/*.yaml`
+
+Then simply:
+1. Fill in the `code_snippet` with violating code
+2. Fill in the `expected_fix` with corrected code
+3. Run evaluation!
+
+See [docs/generating_tests.md](docs/generating_tests.md) for full documentation.
+
+## Adding Test Cases Manually
+
+Alternatively, create YAML files manually in `benchmarks/test_cases/`:
 
 ```yaml
 test_suite: "Java EE to Quarkus Migration"
