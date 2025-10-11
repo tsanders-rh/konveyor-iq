@@ -15,7 +15,6 @@ from datetime import datetime
 from typing import List, Dict, Any
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 
 from benchmarks.schema import TestSuite, EvaluationResult, EvaluationMetrics
 from benchmarks.rule_fetcher import get_rule_fetcher
@@ -43,7 +42,6 @@ class EvaluationEngine:
         """
         self.config = config
         self.max_workers = max_workers
-        self.print_lock = threading.Lock()
 
         # Initialize models
         self.models = self._initialize_models()
@@ -108,11 +106,6 @@ class EvaluationEngine:
 
         return evaluators
 
-    def _safe_print(self, message: str, end: str = "\n"):
-        """Thread-safe print."""
-        with self.print_lock:
-            print(message, end=end)
-
     def evaluate(self, test_suite: TestSuite) -> List[Dict[str, Any]]:
         """
         Run evaluation on test suite.
@@ -125,9 +118,14 @@ class EvaluationEngine:
         """
         all_results = []
 
+        # Calculate total evaluations
+        total_evals = sum(len(rule.test_cases) for rule in test_suite.rules) * len(self.models)
+        completed_evals = 0
+
         print(f"Evaluating test suite: {test_suite.name}")
         print(f"Total rules: {len(test_suite.rules)}")
         print(f"Total models: {len(self.models)}")
+        print(f"Total evaluations: {total_evals}")
         print(f"Parallelization: {self.max_workers} worker(s)")
         print()
 
@@ -144,7 +142,7 @@ class EvaluationEngine:
 
                 # Execute in parallel or sequential
                 if self.max_workers == 1:
-                    # Sequential execution
+                    # Sequential execution - show live updates
                     for model, rule, test_case, test_suite in tasks:
                         print(f"    Evaluating with {model.name}...", end=" ")
 
@@ -153,13 +151,17 @@ class EvaluationEngine:
 
                         status = "✓ PASS" if result["passed"] else "✗ FAIL"
                         print(status)
+
+                        completed_evals += 1
                 else:
-                    # Parallel execution
+                    # Parallel execution - show progress, then summary
+                    print(f"    Running {len(tasks)} model(s) in parallel...", end=" ", flush=True)
+
                     with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                         # Submit all tasks
                         future_to_model = {
                             executor.submit(
-                                self._evaluate_single_with_logging,
+                                self._evaluate_single,
                                 model,
                                 rule,
                                 test_case,
@@ -169,39 +171,25 @@ class EvaluationEngine:
                         }
 
                         # Collect results as they complete
+                        test_results = []
                         for future in as_completed(future_to_model):
                             result = future.result()
+                            test_results.append(result)
                             all_results.append(result)
+                            completed_evals += 1
+
+                    # Show summary for this test case
+                    print(f"Done [{completed_evals}/{total_evals}]")
+
+                    # Sort results by model name for consistent display
+                    test_results.sort(key=lambda x: x["model_name"])
+
+                    for result in test_results:
+                        status = "✓ PASS" if result["passed"] else "✗ FAIL"
+                        model_name = result["model_name"]
+                        print(f"      {model_name:25s} {status}")
 
         return all_results
-
-    def _evaluate_single_with_logging(
-        self,
-        model: Any,
-        rule: Any,
-        test_case: Any,
-        test_suite: TestSuite
-    ) -> Dict[str, Any]:
-        """
-        Evaluate a single test case with logging (for parallel execution).
-
-        Args:
-            model: LLM model
-            rule: Rule being evaluated
-            test_case: Test case
-            test_suite: Test suite containing custom prompt (optional)
-
-        Returns:
-            Evaluation result dictionary
-        """
-        self._safe_print(f"    Evaluating with {model.name}...", end=" ")
-
-        result = self._evaluate_single(model, rule, test_case, test_suite)
-
-        status = "✓ PASS" if result["passed"] else "✗ FAIL"
-        self._safe_print(status)
-
-        return result
 
     def _evaluate_single(
         self,
