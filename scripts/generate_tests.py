@@ -387,6 +387,11 @@ class TestCaseGenerator:
         if self.target_filter:
             test_suite['metadata']['migration_target'] = self.target_filter
 
+        # Add migration-specific prompt
+        prompt = self._generate_prompt_for_migration(self.source_filter, self.target_filter)
+        if prompt:
+            test_suite['prompt'] = prompt
+
         # Convert rules to test case format
         for rule in all_matching_rules:
             source_url = rule.pop('_source_ruleset', 'unknown')
@@ -659,6 +664,169 @@ class TestCaseGenerator:
         filename = url.split('/')[-1]
         # Remove .yaml extension
         return filename.replace('.yaml', '')
+
+    def _generate_prompt_for_migration(self, source: Optional[str], target: Optional[str]) -> Optional[str]:
+        """Generate migration-specific prompt template based on source/target."""
+
+        # Prompt templates for different migration scenarios
+        prompts = {
+            # Quarkus migrations
+            ('java-ee', 'quarkus'): """You are helping migrate Java EE code to Quarkus based on static analysis rules.
+
+MIGRATION TARGET: Quarkus with Jakarta EE APIs
+- Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
+- Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
+- Use Jakarta Persistence and Jakarta Transactions
+- DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
+
+Rule Violation:
+{rule_description}
+
+Konveyor Migration Guidance:
+{konveyor_message}
+
+Original Code:
+```{language}
+{code_snippet}
+```
+
+Context: {context}
+
+Please provide:
+1. The COMPLETE corrected code that resolves the violation (include ALL original code)
+2. A brief explanation of the changes made
+
+IMPORTANT:
+- Provide the ENTIRE class with ALL fields and methods, not just the parts you changed
+- Use Jakarta EE (jakarta.*) packages, not Spring Framework
+- Follow Quarkus best practices
+
+Format your response as:
+FIXED CODE:
+```{language}
+[your complete fixed code here]
+```
+
+EXPLANATION:
+[your explanation here]""",
+
+            # EAP migrations
+            ('eap7', 'eap8'): """You are helping migrate JBoss EAP 7 code to JBoss EAP 8 based on static analysis rules.
+
+MIGRATION TARGET: JBoss EAP 8 with Jakarta EE 10
+- Use Jakarta EE 10 packages (jakarta.*) instead of Java EE (javax.*)
+- Follow EAP 8 configuration best practices
+- Update deprecated APIs to their EAP 8 equivalents
+
+Rule Violation:
+{rule_description}
+
+Konveyor Migration Guidance:
+{konveyor_message}
+
+Original Code:
+```{language}
+{code_snippet}
+```
+
+Context: {context}
+
+Please provide:
+1. The COMPLETE corrected code that resolves the violation
+2. A brief explanation of the changes made
+
+Format your response as:
+FIXED CODE:
+```{language}
+[your complete fixed code here]
+```
+
+EXPLANATION:
+[your explanation here]""",
+
+            # Spring Boot migrations
+            ('springboot', 'quarkus'): """You are helping migrate Spring Boot code to Quarkus based on static analysis rules.
+
+MIGRATION TARGET: Quarkus
+- Replace Spring annotations with Quarkus/Jakarta EE equivalents:
+  - @Service, @Component → @ApplicationScoped
+  - @Autowired → @Inject
+  - @Repository → @ApplicationScoped with CDI
+  - @RestController → @Path (JAX-RS)
+- Use JAX-RS instead of Spring MVC
+- Use CDI instead of Spring DI
+
+Rule Violation:
+{rule_description}
+
+Konveyor Migration Guidance:
+{konveyor_message}
+
+Original Code:
+```{language}
+{code_snippet}
+```
+
+Context: {context}
+
+Please provide:
+1. The COMPLETE corrected code that resolves the violation
+2. A brief explanation of the changes made
+
+IMPORTANT:
+- DO NOT use any Spring Framework annotations
+- Use Quarkus and Jakarta EE APIs only
+
+Format your response as:
+FIXED CODE:
+```{language}
+[your complete fixed code here]
+```
+
+EXPLANATION:
+[your explanation here]""",
+        }
+
+        # Generic template when no specific match
+        generic_template = """You are helping with code migration based on static analysis rules.
+
+Rule Violation:
+{rule_description}
+
+Konveyor Migration Guidance:
+{konveyor_message}
+
+Original Code:
+```{language}
+{code_snippet}
+```
+
+Context: {context}
+
+Please provide:
+1. The COMPLETE corrected code that resolves the violation
+2. A brief explanation of the changes made
+
+Format your response as:
+FIXED CODE:
+```{language}
+[your complete fixed code here]
+```
+
+EXPLANATION:
+[your explanation here]"""
+
+        # Try to find exact match
+        if source and target and (source, target) in prompts:
+            return prompts[(source, target)]
+
+        # Try target-only templates
+        for (s, t), prompt in prompts.items():
+            if target and t == target and not source:
+                return prompt
+
+        # Return generic template
+        return generic_template
 
     def _convert_to_raw_url(self, github_url: str) -> Optional[str]:
         """Convert GitHub blob URL to raw content URL."""

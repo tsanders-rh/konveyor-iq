@@ -131,7 +131,8 @@ class EvaluationEngine:
                     result = self._evaluate_single(
                         model,
                         rule,
-                        test_case
+                        test_case,
+                        test_suite
                     )
 
                     all_results.append(result)
@@ -145,7 +146,8 @@ class EvaluationEngine:
         self,
         model: Any,
         rule: Any,
-        test_case: Any
+        test_case: Any,
+        test_suite: TestSuite
     ) -> Dict[str, Any]:
         """
         Evaluate a single test case with a model.
@@ -154,12 +156,13 @@ class EvaluationEngine:
             model: LLM model
             rule: Rule being evaluated
             test_case: Test case
+            test_suite: Test suite containing custom prompt (optional)
 
         Returns:
             Evaluation result dictionary
         """
         # Build prompt
-        prompt = self._build_prompt(rule, test_case)
+        prompt = self._build_prompt(rule, test_case, test_suite)
 
         # Generate fix
         try:
@@ -223,9 +226,16 @@ class EvaluationEngine:
                 str(e)
             )
 
-    def _build_prompt(self, rule: Any, test_case: Any) -> str:
-        """Build prompt for model."""
-        template = self.config.get("prompts", {}).get("default", "")
+    def _build_prompt(self, rule: Any, test_case: Any, test_suite: TestSuite) -> str:
+        """Build prompt for model.
+
+        Uses custom prompt from test_suite if available, otherwise falls back to config.yaml.
+        """
+        # Use test suite custom prompt if available, otherwise use config default
+        if test_suite.prompt:
+            template = test_suite.prompt
+        else:
+            template = self.config.get("prompts", {}).get("default", "")
 
         # Fetch Konveyor rule message if source is available
         konveyor_message = ""

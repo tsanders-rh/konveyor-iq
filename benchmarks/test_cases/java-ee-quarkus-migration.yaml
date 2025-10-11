@@ -8,6 +8,46 @@ metadata:
   framework_from: "Java EE"
   framework_to: "Quarkus"
 
+prompt: |
+  You are helping migrate Java EE code to Quarkus based on static analysis rules.
+
+  MIGRATION TARGET: Quarkus with Jakarta EE APIs
+  - Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
+  - Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
+  - Use Jakarta Persistence and Jakarta Transactions
+  - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
+
+  Rule Violation:
+  {rule_description}
+
+  Konveyor Migration Guidance:
+  {konveyor_message}
+
+  Original Code:
+  ```{language}
+  {code_snippet}
+  ```
+
+  Context: {context}
+
+  Please provide:
+  1. The COMPLETE corrected code that resolves the violation (include ALL original code - classes, fields, methods, everything)
+  2. A brief explanation of the changes made
+
+  IMPORTANT:
+  - Provide the ENTIRE class with ALL fields and methods, not just the parts you changed
+  - Use Jakarta EE (jakarta.*) packages, not Spring Framework
+  - Follow Quarkus best practices
+
+  Format your response as:
+  FIXED CODE:
+  ```{language}
+  [your complete fixed code here]
+  ```
+
+  EXPLANATION:
+  [your explanation here]
+
 rules:
   - rule_id: "ee-to-quarkus-00000"
     description: "Replace @Stateless EJB annotation with @ApplicationScoped CDI"

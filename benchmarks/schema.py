@@ -62,6 +62,10 @@ class TestSuite(BaseModel):
     version: str = Field(default="1.0.0")
     rules: List[Rule] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    prompt: Optional[str] = Field(
+        None,
+        description="Custom prompt template for this test suite (overrides config.yaml)"
+    )
 
 
 class EvaluationMetrics(BaseModel):
