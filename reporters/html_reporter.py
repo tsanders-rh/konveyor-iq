@@ -283,6 +283,17 @@ class HTMLReporter:
             font-size: 14px;
             margin: 5px 0;
         }}
+        .diff-legend {{
+            font-size: 11px;
+            color: #666;
+            margin: 5px 0;
+            padding: 5px;
+            background: #f9f9f9;
+            border-radius: 3px;
+        }}
+        .diff-legend span {{
+            margin-right: 15px;
+        }}
     </style>
 </head>
 <body>
@@ -854,14 +865,16 @@ class HTMLReporter:
                     {status_icon} {status_text}
                 </div>
                 <div class="failure-details" id="result-details-{i}">
+                    {self._build_failure_explanation(result)}
                     <div class="code-comparison">
                         <div class="code-block">
                             <h4>Generated Code</h4>
-                            <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
+                            {'<div class="diff-legend">Legend: <span style="background: #ffebee; padding: 2px 4px;">🔴 Incorrect/Different Line</span> <span style="background: #fff3e0; padding: 2px 4px;">⚠️ Extra Line</span></div>' if result.get("expected_code") and not result.get("passed") else ''}
+                            <pre>{self._generate_code_diff_html(result.get("generated_code", ""), result.get("expected_code", "")) if result.get("expected_code") and not result.get("passed") else self._escape_html(result.get("generated_code", "N/A"))}</pre>
                         </div>
                         <div class="code-block">
-                            <h4>Explanation</h4>
-                            <pre>{self._escape_html(result.get("generated_explanation", "No explanation provided"))}</pre>
+                            <h4>{'Expected Code' if result.get("expected_code") and not result.get("passed") else 'Explanation'}</h4>
+                            <pre>{self._escape_html(result.get("expected_code") or result.get("generated_explanation", "No explanation provided"))}</pre>
                         </div>
                     </div>
                     {self._build_compilation_error_section(result.get("metrics", {}))}
@@ -928,14 +941,16 @@ class HTMLReporter:
                     ❌ {failure.get("failure_reason", "Unknown failure")}
                 </div>
                 <div class="failure-details" id="details-{i}">
+                    {self._build_failure_explanation(failure)}
                     <div class="code-comparison">
                         <div class="code-block">
                             <h4>Generated Code</h4>
-                            <pre>{self._escape_html(failure.get("generated_code", "N/A"))}</pre>
+                            {'<div class="diff-legend">Legend: <span style="background: #ffebee; padding: 2px 4px;">🔴 Incorrect/Different Line</span> <span style="background: #fff3e0; padding: 2px 4px;">⚠️ Extra Line</span></div>' if failure.get("expected_code") else ''}
+                            <pre>{self._generate_code_diff_html(failure.get("generated_code", ""), failure.get("expected_code", ""))}</pre>
                         </div>
                         <div class="code-block">
-                            <h4>Explanation</h4>
-                            <pre>{self._escape_html(failure.get("generated_explanation", "No explanation provided"))}</pre>
+                            <h4>{'Expected Code' if failure.get("expected_code") else 'Explanation'}</h4>
+                            <pre>{self._escape_html(failure.get("expected_code") or failure.get("generated_explanation", "No explanation provided"))}</pre>
                         </div>
                     </div>
                     {self._build_compilation_error_section(failure.get("metrics", {}))}
@@ -978,6 +993,52 @@ class HTMLReporter:
             return "error"
         else:
             return "error"
+
+    def _build_failure_explanation(self, result: Dict[str, Any]) -> str:
+        """Build detailed failure explanation based on metrics and failure reason."""
+        if result.get("passed", False):
+            return ""
+
+        metrics = result.get("metrics", {})
+        failure_reason = result.get("failure_reason", "Unknown failure")
+
+        explanation_parts = []
+
+        # Main failure reason
+        explanation_parts.append(f"<strong>Primary Issue:</strong> {failure_reason}")
+
+        # Detailed breakdown based on metrics
+        if not metrics.get("compiles", True):
+            explanation_parts.append("<strong>Compilation:</strong> The generated code failed to compile. This indicates syntax errors or missing dependencies.")
+
+        if not metrics.get("functional_correctness", True):
+            explanation_parts.append("<strong>Functional Correctness:</strong> The code does not resolve the original static analysis violation.")
+
+        if metrics.get("introduces_violations", False):
+            violation_count = metrics.get("new_violation_count", 0)
+            explanation_parts.append(f"<strong>New Violations:</strong> The generated code introduces {violation_count} new static analysis violation(s).")
+
+        if metrics.get("high_severity_security", 0) > 0:
+            security_count = metrics.get("high_severity_security", 0)
+            explanation_parts.append(f"<strong>Security Issues:</strong> {security_count} high-severity security issue(s) detected in the generated code.")
+
+        if not metrics.get("matches_expected", True) and "matches_expected" in metrics:
+            explanation_parts.append("<strong>Expected Output:</strong> The generated code does not match the expected fix pattern.")
+
+        # Add quality concerns if relevant
+        if metrics.get("cyclomatic_complexity", 0) > 20:
+            explanation_parts.append(f"<strong>Code Complexity:</strong> High cyclomatic complexity ({metrics['cyclomatic_complexity']}) may indicate overly complex code.")
+
+        if len(explanation_parts) > 1:  # More than just the primary issue
+            html = '<div style="margin-top: 15px; padding: 15px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 4px;">'
+            html += '<h4 style="margin: 0 0 10px 0; color: #c62828;">🔍 Failure Explanation</h4>'
+            html += '<div style="line-height: 1.8;">'
+            for part in explanation_parts:
+                html += f'<div style="margin: 5px 0;">• {part}</div>'
+            html += '</div></div>'
+            return html
+
+        return ""
 
     def _build_compilation_error_section(self, metrics: Dict[str, Any]) -> str:
         """Build compilation error display section."""
@@ -1092,6 +1153,46 @@ class HTMLReporter:
                 .replace(">", "&gt;")
                 .replace('"', "&quot;")
                 .replace("'", "&#39;"))
+
+    def _generate_code_diff_html(self, generated: str, expected: str) -> str:
+        """
+        Generate HTML showing code with highlighted differences.
+
+        Args:
+            generated: Generated code
+            expected: Expected code
+
+        Returns:
+            HTML with highlighted differences
+        """
+        if not generated or not expected:
+            return self._escape_html(generated or "N/A")
+
+        gen_lines = generated.strip().split('\n')
+        exp_lines = expected.strip().split('\n')
+
+        # Simple line-by-line comparison
+        html_lines = []
+        max_lines = max(len(gen_lines), len(exp_lines))
+
+        for i in range(max_lines):
+            gen_line = gen_lines[i] if i < len(gen_lines) else None
+            exp_line = exp_lines[i] if i < len(exp_lines) else None
+
+            if gen_line is None:
+                # Missing line in generated code
+                html_lines.append(f'<span style="background-color: #ffebee; display: block; margin: 0; padding: 2px 0;">{self._escape_html("")}</span>')
+            elif exp_line is None:
+                # Extra line in generated code
+                html_lines.append(f'<span style="background-color: #fff3e0; display: block; margin: 0; padding: 2px 0;">{self._escape_html(gen_line)}</span>')
+            elif gen_line.strip() != exp_line.strip():
+                # Different line
+                html_lines.append(f'<span style="background-color: #ffebee; display: block; margin: 0; padding: 2px 0;">{self._escape_html(gen_line)}</span>')
+            else:
+                # Matching line
+                html_lines.append(self._escape_html(gen_line))
+
+        return '\n'.join(html_lines)
 
     def _build_interaction_script(self) -> str:
         """Build JavaScript for interactive features."""

@@ -38,7 +38,7 @@ class OpenAIModel(BaseModel):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a code migration assistant that helps fix static analysis violations."
+                        "content": "You are a code migration assistant specializing in migrating Java EE applications to Quarkus and Jakarta EE. Use Jakarta EE APIs (jakarta.*) and Quarkus-specific patterns, NOT Spring Framework. Focus on CDI (@ApplicationScoped, @Inject), Jakarta Persistence, and Jakarta Transactions."
                     },
                     {
                         "role": "user",

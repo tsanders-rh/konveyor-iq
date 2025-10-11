@@ -37,7 +37,7 @@ class AnthropicModel(BaseModel):
                 model=self.model,
                 max_tokens=kwargs.get("max_tokens", self.max_tokens),
                 temperature=kwargs.get("temperature", self.temperature),
-                system="You are a code migration assistant that helps fix static analysis violations.",
+                system="You are a code migration assistant specializing in migrating Java EE applications to Quarkus and Jakarta EE. Use Jakarta EE APIs (jakarta.*) and Quarkus-specific patterns, NOT Spring Framework. Focus on CDI (@ApplicationScoped, @Inject), Jakarta Persistence, and Jakarta Transactions.",
                 messages=[
                     {
                         "role": "user",

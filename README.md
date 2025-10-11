@@ -6,6 +6,9 @@ A comprehensive evaluation framework for assessing LLM-generated code fixes for 
 
 This framework evaluates LLM performance across multiple dimensions:
 - **Functional Correctness**: Does the fix resolve the violation and compile/run?
+  - Pattern-based validation (fallback when no analyzer available)
+  - Konveyor analyzer integration (optional)
+  - Auto-import stripping for missing stubs
 - **Code Quality**: Readability, style adherence, complexity metrics
 - **Security & Safety**: Avoids insecure patterns
 - **Efficiency**: Computational performance
@@ -25,7 +28,11 @@ konveyor-iq/
 │   ├── quality.py          # Code quality metrics
 │   ├── security.py         # Security analysis
 │   ├── efficiency.py       # Performance metrics
-│   └── explainability.py   # Explanation quality
+│   ├── explainability.py   # Explanation quality
+│   └── stubs/             # Java stubs for compilation
+│       ├── src/           # Stub source files
+│       ├── stubs.jar      # Compiled stub classes
+│       └── build.sh       # Rebuild script
 ├── models/                 # LLM adapters
 │   ├── base.py            # Base model interface
 │   ├── openai_adapter.py  # OpenAI models
@@ -89,23 +96,83 @@ rules:
 ## Configuration
 
 Edit `config.yaml` to specify:
-- Models to evaluate
+- Models to evaluate (OpenAI, Anthropic)
 - Evaluation dimensions to include
-- Static analysis tools to use
+- Static analysis configuration:
+  - Set `analyzer_command: null` to use pattern-based validation (no external tool needed)
+  - Set `analyzer_command: "/path/to/konveyor-analyzer"` to use real analyzer
+- Prompt templates optimized for Quarkus/Jakarta EE migrations
 - Report format preferences
+
+## Features
+
+### Pattern-Based Functional Validation
+
+When no static analysis tool is available, the framework uses pattern-based validation to check if violations are resolved:
+
+```python
+# Checks if old patterns are removed and new patterns are added
+patterns = {
+    "ee-to-quarkus-00000": {
+        "old": ["@Stateless", "import javax.ejb.Stateless"],
+        "new": ["@ApplicationScoped"],
+    }
+}
+```
+
+**Supported migration patterns:**
+- Java EE to Quarkus (EJB → CDI)
+- javax.* → jakarta.* package migrations
+- Message-driven beans → Reactive messaging
+- Persistence API migrations
+
+### Auto-Import Stripping
+
+The framework automatically strips import statements that cause compilation failures due to missing stubs:
+
+1. Attempts compilation
+2. If "package does not exist" error occurs
+3. Removes failing import statements
+4. Retries compilation
+
+This prevents false failures when LLMs add extra (harmless) imports.
+
+### Java Stub Management
+
+Stub classes enable compilation validation without full dependencies:
+
+```bash
+# Add new stub classes
+cd evaluators/stubs/src
+# Create new .java stub files
+
+# Rebuild JAR
+./build.sh
+```
+
+**Current stubs include:**
+- Jakarta EE annotations (@ApplicationScoped, @SessionScoped, @RequestScoped, etc.)
+- Java EE annotations (@Stateless, @Stateful, @Singleton, etc.)
+- JMS classes (Message, MessageListener, TextMessage, JMSException)
+- MicroProfile Reactive Messaging (@Incoming)
+- Common domain objects (User, Order, Payment, Database)
 
 ## Reports
 
 ### HTML Reports (Interactive)
 - 📊 Model comparison charts with Plotly
 - 📈 Response time distributions
-- 🎯 Per-rule performance breakdown
-- 🔍 **Interactive failure analysis**:
+- 🎯 Per-rule performance breakdown with rule selector dropdown
+- 🏆 **Top performing models ranking** with composite scoring
+- 🔍 **Enhanced failure analysis**:
   - Click-to-expand failure cards
-  - Side-by-side code comparison
+  - **Diff highlighting** - incorrect lines highlighted in red
+  - Expected code vs generated code side-by-side
+  - **Detailed failure explanations** based on metrics
   - Filter by failure type (compilation, regression, security)
   - Color-coded badges for quick identification
-  - Detailed metrics per failure
+  - Compilation error details
+  - Code quality metrics visualization
 
 ### Markdown Reports
 - Per-model performance summary
@@ -113,6 +180,68 @@ Edit `config.yaml` to specify:
 - Comparative analysis across models
 - Failure examples with code snippets
 - Cost analysis (tokens/requests)
+
+## Evaluation Criteria
+
+Tests **pass** only if ALL of the following are true:
+- ✅ **Compiles successfully** (with Java stubs)
+- ✅ **Resolves the original violation** (pattern-based or analyzer-based check)
+- ✅ **Does not introduce new violations**
+- ✅ **No high-severity security issues**
+
+Tests **fail** if ANY of these occur:
+- ❌ Compilation error (even after import stripping)
+- ❌ Original violation pattern still present in code
+- ❌ New static analysis violations introduced
+- ❌ High-severity security issues detected
+
+## Example Results
+
+```
+Pass Rate by Model (Java EE → Quarkus):
+- gpt-4-turbo:    80% (8/10 tests passed)
+- gpt-4o:         80% (8/10 tests passed)
+- gpt-3.5-turbo:  80% (8/10 tests passed)
+
+Common failure reasons:
+- Does not resolve violation (4x) - Wrong migration pattern
+- Compilation error (2x) - Missing stubs or syntax errors
+```
+
+## Extending the Framework
+
+### Adding New Migration Patterns
+
+Edit `evaluators/functional.py` to add pattern definitions:
+
+```python
+patterns = {
+    "your-rule-id": {
+        "old": ["@OldAnnotation", "import old.package"],
+        "new": ["@NewAnnotation", "import new.package"],
+    }
+}
+```
+
+### Adding New Stubs
+
+1. Create stub file in `evaluators/stubs/src/`
+2. Run `./build.sh` to rebuild `stubs.jar`
+3. Add auto-import mapping in `evaluators/functional.py` if needed
+
+### Customizing Prompts
+
+Edit `config.yaml` to customize the system prompt and user prompt templates:
+
+```yaml
+prompts:
+  default: |
+    You are helping migrate Java EE code to Quarkus...
+
+    IMPORTANT:
+    - Use Jakarta EE (jakarta.*) NOT Spring Framework
+    - Follow Quarkus best practices
+```
 
 ## License
 
