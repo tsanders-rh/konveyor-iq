@@ -119,10 +119,27 @@ evaluation_dimensions:
   code_quality:
     enabled: true
   security:
-    enabled: true
+    enabled: true  # Uses pattern-based checks by default
   efficiency:
     enabled: false  # Disable if not needed
+  explainability:
+    enabled: true  # Evaluates explanation quality and comments
 ```
+
+### Enhance Security Analysis (Optional)
+
+Install Semgrep for comprehensive security scanning:
+
+```bash
+pip install semgrep
+
+# Update config.yaml
+# security:
+#   tools:
+#     - semgrep
+```
+
+Without Semgrep, the framework uses built-in pattern-based security checks for common vulnerabilities (SQL injection, hardcoded credentials, etc.).
 
 ## Example Output
 
@@ -166,16 +183,34 @@ Evaluation Complete
 ### HTML Report Includes:
 
 - 📊 **Overall metrics**: Pass rates, costs, response times
-- 📈 **Interactive charts**: Model comparison, time distributions
+- 🏆 **Top performing models ranking**: Comprehensive composite scoring based on:
+  - Functional correctness (40%), Compilation (15%), Quality (15%)
+  - Security (15%), Explainability (10%), Speed (2.5%), Cost (2.5%)
+- 📈 **Interactive charts**: Model comparison, time distributions, per-rule performance
 - 📋 **Detailed tables**: Per-model and per-rule breakdowns
-- 🔍 **Interactive failure analysis**: Click-to-expand failures with code comparison and filtering
+- 🔍 **Enhanced failure analysis**:
+  - Click-to-expand failures with side-by-side code comparison
+  - Diff highlighting showing incorrect lines in red
+  - Detailed failure explanations based on metrics
+  - Filter by failure type (compilation, regression, security)
+- 🔒 **Security issues display**:
+  - Severity-based color coding (HIGH/MEDIUM/LOW)
+  - Detailed descriptions and line numbers
+- 📝 **Code quality & explainability metrics**:
+  - Cyclomatic complexity, maintainability index
+  - Explanation quality scores (0-10)
+  - Comment density with ideal range highlighting (10-30%)
 
 ### Key Metrics to Watch:
 
-- **Pass Rate**: % of test cases that passed all checks
-- **Functional Correctness**: % that resolved violations
-- **Response Time**: Average latency per request
-- **Cost**: Total cost across all evaluations
+- **Overall Score**: Composite ranking score (0-100) weighing all dimensions
+- **Pass Rate**: % of test cases that passed all checks (40% weight)
+- **Functional Correctness**: % that resolved violations without introducing new issues
+- **Code Quality**: Complexity, maintainability index (15% weight)
+- **Security Issues**: Count of vulnerabilities detected (15% weight)
+- **Explainability**: Quality of explanations and code documentation (10% weight)
+- **Response Time**: Average latency per request (2.5% weight)
+- **Cost**: Total cost across all evaluations (2.5% weight)
 
 ## Need Help?
 
