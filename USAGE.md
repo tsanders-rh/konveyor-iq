@@ -67,6 +67,32 @@ python evaluate.py \
   --format html
 ```
 
+### Parallel Execution
+
+Speed up evaluations by running multiple tests in parallel:
+
+```bash
+# Use 4 parallel workers (good for evaluating multiple models)
+python evaluate.py \
+  --benchmark benchmarks/test_cases/java-ee-quarkus-migration.yaml \
+  --parallel 4
+
+# Use 8 parallel workers for large test suites
+python evaluate.py \
+  --benchmark benchmarks/test_cases/java-ee-quarkus-migration.yaml \
+  --parallel 8
+```
+
+**Benefits:**
+- Significantly faster when testing multiple models (3-4x speedup typical)
+- Each model evaluation runs independently via API calls
+- Thread-safe result collection
+
+**Recommendations:**
+- Use `--parallel N` where N = number of models you're testing
+- Higher values may hit API rate limits
+- Default is 1 (sequential execution)
+
 ### Viewing Results
 
 After running evaluation, the script outputs clickable `file://` URLs:

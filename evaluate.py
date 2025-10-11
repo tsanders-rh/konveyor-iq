@@ -5,6 +5,7 @@ Main evaluation script for Konveyor AI.
 Usage:
     python evaluate.py --benchmark benchmarks/test_cases/java-ee-quarkus-migration.yaml
     python evaluate.py --config config.yaml --benchmark benchmarks/test_cases/
+    python evaluate.py --benchmark test.yaml --parallel 4  # Use 4 parallel workers
 """
 import argparse
 import yaml
@@ -13,6 +14,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 from benchmarks.schema import TestSuite, EvaluationResult, EvaluationMetrics
 from benchmarks.rule_fetcher import get_rule_fetcher
@@ -30,14 +33,17 @@ from reporters import HTMLReporter, MarkdownReporter
 class EvaluationEngine:
     """Main evaluation engine."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], max_workers: int = 1):
         """
         Initialize evaluation engine.
 
         Args:
             config: Configuration dictionary
+            max_workers: Maximum number of parallel workers (1 = sequential)
         """
         self.config = config
+        self.max_workers = max_workers
+        self.print_lock = threading.Lock()
 
         # Initialize models
         self.models = self._initialize_models()
@@ -102,6 +108,11 @@ class EvaluationEngine:
 
         return evaluators
 
+    def _safe_print(self, message: str, end: str = "\n"):
+        """Thread-safe print."""
+        with self.print_lock:
+            print(message, end=end)
+
     def evaluate(self, test_suite: TestSuite) -> List[Dict[str, Any]]:
         """
         Run evaluation on test suite.
@@ -117,6 +128,7 @@ class EvaluationEngine:
         print(f"Evaluating test suite: {test_suite.name}")
         print(f"Total rules: {len(test_suite.rules)}")
         print(f"Total models: {len(self.models)}")
+        print(f"Parallelization: {self.max_workers} worker(s)")
         print()
 
         for rule in test_suite.rules:
@@ -125,22 +137,71 @@ class EvaluationEngine:
             for test_case in rule.test_cases:
                 print(f"  Test case: {test_case.id}")
 
+                # Prepare evaluation tasks
+                tasks = []
                 for model in self.models:
-                    print(f"    Evaluating with {model.name}...", end=" ")
+                    tasks.append((model, rule, test_case, test_suite))
 
-                    result = self._evaluate_single(
-                        model,
-                        rule,
-                        test_case,
-                        test_suite
-                    )
+                # Execute in parallel or sequential
+                if self.max_workers == 1:
+                    # Sequential execution
+                    for model, rule, test_case, test_suite in tasks:
+                        print(f"    Evaluating with {model.name}...", end=" ")
 
-                    all_results.append(result)
+                        result = self._evaluate_single(model, rule, test_case, test_suite)
+                        all_results.append(result)
 
-                    status = "✓ PASS" if result["passed"] else "✗ FAIL"
-                    print(status)
+                        status = "✓ PASS" if result["passed"] else "✗ FAIL"
+                        print(status)
+                else:
+                    # Parallel execution
+                    with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                        # Submit all tasks
+                        future_to_model = {
+                            executor.submit(
+                                self._evaluate_single_with_logging,
+                                model,
+                                rule,
+                                test_case,
+                                test_suite
+                            ): model.name
+                            for model, rule, test_case, test_suite in tasks
+                        }
+
+                        # Collect results as they complete
+                        for future in as_completed(future_to_model):
+                            result = future.result()
+                            all_results.append(result)
 
         return all_results
+
+    def _evaluate_single_with_logging(
+        self,
+        model: Any,
+        rule: Any,
+        test_case: Any,
+        test_suite: TestSuite
+    ) -> Dict[str, Any]:
+        """
+        Evaluate a single test case with logging (for parallel execution).
+
+        Args:
+            model: LLM model
+            rule: Rule being evaluated
+            test_case: Test case
+            test_suite: Test suite containing custom prompt (optional)
+
+        Returns:
+            Evaluation result dictionary
+        """
+        self._safe_print(f"    Evaluating with {model.name}...", end=" ")
+
+        result = self._evaluate_single(model, rule, test_case, test_suite)
+
+        status = "✓ PASS" if result["passed"] else "✗ FAIL"
+        self._safe_print(status)
+
+        return result
 
     def _evaluate_single(
         self,
@@ -382,6 +443,13 @@ def main():
         default="both",
         help="Report format"
     )
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of parallel workers for evaluation (default: 1 = sequential)"
+    )
 
     args = parser.parse_args()
 
@@ -402,7 +470,7 @@ def main():
     test_suite = load_test_suite(str(benchmark_path))
 
     # Initialize engine
-    engine = EvaluationEngine(config)
+    engine = EvaluationEngine(config, max_workers=args.parallel)
 
     # Run evaluation
     print("=" * 60)

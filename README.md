@@ -58,12 +58,14 @@ pip install -r requirements.txt
 cp config.example.yaml config.yaml
 # Edit config.yaml with your API keys and settings
 
-# Run evaluation
+# Run evaluation (sequential)
 python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml
 
-# Generate report
-python evaluate.py --report results/latest/
+# Run evaluation with parallel execution (faster for multiple models)
+python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml --parallel 4
 ```
+
+For detailed usage including parallel execution options, see [USAGE.md](USAGE.md).
 
 ## Generating Test Cases Automatically ⚡
 
