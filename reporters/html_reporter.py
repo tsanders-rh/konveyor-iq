@@ -301,6 +301,9 @@ class HTMLReporter:
             {self._build_metric_cards(model_stats)}
         </div>
 
+        <h2>🏆 Top Performing Models</h2>
+        {self._build_top_performers_section(model_stats)}
+
         <h2>Model Comparison</h2>
         <div class="chart" id="comparison-chart"></div>
 
@@ -347,9 +350,13 @@ class HTMLReporter:
                     "total": 0,
                     "passed": 0,
                     "failed": 0,
+                    "compiled": 0,
                     "results": [],
                     "response_times": [],
-                    "costs": []
+                    "costs": [],
+                    "complexities": [],
+                    "pylint_scores": [],
+                    "maintainability_scores": []
                 }
 
             stats = model_stats[model_name]
@@ -361,10 +368,200 @@ class HTMLReporter:
             else:
                 stats["failed"] += 1
 
+            # Track compilation success
+            if result.get("metrics", {}).get("compiles", False):
+                stats["compiled"] += 1
+
             stats["response_times"].append(result["metrics"]["response_time_ms"])
             stats["costs"].append(result.get("estimated_cost", 0))
 
+            # Collect quality metrics
+            metrics = result.get("metrics", {})
+            if metrics.get("cyclomatic_complexity") is not None:
+                stats["complexities"].append(metrics["cyclomatic_complexity"])
+            if metrics.get("pylint_score") is not None:
+                stats["pylint_scores"].append(metrics["pylint_score"])
+            if metrics.get("maintainability_index") is not None:
+                stats["maintainability_scores"].append(metrics["maintainability_index"])
+
         return model_stats
+
+    def _rank_models(self, model_stats: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Rank models based on multiple performance criteria.
+
+        Returns:
+            List of model rankings with scores
+        """
+        rankings = []
+
+        for model_name, stats in model_stats.items():
+            # Calculate metrics
+            pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            compile_rate = (stats["compiled"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            avg_response_time = sum(stats["response_times"]) / len(stats["response_times"]) if stats["response_times"] else 0
+            total_cost = sum(stats["costs"])
+            avg_complexity = sum(stats["complexities"]) / len(stats["complexities"]) if stats["complexities"] else None
+            avg_maintainability = sum(stats["maintainability_scores"]) / len(stats["maintainability_scores"]) if stats["maintainability_scores"] else None
+
+            # Calculate composite score (0-100)
+            # Weighted scoring: pass_rate (50%), compile_rate (20%), quality (20%), speed (5%), cost (5%)
+            score = 0
+
+            # Pass rate (most important)
+            score += pass_rate * 0.5
+
+            # Compilation rate
+            score += compile_rate * 0.2
+
+            # Quality metrics (average of available metrics)
+            quality_score = 0
+            quality_count = 0
+
+            if avg_complexity is not None:
+                # Lower is better, normalize to 0-100 (complexity 1-30 range)
+                complexity_score = max(0, 100 - (avg_complexity - 1) * 3.33)
+                quality_score += complexity_score
+                quality_count += 1
+
+            if avg_maintainability is not None:
+                # Higher is better, already 0-100
+                quality_score += avg_maintainability
+                quality_count += 1
+
+            if quality_count > 0:
+                score += (quality_score / quality_count) * 0.2
+
+            # Response time (lower is better, normalize to 0-100)
+            # Assume 10000ms is max acceptable response time
+            time_score = max(0, 100 - (avg_response_time / 100))
+            score += time_score * 0.05
+
+            # Cost (lower is better, normalize to 0-100)
+            # Assume $1.00 total is max acceptable cost
+            cost_score = max(0, 100 - (total_cost * 100)) if total_cost > 0 else 100
+            score += cost_score * 0.05
+
+            rankings.append({
+                "model_name": model_name,
+                "score": score,
+                "pass_rate": pass_rate,
+                "compile_rate": compile_rate,
+                "avg_response_time": avg_response_time,
+                "total_cost": total_cost,
+                "avg_complexity": avg_complexity,
+                "avg_maintainability": avg_maintainability,
+                "tests_passed": stats["passed"],
+                "tests_total": stats["total"]
+            })
+
+        # Sort by score descending
+        rankings.sort(key=lambda x: x["score"], reverse=True)
+        return rankings
+
+    def _build_top_performers_section(self, model_stats: Dict[str, Dict[str, Any]]) -> str:
+        """Build top performing models section."""
+        rankings = self._rank_models(model_stats)
+
+        if not rankings:
+            return "<p>No rankings available.</p>"
+
+        html = '<div style="margin: 20px 0;">'
+
+        # Show podium for top 3
+        for i, ranking in enumerate(rankings[:3]):
+            rank = i + 1
+            medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉"
+            border_color = "#FFD700" if rank == 1 else "#C0C0C0" if rank == 2 else "#CD7F32"
+
+            html += f'''
+            <div style="background: #fff; border: 2px solid {border_color}; border-radius: 8px; padding: 20px; margin: 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 32px; margin-right: 10px;">{medal}</span>
+                        <span style="font-size: 24px; font-weight: bold; color: #333;">{ranking["model_name"]}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 36px; font-weight: bold; color: {border_color};">{ranking["score"]:.1f}</div>
+                        <div style="font-size: 12px; color: #666;">Overall Score</div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Pass Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">{ranking["pass_rate"]:.1f}%</div>
+                        <div style="font-size: 11px; color: #999;">{ranking["tests_passed"]}/{ranking["tests_total"]} passed</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Compilation Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">{ranking["compile_rate"]:.1f}%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Avg Response Time</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #2196F3;">{ranking["avg_response_time"]:.0f}ms</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Total Cost</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #FF9800;">${ranking["total_cost"]:.4f}</div>
+                    </div>
+            '''
+
+            # Add quality metrics if available
+            if ranking["avg_complexity"] is not None:
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Avg Complexity</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #9C27B0;">{ranking["avg_complexity"]:.1f}</div>
+                    </div>
+                '''
+
+            if ranking["avg_maintainability"] is not None:
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Maintainability</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #009688;">{ranking["avg_maintainability"]:.1f}/100</div>
+                    </div>
+                '''
+
+            html += '''
+                </div>
+            </div>
+            '''
+
+        # Show remaining models in a compact list
+        if len(rankings) > 3:
+            html += '<div style="margin-top: 20px;"><h3 style="color: #666; font-size: 18px;">Other Models</h3>'
+            html += '<table style="width: 100%; border-collapse: collapse;">'
+            html += '''
+            <thead>
+                <tr style="background: #f5f5f5;">
+                    <th style="padding: 10px; text-align: left;">Rank</th>
+                    <th style="padding: 10px; text-align: left;">Model</th>
+                    <th style="padding: 10px; text-align: right;">Score</th>
+                    <th style="padding: 10px; text-align: right;">Pass Rate</th>
+                    <th style="padding: 10px; text-align: right;">Avg Response</th>
+                    <th style="padding: 10px; text-align: right;">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+            '''
+
+            for i, ranking in enumerate(rankings[3:], start=4):
+                html += f'''
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">#{i}</td>
+                    <td style="padding: 10px; font-weight: 500;">{ranking["model_name"]}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold;">{ranking["score"]:.1f}</td>
+                    <td style="padding: 10px; text-align: right;">{ranking["pass_rate"]:.1f}%</td>
+                    <td style="padding: 10px; text-align: right;">{ranking["avg_response_time"]:.0f}ms</td>
+                    <td style="padding: 10px; text-align: right;">${ranking["total_cost"]:.4f}</td>
+                </tr>
+                '''
+
+            html += '</tbody></table></div>'
+
+        html += '</div>'
+        return html
 
     def _build_metric_cards(
         self,
