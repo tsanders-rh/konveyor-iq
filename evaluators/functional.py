@@ -14,12 +14,23 @@ from .base import BaseEvaluator
 # Common imports to auto-inject if missing
 COMMON_JAVA_IMPORTS = {
     "@Stateless": "import javax.ejb.Stateless;",
+    "@Stateful": "import javax.ejb.Stateful;",
+    "@Singleton": ["import javax.ejb.Singleton;", "import jakarta.inject.Singleton;"],
+    "@Startup": "import javax.ejb.Startup;",
+    "@MessageDriven": "import javax.ejb.MessageDriven;",
     "@EJB": "import javax.ejb.EJB;",
     "@ApplicationScoped": ["import javax.enterprise.context.ApplicationScoped;", "import jakarta.enterprise.context.ApplicationScoped;"],
+    "@SessionScoped": ["import javax.enterprise.context.SessionScoped;", "import jakarta.enterprise.context.SessionScoped;"],
     "@Inject": ["import javax.inject.Inject;", "import jakarta.inject.Inject;"],
+    "@Produces": ["import javax.enterprise.inject.Produces;", "import jakarta.enterprise.inject.Produces;"],
+    "@Observes": "import jakarta.enterprise.event.Observes;",
     "@PersistenceContext": ["import javax.persistence.PersistenceContext;", "import jakarta.persistence.PersistenceContext;"],
     "EntityManager": ["import javax.persistence.EntityManager;", "import jakarta.persistence.EntityManager;"],
     "@Transactional": ["import javax.transaction.Transactional;", "import jakarta.transaction.Transactional;"],
+    "MessageListener": "import javax.jms.MessageListener;",
+    "Message": "import javax.jms.Message;",
+    "StartupEvent": "import io.quarkus.runtime.StartupEvent;",
+    "@Incoming": "import org.eclipse.microprofile.reactive.messaging.Incoming;",
 }
 
 

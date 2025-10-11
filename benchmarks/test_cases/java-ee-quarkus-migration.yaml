@@ -145,3 +145,235 @@ rules:
                   // process payment
               }
           }
+
+  - rule_id: "ee-to-quarkus-00010"
+    description: "@Stateful EJB to CDI bean with @SessionScoped"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "@Stateful -> @SessionScoped or @ApplicationScoped"
+
+    test_cases:
+      - id: "tc005"
+        language: "java"
+        context: "Stateful session bean to CDI"
+        code_snippet: |
+          import javax.ejb.Stateful;
+
+          @Stateful
+          public class ShoppingCart {
+              private Order order = new Order();
+
+              public void addItem(User user) {
+                  order.setUser(user);
+              }
+
+              public Order getOrder() {
+                  return order;
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.SessionScoped;
+
+          @SessionScoped
+          public class ShoppingCart {
+              private Order order = new Order();
+
+              public void addItem(User user) {
+                  order.setUser(user);
+              }
+
+              public Order getOrder() {
+                  return order;
+              }
+          }
+
+  - rule_id: "ee-to-quarkus-00020"
+    description: "EJB container-managed transactions to @Transactional"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "EJB transaction -> @Transactional"
+
+    test_cases:
+      - id: "tc006"
+        language: "java"
+        context: "Stateless EJB with implicit transactions"
+        code_snippet: |
+          import javax.ejb.Stateless;
+
+          @Stateless
+          public class AccountService {
+              private Database database = new Database();
+
+              public void transfer(User from, User to) {
+                  database.find(from.getId());
+                  database.find(to.getId());
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import jakarta.transaction.Transactional;
+
+          @ApplicationScoped
+          public class AccountService {
+              private Database database = new Database();
+
+              @Transactional
+              public void transfer(User from, User to) {
+                  database.find(from.getId());
+                  database.find(to.getId());
+              }
+          }
+
+  - rule_id: "persistence-to-quarkus-00011"
+    description: "Remove @Produces from EntityManager producers"
+    severity: "medium"
+    category: "migration"
+    migration_pattern: "@PersistenceContext @Produces -> Direct injection"
+
+    test_cases:
+      - id: "tc007"
+        language: "java"
+        context: "EntityManager producer with @Produces"
+        code_snippet: |
+          import javax.enterprise.context.ApplicationScoped;
+          import javax.enterprise.inject.Produces;
+          import javax.persistence.EntityManager;
+          import javax.persistence.PersistenceContext;
+
+          @ApplicationScoped
+          public class EntityManagerProducer {
+              @Produces
+              @PersistenceContext
+              private EntityManager em;
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import jakarta.persistence.EntityManager;
+          import jakarta.persistence.PersistenceContext;
+
+          @ApplicationScoped
+          public class EntityManagerProducer {
+              @PersistenceContext
+              private EntityManager em;
+          }
+
+  - rule_id: "java-ee-004-ejb-inject-to-cdi"
+    description: "Replace @EJB injection with @Inject"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "@EJB -> @Inject"
+
+    test_cases:
+      - id: "tc008"
+        language: "java"
+        context: "Multiple EJB injections"
+        code_snippet: |
+          import javax.ejb.Stateless;
+          import javax.ejb.EJB;
+
+          @Stateless
+          public class CompositeService {
+              @EJB
+              private UserService userService;
+
+              @EJB
+              private OrderService orderService;
+
+              public Order processUserOrder(Long userId) {
+                  User user = userService.findUser(userId);
+                  return orderService.createOrder(userId);
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import jakarta.inject.Inject;
+
+          @ApplicationScoped
+          public class CompositeService {
+              @Inject
+              private UserService userService;
+
+              @Inject
+              private OrderService orderService;
+
+              public Order processUserOrder(Long userId) {
+                  User user = userService.findUser(userId);
+                  return orderService.createOrder(userId);
+              }
+          }
+
+  - rule_id: "java-ee-005-singleton-to-cdi"
+    description: "Replace @Singleton EJB with CDI @Singleton or @ApplicationScoped"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "@Singleton (EJB) -> @Singleton or @ApplicationScoped (CDI)"
+
+    test_cases:
+      - id: "tc009"
+        language: "java"
+        context: "Singleton EJB to CDI"
+        code_snippet: |
+          import javax.ejb.Singleton;
+          import javax.ejb.Startup;
+
+          @Singleton
+          @Startup
+          public class ConfigurationService {
+              private Database database = new Database();
+
+              public void init() {
+                  database.find(1L);
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import io.quarkus.runtime.StartupEvent;
+          import jakarta.enterprise.event.Observes;
+
+          @ApplicationScoped
+          public class ConfigurationService {
+              private Database database = new Database();
+
+              public void init(@Observes StartupEvent event) {
+                  database.find(1L);
+              }
+          }
+
+  - rule_id: "java-ee-006-message-driven-bean"
+    description: "Message-driven beans require manual migration"
+    severity: "high"
+    category: "migration"
+    migration_pattern: "@MessageDriven -> Quarkus messaging"
+
+    test_cases:
+      - id: "tc010"
+        language: "java"
+        context: "Simple message-driven bean"
+        code_snippet: |
+          import javax.ejb.MessageDriven;
+          import javax.jms.Message;
+          import javax.jms.MessageListener;
+
+          @MessageDriven
+          public class OrderMessageListener implements MessageListener {
+              public void onMessage(Message message) {
+                  // Process message
+              }
+          }
+
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+          import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+          @ApplicationScoped
+          public class OrderMessageListener {
+              @Incoming("orders")
+              public void onMessage(String message) {
+                  // Process message
+              }
+          }
