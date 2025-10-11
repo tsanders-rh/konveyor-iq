@@ -41,6 +41,8 @@ Shows what will be generated without writing files.
 |--------|-------------|
 | `--ruleset URL` | Generate from a specific Konveyor ruleset URL |
 | `--all-quarkus` | Generate from all Quarkus rulesets |
+| `--source VALUE` | Filter rules by migration source (e.g., `java-ee`, `springboot`) |
+| `--target VALUE` | Filter rules by migration target (e.g., `quarkus`, `jakarta-ee`) |
 | `--output DIR` | Output directory (default: `benchmarks/test_cases/generated`) |
 | `--preview` | Preview output without writing files |
 | `--no-when` | Exclude `when` condition hints from code snippets |
@@ -116,6 +118,103 @@ The official Konveyor rule message is included as a comment:
 ```
 
 This guidance will automatically be used in LLM prompts when you run evaluations!
+
+## Label-Based Filtering (Migration Paths)
+
+Generate test suites for specific migration scenarios using `--source` and `--target` filters. Konveyor rules include labels like `konveyor.io/source=java-ee` and `konveyor.io/target=quarkus` that define migration paths.
+
+### Benefits
+
+- **Focused test suites** - Generate tests for specific migration scenarios (e.g., Java EE → Quarkus)
+- **Aggregated across rulesets** - Combines all matching rules from multiple rulesets into a single file
+- **Migration-aligned** - Organized by what users actually care about (source/target technologies)
+- **Easier evaluation** - Test specific migration paths independently
+
+### Common Migration Paths
+
+```bash
+# Java EE to Quarkus (most common)
+python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+
+# Spring Boot to Quarkus
+python scripts/generate_tests.py --all-quarkus --source springboot --target quarkus
+
+# Jakarta EE to Quarkus
+python scripts/generate_tests.py --all-quarkus --source jakarta-ee --target quarkus
+```
+
+### Filter Options
+
+**By source and target** (AND logic):
+```bash
+python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+# Output: java-ee-to-quarkus.yaml (39 rules)
+# Only rules with BOTH labels: konveyor.io/source=java-ee AND konveyor.io/target=quarkus
+```
+
+**By target only** (any source):
+```bash
+python scripts/generate_tests.py --all-quarkus --target quarkus
+# Output: quarkus.yaml (73 rules)
+# All rules migrating TO Quarkus (from Java EE, Spring Boot, Jakarta EE, etc.)
+```
+
+**By source only** (any target):
+```bash
+python scripts/generate_tests.py --all-quarkus --source springboot
+# Output: springboot.yaml
+# All rules migrating FROM Spring Boot (to Quarkus, Cloud Native, etc.)
+```
+
+### Aggregated Output
+
+When using filters with `--all-quarkus`, the generator:
+
+1. **Scans all rulesets** - Fetches and parses all 30+ Quarkus rulesets
+2. **Filters by labels** - Checks each rule's `labels` field for matching source/target
+3. **Aggregates into one file** - Combines all matching rules into a single test suite
+4. **Preserves source URLs** - Each rule retains its original ruleset URL for reference
+
+**Example output:**
+```
+Applying filters: source=java-ee, target=quarkus
+Fetching list of Quarkus rulesets...
+Found 32 Quarkus rulesets
+
+[1/32] Scanning 200-ee-to-quarkus.windup.yaml
+  Found 3 matching rules
+[2/32] Scanning 201-persistence-to-quarkus.windup.yaml
+  Found 2 matching rules
+...
+[19/32] Scanning 225-springboot-di-to-quarkus.windup.yaml
+  Found 0 matching rules  # Skipped (source=springboot, not java-ee)
+...
+
+Scanned 73 total rules across 32 rulesets
+Found 39 matching rules
+
+✓ Generated aggregated test suite: benchmarks/test_cases/generated/java-ee-to-quarkus.yaml
+  Test cases: 39
+```
+
+### Metadata in Filtered Suites
+
+Filtered test suites include rich metadata:
+
+```yaml
+name: Java-Ee-To-Quarkus Migration
+description: Test cases for java-ee-to-quarkus migration (aggregated from all Quarkus rulesets)
+version: 1.0.0
+metadata:
+  source: Konveyor AI Migration Rules
+  language: java
+  generated_from: https://github.com/konveyor/rulesets/tree/main/default/generated/quarkus
+  category: migration
+  total_rulesets_scanned: 32
+  total_rules_scanned: 73
+  migration_source: java-ee
+  migration_target: quarkus
+```
 
 ## Workflow
 

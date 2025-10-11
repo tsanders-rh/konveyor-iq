@@ -74,9 +74,28 @@ python evaluate.py --report results/latest/
 python scripts/generate_tests.py \
     --ruleset https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
 
-# Generate from ALL Quarkus rulesets (25+ rulesets)
+# Generate from ALL Quarkus rulesets (30+ rulesets)
 python scripts/generate_tests.py --all-quarkus
+
+# 🎯 Filter by migration path (Java EE → Quarkus)
+python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+# Creates: java-ee-to-quarkus.yaml with 39 aggregated test cases
+
+# 🎯 Filter by target only (any source → Quarkus)
+python scripts/generate_tests.py --all-quarkus --target quarkus
+# Creates: quarkus.yaml with all 73 Quarkus migration rules
 ```
+
+### Label-Based Filtering
+
+Generate **migration-focused test suites** by filtering rules based on source/target labels:
+- `--source java-ee --target quarkus` - Java EE to Quarkus migrations (39 rules)
+- `--source springboot --target quarkus` - Spring Boot to Quarkus migrations (34 rules)
+- `--target quarkus` - All migrations TO Quarkus (73 rules)
+
+When using filters, all matching rules across all rulesets are **aggregated into a single test suite file**, making it easy to evaluate specific migration scenarios.
+
+### Generated Templates
 
 This creates test case templates with:
 - ✅ Rule metadata (ID, description, severity) pre-filled
