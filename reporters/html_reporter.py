@@ -688,8 +688,59 @@ class HTMLReporter:
 
         Plotly.newPlot('response-time-chart', responseTimeData, responseTimeLayout);
 
-        // Per-rule performance (placeholder)
-        // Add per-rule chart implementation here
+        // Per-rule performance
+        {self._build_per_rule_chart_data(results, models)}
+        """
+
+    def _build_per_rule_chart_data(self, results: List[Dict[str, Any]], models: List[str]) -> str:
+        """Build JavaScript data for per-rule performance chart."""
+
+        # Aggregate results by rule
+        rule_stats = {}
+        for result in results:
+            rule_id = result.get("rule_id", "Unknown")
+            model_name = result.get("model_name", "Unknown")
+
+            if rule_id not in rule_stats:
+                rule_stats[rule_id] = {}
+
+            if model_name not in rule_stats[rule_id]:
+                rule_stats[rule_id][model_name] = {"total": 0, "passed": 0}
+
+            rule_stats[rule_id][model_name]["total"] += 1
+            if result.get("passed", False):
+                rule_stats[rule_id][model_name]["passed"] += 1
+
+        # Build traces for each model
+        traces = []
+        for model in models:
+            rule_ids = []
+            pass_rates = []
+
+            for rule_id in sorted(rule_stats.keys()):
+                rule_ids.append(rule_id)
+                stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
+                pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+                pass_rates.append(pass_rate)
+
+            traces.append({
+                "x": rule_ids,
+                "y": pass_rates,
+                "type": "bar",
+                "name": model
+            })
+
+        return f"""
+        var rulePerformanceData = {json.dumps(traces)};
+
+        var rulePerformanceLayout = {{
+            title: 'Pass Rate by Rule',
+            xaxis: {{title: 'Rule ID'}},
+            yaxis: {{title: 'Pass Rate (%)', range: [0, 100]}},
+            barmode: 'group'
+        }};
+
+        Plotly.newPlot('rule-performance-chart', rulePerformanceData, rulePerformanceLayout);
         """
 
     def _build_all_results_section(self, results: List[Dict[str, Any]]) -> str:
