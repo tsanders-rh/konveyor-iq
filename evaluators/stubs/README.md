@@ -7,6 +7,8 @@ This directory contains stub implementations of Java EE and Jakarta EE APIs used
 ### Java EE (javax.*)
 - `javax.ejb.Stateless` - EJB stateless annotation
 - `javax.ejb.EJB` - EJB injection annotation
+- `javax.enterprise.context.ApplicationScoped` - CDI application scope
+- `javax.inject.Inject` - CDI injection
 - `javax.persistence.PersistenceContext` - JPA persistence context
 - `javax.persistence.EntityManager` - JPA entity manager
 - `javax.transaction.Transactional` - Transaction annotation

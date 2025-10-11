@@ -15,8 +15,8 @@ from .base import BaseEvaluator
 COMMON_JAVA_IMPORTS = {
     "@Stateless": "import javax.ejb.Stateless;",
     "@EJB": "import javax.ejb.EJB;",
-    "@ApplicationScoped": "import jakarta.enterprise.context.ApplicationScoped;",
-    "@Inject": "import jakarta.inject.Inject;",
+    "@ApplicationScoped": ["import javax.enterprise.context.ApplicationScoped;", "import jakarta.enterprise.context.ApplicationScoped;"],
+    "@Inject": ["import javax.inject.Inject;", "import jakarta.inject.Inject;"],
     "@PersistenceContext": ["import javax.persistence.PersistenceContext;", "import jakarta.persistence.PersistenceContext;"],
     "EntityManager": ["import javax.persistence.EntityManager;", "import jakarta.persistence.EntityManager;"],
     "@Transactional": ["import javax.transaction.Transactional;", "import jakarta.transaction.Transactional;"],
