@@ -60,6 +60,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import re
 import os
+import time
 
 # Add parent directory to path to import models
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -154,7 +155,7 @@ class TestCaseGenerator:
             return None
 
     def _generate_code_snippet(self, rule: Dict[str, Any], konveyor_message: str) -> str:
-        """Generate violating code snippet using LLM."""
+        """Generate violating code snippet using LLM with retry logic."""
         if not self.auto_generate or not self.model:
             return self._create_code_snippet_placeholder(rule, include_when=True)
 
@@ -176,25 +177,39 @@ Requirements:
 
 Respond with ONLY the Java code, no explanations."""
 
-        try:
-            print(f"    Generating code snippet for {rule_id}...", end=" ")
-            result = self.model.generate(prompt)
+        print(f"    Generating code snippet for {rule_id}...", end=" ", flush=True)
 
-            # Extract response text from dict
-            if isinstance(result, dict):
-                response_text = result.get("response", "")
-            else:
-                response_text = str(result)
+        # Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                start_time = time.time()
+                result = self.model.generate(prompt)
+                elapsed = time.time() - start_time
 
-            code = self._extract_code_from_response(response_text)
-            print("✓")
-            return code
-        except Exception as e:
-            print(f"✗ (Error: {e})")
-            return self._create_code_snippet_placeholder(rule, include_when=True)
+                # Extract response text from dict
+                if isinstance(result, dict):
+                    response_text = result.get("response", "")
+                else:
+                    response_text = str(result)
+
+                code = self._extract_code_from_response(response_text)
+                print(f"✓ ({elapsed:.1f}s)")
+                return code
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    print(f"⚠ (retry {attempt+1}/{max_retries} after {wait_time}s)...", end=" ", flush=True)
+                    time.sleep(wait_time)
+                else:
+                    print(f"✗ (Error after {max_retries} attempts: {str(e)[:50]})")
+                    return self._create_code_snippet_placeholder(rule, include_when=True)
+
+        return self._create_code_snippet_placeholder(rule, include_when=True)
 
     def _generate_expected_fix(self, rule: Dict[str, Any], code_snippet: str, konveyor_message: str) -> str:
-        """Generate expected fix using LLM."""
+        """Generate expected fix using LLM with retry logic."""
         if not self.auto_generate or not self.model:
             return "TODO: Add expected fix code here"
 
@@ -223,22 +238,36 @@ Requirements:
 
 Respond with ONLY the fixed Java code, no explanations."""
 
-        try:
-            print(f"    Generating expected fix for {rule_id}...", end=" ")
-            result = self.model.generate(prompt)
+        print(f"    Generating expected fix for {rule_id}...", end=" ", flush=True)
 
-            # Extract response text from dict
-            if isinstance(result, dict):
-                response_text = result.get("response", "")
-            else:
-                response_text = str(result)
+        # Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                start_time = time.time()
+                result = self.model.generate(prompt)
+                elapsed = time.time() - start_time
 
-            code = self._extract_code_from_response(response_text)
-            print("✓")
-            return code
-        except Exception as e:
-            print(f"✗ (Error: {e})")
-            return "TODO: Add expected fix code here"
+                # Extract response text from dict
+                if isinstance(result, dict):
+                    response_text = result.get("response", "")
+                else:
+                    response_text = str(result)
+
+                code = self._extract_code_from_response(response_text)
+                print(f"✓ ({elapsed:.1f}s)")
+                return code
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    print(f"⚠ (retry {attempt+1}/{max_retries} after {wait_time}s)...", end=" ", flush=True)
+                    time.sleep(wait_time)
+                else:
+                    print(f"✗ (Error after {max_retries} attempts: {str(e)[:50]})")
+                    return "TODO: Add expected fix code here"
+
+        return "TODO: Add expected fix code here"
 
     def _extract_code_from_response(self, response: str) -> str:
         """Extract code block from LLM response."""
