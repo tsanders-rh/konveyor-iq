@@ -383,39 +383,32 @@ patterns = {
 
 **Prompts are now defined in test case files**, not `config.yaml`. This allows each migration scenario to have technology-appropriate guidance.
 
-Add a `prompt` field to your test suite YAML:
+Add a `prompt` field to your test suite YAML. See `benchmarks/test_cases/java-ee-quarkus-migration.yaml` for a complete example.
 
+The prompt template can use these placeholders:
+- `{rule_description}` - Description of the rule being violated
+- `{konveyor_message}` - Official Konveyor migration guidance (auto-fetched)
+- `{language}` - Programming language (e.g., java)
+- `{code_snippet}` - Original code with violation
+- `{context}` - Additional context for the test case
+
+**Example test suite structure:**
 ```yaml
 name: "Java EE to Quarkus Migration"
 description: "Test cases for Java EE to Quarkus"
 version: "1.0.0"
 
 prompt: |
-  You are helping migrate Java EE code to Quarkus based on static analysis rules.
-
-  MIGRATION TARGET: Quarkus with Jakarta EE APIs
-  - Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
-  - Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
-  - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
-
-  Rule Violation:
-  {rule_description}
-
-  Konveyor Migration Guidance:
-  {konveyor_message}
-
-  Original Code:
-  ```{language}
-  {code_snippet}
-  ```
-
-  Context: {context}
-
-  Please provide the COMPLETE corrected code and a brief explanation.
+  You are helping migrate Java EE code to Quarkus...
+  [Your custom prompt template with placeholders]
 
 rules:
   - rule_id: "..."
-    # ... your rules
+    description: "..."
+    test_cases:
+      - id: "tc001"
+        code_snippet: |
+          // Your code here
 ```
 
 **Auto-generated prompts:** When using `--all-rulesets` with `--source` and `--target` filters, appropriate prompts are automatically generated for:
