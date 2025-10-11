@@ -85,7 +85,7 @@ rules:
     description: "Update @PersistenceContext to use jakarta.persistence"
     severity: "high"
     category: "migration"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus"
+    # Note: Generic jakarta package migration, no specific Konveyor rule
 
     test_cases:
       - id: "tc003"
@@ -123,7 +123,7 @@ rules:
     description: "Replace javax.transaction with jakarta.transaction"
     severity: "medium"
     category: "migration"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus"
+    # Note: Generic jakarta package migration, no specific Konveyor rule
 
     test_cases:
       - id: "tc004"
@@ -271,7 +271,7 @@ rules:
     severity: "high"
     category: "migration"
     migration_pattern: "@EJB -> @Inject"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
+    # Note: This rule ID doesn't exist in Konveyor ruleset, custom test case
 
     test_cases:
       - id: "tc008"
@@ -318,7 +318,7 @@ rules:
     severity: "high"
     category: "migration"
     migration_pattern: "@Singleton (EJB) -> @Singleton or @ApplicationScoped (CDI)"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
+    # Note: This rule ID doesn't exist in Konveyor ruleset, custom test case
 
     test_cases:
       - id: "tc009"
