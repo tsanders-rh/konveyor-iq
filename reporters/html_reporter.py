@@ -550,6 +550,7 @@ class HTMLReporter:
                             <pre>{self._escape_html(result.get("generated_explanation", "No explanation provided"))}</pre>
                         </div>
                     </div>
+                    {self._build_compilation_error_section(result.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
                         Response Time: {result.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
@@ -622,6 +623,7 @@ class HTMLReporter:
                             <pre>{self._escape_html(failure.get("generated_explanation", "No explanation provided"))}</pre>
                         </div>
                     </div>
+                    {self._build_compilation_error_section(failure.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
                         Response Time: {failure.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
@@ -660,6 +662,20 @@ class HTMLReporter:
             return "error"
         else:
             return "error"
+
+    def _build_compilation_error_section(self, metrics: Dict[str, Any]) -> str:
+        """Build compilation error display section."""
+        compilation_error = metrics.get("compilation_error", "")
+
+        if not compilation_error:
+            return ""
+
+        return f'''
+        <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: #e65100;">⚠️ Compilation Error</h4>
+            <pre style="background: #fff; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; margin: 0;">{self._escape_html(compilation_error)}</pre>
+        </div>
+        '''
 
     def _build_metric_details(self, metrics: Dict[str, Any]) -> str:
         """Build additional metric details for failure card."""

@@ -50,7 +50,10 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
 
         # Check compilation
         if self.config.get("compile_check", True):
-            results["compiles"] = self._check_compilation(generated_code, language)
+            compiles, error_msg = self._check_compilation(generated_code, language)
+            results["compiles"] = compiles
+            if not compiles and error_msg:
+                results["compilation_error"] = error_msg
 
         # Re-run static analysis to check if violation is resolved
         if self.config.get("static_analysis_rerun", True):
@@ -73,7 +76,7 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
 
         return results
 
-    def _check_compilation(self, code: str, language: str) -> bool:
+    def _check_compilation(self, code: str, language: str) -> tuple[bool, str]:
         """
         Check if code compiles.
 
@@ -82,7 +85,7 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
             language: Programming language
 
         Returns:
-            True if code compiles without errors
+            (success, error_message) tuple
         """
         try:
             if language == "java":
@@ -91,13 +94,18 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
                 return self._compile_python(code)
             else:
                 # For other languages, skip compilation check
-                return True
+                return (True, "")
         except Exception as e:
             print(f"Compilation check failed: {e}")
-            return False
+            return (False, str(e))
 
-    def _compile_java(self, code: str) -> bool:
-        """Compile Java code."""
+    def _compile_java(self, code: str) -> tuple[bool, str]:
+        """
+        Compile Java code.
+
+        Returns:
+            (success, error_message) tuple
+        """
         # Auto-inject missing imports
         code = self._inject_missing_imports(code)
 
@@ -105,7 +113,7 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
             # Extract class name from code
             class_name = self._extract_java_class_name(code)
             if not class_name:
-                return False
+                return (False, "Could not extract class name from code")
 
             java_file = Path(tmpdir) / f"{class_name}.java"
             java_file.write_text(code)
@@ -123,20 +131,34 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
                 result = subprocess.run(
                     javac_cmd,
                     capture_output=True,
-                    timeout=30
+                    timeout=30,
+                    text=True
                 )
-                return result.returncode == 0
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                # javac not available or timeout
-                return None  # Unknown
 
-    def _compile_python(self, code: str) -> bool:
-        """Check Python code syntax."""
+                if result.returncode == 0:
+                    return (True, "")
+                else:
+                    # Return the compilation error
+                    error_output = result.stderr if result.stderr else result.stdout
+                    return (False, error_output.strip())
+
+            except subprocess.TimeoutExpired:
+                return (False, "Compilation timeout (>30s)")
+            except FileNotFoundError:
+                return (None, "javac not available")
+
+    def _compile_python(self, code: str) -> tuple[bool, str]:
+        """
+        Check Python code syntax.
+
+        Returns:
+            (success, error_message) tuple
+        """
         try:
             compile(code, '<string>', 'exec')
-            return True
-        except SyntaxError:
-            return False
+            return (True, "")
+        except SyntaxError as e:
+            return (False, f"SyntaxError: {str(e)}")
 
     def _extract_java_class_name(self, code: str) -> str:
         """Extract Java class name from code."""
