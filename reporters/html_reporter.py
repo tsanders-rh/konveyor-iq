@@ -311,6 +311,12 @@ class HTMLReporter:
         <div class="chart" id="response-time-chart"></div>
 
         <h2>Per-Rule Performance</h2>
+        <div style="margin-bottom: 15px;">
+            <label for="rule-selector" style="font-weight: 600; margin-right: 10px;">Select Rule:</label>
+            <select id="rule-selector" style="padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; min-width: 300px;">
+                <option value="all">All Rules</option>
+            </select>
+        </div>
         <div class="chart" id="rule-performance-chart"></div>
 
         <h2>Detailed Results</h2>
@@ -693,7 +699,7 @@ class HTMLReporter:
         """
 
     def _build_per_rule_chart_data(self, results: List[Dict[str, Any]], models: List[str]) -> str:
-        """Build JavaScript data for per-rule performance chart."""
+        """Build JavaScript data for per-rule performance chart with rule selector."""
 
         # Aggregate results by rule
         rule_stats = {}
@@ -711,36 +717,96 @@ class HTMLReporter:
             if result.get("passed", False):
                 rule_stats[rule_id][model_name]["passed"] += 1
 
-        # Build traces for each model
-        traces = []
+        # Build data structure: map of rule_id -> traces for that rule
+        rule_data_map = {}
+        sorted_rules = sorted(rule_stats.keys())
+
+        # For "all rules" view
+        all_traces = []
         for model in models:
             rule_ids = []
             pass_rates = []
 
-            for rule_id in sorted(rule_stats.keys()):
+            for rule_id in sorted_rules:
                 rule_ids.append(rule_id)
                 stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
                 pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
                 pass_rates.append(pass_rate)
 
-            traces.append({
+            all_traces.append({
                 "x": rule_ids,
                 "y": pass_rates,
                 "type": "bar",
                 "name": model
             })
 
-        return f"""
-        var rulePerformanceData = {json.dumps(traces)};
+        rule_data_map["all"] = all_traces
 
+        # For individual rules
+        for rule_id in sorted_rules:
+            rule_traces = []
+            for model in models:
+                stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
+                pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+
+                rule_traces.append({
+                    "x": [model],
+                    "y": [pass_rate],
+                    "type": "bar",
+                    "name": model,
+                    "showlegend": False
+                })
+
+            rule_data_map[rule_id] = rule_traces
+
+        return f"""
+        // Store all rule performance data
+        var allRuleData = {json.dumps(rule_data_map)};
+        var ruleIds = {json.dumps(sorted_rules)};
+
+        // Populate dropdown
+        var selector = document.getElementById('rule-selector');
+        ruleIds.forEach(function(ruleId) {{
+            var option = document.createElement('option');
+            option.value = ruleId;
+            option.textContent = ruleId;
+            selector.appendChild(option);
+        }});
+
+        // Initial chart layout
         var rulePerformanceLayout = {{
-            title: 'Pass Rate by Rule',
+            title: 'Pass Rate by Rule (All Rules)',
             xaxis: {{title: 'Rule ID'}},
             yaxis: {{title: 'Pass Rate (%)', range: [0, 100]}},
             barmode: 'group'
         }};
 
-        Plotly.newPlot('rule-performance-chart', rulePerformanceData, rulePerformanceLayout);
+        // Function to update chart based on selection
+        function updateRuleChart(selectedRule) {{
+            var data = allRuleData[selectedRule];
+
+            if (selectedRule === 'all') {{
+                rulePerformanceLayout.title = 'Pass Rate by Rule (All Rules)';
+                rulePerformanceLayout.xaxis.title = 'Rule ID';
+                rulePerformanceLayout.barmode = 'group';
+                rulePerformanceLayout.showlegend = true;
+            }} else {{
+                rulePerformanceLayout.title = 'Pass Rate for ' + selectedRule;
+                rulePerformanceLayout.xaxis.title = 'Model';
+                rulePerformanceLayout.barmode = 'group';
+                rulePerformanceLayout.showlegend = false;
+            }}
+
+            Plotly.newPlot('rule-performance-chart', data, rulePerformanceLayout);
+        }}
+
+        // Add change event listener
+        selector.addEventListener('change', function() {{
+            updateRuleChart(this.value);
+        }});
+
+        // Initial render with all rules
+        updateRuleChart('all');
         """
 
     def _build_all_results_section(self, results: List[Dict[str, Any]]) -> str:
