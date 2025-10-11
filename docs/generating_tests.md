@@ -35,6 +35,29 @@ python scripts/generate_tests.py \
 
 Shows what will be generated without writing files.
 
+### GitHub API Rate Limits ⚠️
+
+When using `--all-rulesets` (337+ rulesets), you'll need a GitHub token to avoid rate limits:
+
+**Without token**: 60 requests/hour (will hit limit immediately)
+**With token**: 5,000 requests/hour (plenty for all rulesets)
+
+**Get a GitHub token:**
+1. Go to https://github.com/settings/tokens
+2. Click "Generate new token (classic)"
+3. Select scopes: `public_repo` (read public repositories)
+4. Copy the token
+
+**Use the token:**
+```bash
+# Option 1: Environment variable (recommended)
+export GITHUB_TOKEN="ghp_your_token_here"
+python scripts/generate_tests.py --all-rulesets
+
+# Option 2: Command-line argument
+python scripts/generate_tests.py --all-rulesets --github-token ghp_your_token_here
+```
+
 ### Auto-Generate Code Examples with LLM 🚀
 
 **NEW:** Automatically generate `code_snippet` and `expected_fix` using an LLM!
@@ -87,6 +110,7 @@ Fetching list of rulesets...
 | `--auto-generate` | **Auto-generate code using LLM** (requires `--model`) |
 | `--model NAME` | LLM model for auto-generation (e.g., `gpt-4-turbo`) |
 | `--api-key KEY` | API key for LLM (or use env vars) |
+| `--github-token TOKEN` | GitHub token for 5,000 req/hour limit (or use `GITHUB_TOKEN` env var) |
 
 ## What Gets Generated
 

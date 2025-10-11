@@ -69,13 +69,24 @@ class TestCaseGenerator:
                  target_filter: Optional[str] = None,
                  auto_generate: bool = False,
                  model_name: Optional[str] = None,
-                 api_key: Optional[str] = None):
+                 api_key: Optional[str] = None,
+                 github_token: Optional[str] = None):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.source_filter = source_filter
         self.target_filter = target_filter
         self.auto_generate = auto_generate
         self.model = None
+
+        # Setup GitHub token for higher API rate limits
+        self.github_token = github_token or os.getenv("GITHUB_TOKEN")
+        self.github_headers = {}
+        if self.github_token:
+            self.github_headers = {"Authorization": f"token {self.github_token}"}
+            print("Using GitHub token for API requests (5,000 req/hour limit)")
+        else:
+            print("Warning: No GitHub token provided. Rate limited to 60 req/hour.")
+            print("Set GITHUB_TOKEN env var or use --github-token for higher limits.")
 
         # Initialize model for auto-generation if requested
         if auto_generate:
@@ -259,7 +270,7 @@ Respond with ONLY the fixed Java code, no explanations."""
             return None
 
         try:
-            response = requests.get(raw_url, timeout=10)
+            response = requests.get(raw_url, headers=self.github_headers, timeout=10)
             response.raise_for_status()
             ruleset_data = yaml.safe_load(response.text)
         except Exception as e:
@@ -386,7 +397,7 @@ Respond with ONLY the fixed Java code, no explanations."""
         api_url = "https://api.github.com/repos/konveyor/rulesets/contents/default/generated/quarkus"
 
         try:
-            response = requests.get(api_url, timeout=10)
+            response = requests.get(api_url, headers=self.github_headers, timeout=10)
             response.raise_for_status()
             files = response.json()
         except Exception as e:
@@ -439,7 +450,7 @@ Respond with ONLY the fixed Java code, no explanations."""
         all_yaml_files = []
 
         try:
-            response = requests.get(base_url, timeout=10)
+            response = requests.get(base_url, headers=self.github_headers, timeout=10)
             response.raise_for_status()
             subdirs = response.json()
         except Exception as e:
@@ -455,7 +466,7 @@ Respond with ONLY the fixed Java code, no explanations."""
             subdir_url = subdir['url']
 
             try:
-                response = requests.get(subdir_url, timeout=10)
+                response = requests.get(subdir_url, headers=self.github_headers, timeout=10)
                 response.raise_for_status()
                 files = response.json()
             except Exception as e:
@@ -504,7 +515,7 @@ Respond with ONLY the fixed Java code, no explanations."""
                 continue
 
             try:
-                response = requests.get(raw_url, timeout=10)
+                response = requests.get(raw_url, headers=self.github_headers, timeout=10)
                 response.raise_for_status()
                 ruleset_data = yaml.safe_load(response.text)
             except Exception as e:
@@ -1125,6 +1136,12 @@ Examples:
         help='API key for LLM (optional, can use OPENAI_API_KEY or ANTHROPIC_API_KEY env vars)'
     )
 
+    parser.add_argument(
+        '--github-token',
+        type=str,
+        help='GitHub personal access token for higher API rate limits (optional, can use GITHUB_TOKEN env var)'
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -1141,7 +1158,8 @@ Examples:
         target_filter=args.target,
         auto_generate=args.auto_generate,
         model_name=args.model,
-        api_key=args.api_key
+        api_key=args.api_key,
+        github_token=args.github_token
     )
 
     # Generate test cases
