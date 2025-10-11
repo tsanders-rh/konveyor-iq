@@ -41,6 +41,10 @@ Usage:
     python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
         --local-rulesets ~/projects/rulesets
 
+    # Process large test suites in batches (saves progress incrementally)
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+        --auto-generate --model gpt-4-turbo --batch-size 20
+
 Label-Based Filtering:
     Use --source and --target to filter rules by konveyor.io/source and
     konveyor.io/target labels. When filtering with --all-quarkus, all matching
@@ -77,7 +81,8 @@ class TestCaseGenerator:
                  model_name: Optional[str] = None,
                  api_key: Optional[str] = None,
                  github_token: Optional[str] = None,
-                 local_rulesets_path: Optional[str] = None):
+                 local_rulesets_path: Optional[str] = None,
+                 batch_size: int = 10):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.source_filter = source_filter
@@ -85,6 +90,7 @@ class TestCaseGenerator:
         self.auto_generate = auto_generate
         self.model = None
         self.local_rulesets_path = Path(local_rulesets_path) if local_rulesets_path else None
+        self.batch_size = batch_size
 
         # Setup GitHub token for higher API rate limits (only if not using local)
         if not self.local_rulesets_path:
@@ -669,14 +675,43 @@ Respond with ONLY the fixed Java code, no explanations."""
         if prompt:
             test_suite['prompt'] = prompt
 
-        # Convert rules to test case format
-        for rule in all_matching_rules:
-            source_url = rule.pop('_source_ruleset', 'unknown')
-            rule_entry = self._create_rule_entry(rule, source_url, include_when=True)
-            if rule_entry:
-                test_suite['rules'].append(rule_entry)
+        # Determine output file
+        output_filename = f"{migration_path}.yaml"
+        output_file = self.output_dir / output_filename
 
-        # Convert to YAML
+        # If auto-generating, process in batches and write incrementally
+        if self.auto_generate:
+            print(f"\nAuto-generation enabled - processing {len(all_matching_rules)} rules in batches of {self.batch_size}")
+            print(f"Writing progress incrementally to: {output_file}\n")
+
+            total_rules = len(all_matching_rules)
+            for batch_start in range(0, total_rules, self.batch_size):
+                batch_end = min(batch_start + self.batch_size, total_rules)
+                batch_rules = all_matching_rules[batch_start:batch_end]
+
+                print(f"Processing batch {batch_start//self.batch_size + 1}/{(total_rules + self.batch_size - 1)//self.batch_size} (rules {batch_start+1}-{batch_end}/{total_rules})")
+
+                # Process this batch
+                for i, rule in enumerate(batch_rules, start=batch_start+1):
+                    source_url = rule.pop('_source_ruleset', 'unknown')
+                    print(f"  [{i}/{total_rules}] {rule.get('ruleID', 'unknown')}")
+                    rule_entry = self._create_rule_entry(rule, source_url, include_when=True)
+                    if rule_entry:
+                        test_suite['rules'].append(rule_entry)
+
+                # Write progress after each batch
+                yaml_content = yaml.dump(test_suite, sort_keys=False, default_flow_style=False, width=120)
+                output_file.write_text(yaml_content)
+                print(f"  ✓ Saved batch progress ({len(test_suite['rules'])} rules completed)\n")
+        else:
+            # Non-auto-generate: process all at once (fast)
+            for rule in all_matching_rules:
+                source_url = rule.pop('_source_ruleset', 'unknown')
+                rule_entry = self._create_rule_entry(rule, source_url, include_when=True)
+                if rule_entry:
+                    test_suite['rules'].append(rule_entry)
+
+        # Final write (in case not auto-generating or for final confirmation)
         yaml_content = yaml.dump(test_suite, sort_keys=False, default_flow_style=False, width=120)
 
         if preview:
@@ -687,9 +722,6 @@ Respond with ONLY the fixed Java code, no explanations."""
             print(f"\n... ({len(yaml_content)} total characters)")
             return []
 
-        # Write to file
-        output_filename = f"{migration_path}.yaml"
-        output_file = self.output_dir / output_filename
         output_file.write_text(yaml_content)
 
         print(f"\n✓ Generated aggregated test suite: {output_file}")
@@ -1249,6 +1281,14 @@ Examples:
         help='Path to local clone of konveyor/rulesets repo (much faster, no rate limits)'
     )
 
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=10,
+        metavar='N',
+        help='Number of rules to process per batch when auto-generating (default: 10). Progress is saved after each batch.'
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -1267,7 +1307,8 @@ Examples:
         model_name=args.model,
         api_key=args.api_key,
         github_token=args.github_token,
-        local_rulesets_path=args.local_rulesets
+        local_rulesets_path=args.local_rulesets,
+        batch_size=args.batch_size
     )
 
     # Generate test cases
