@@ -204,6 +204,12 @@ security:
   - Filter by failure type (compilation, regression, security)
   - Color-coded badges for quick identification
   - Compilation error details
+  - **Security issues display** with severity-based color coding:
+    - 🔴 HIGH severity (red) - Critical security vulnerabilities
+    - 🟠 MEDIUM severity (orange) - Important security concerns
+    - 🔵 LOW severity (blue) - Minor security issues
+    - Line numbers (when available from Semgrep)
+    - Detailed descriptions for each issue
   - Code quality metrics visualization
 
 ### Markdown Reports
