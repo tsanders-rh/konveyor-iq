@@ -155,7 +155,14 @@ Respond with ONLY the Java code, no explanations."""
         try:
             print(f"    Generating code snippet for {rule_id}...", end=" ")
             result = self.model.generate(prompt)
-            code = self._extract_code_from_response(result)
+
+            # Extract response text from dict
+            if isinstance(result, dict):
+                response_text = result.get("response", "")
+            else:
+                response_text = str(result)
+
+            code = self._extract_code_from_response(response_text)
             print("✓")
             return code
         except Exception as e:
@@ -195,7 +202,14 @@ Respond with ONLY the fixed Java code, no explanations."""
         try:
             print(f"    Generating expected fix for {rule_id}...", end=" ")
             result = self.model.generate(prompt)
-            code = self._extract_code_from_response(result)
+
+            # Extract response text from dict
+            if isinstance(result, dict):
+                response_text = result.get("response", "")
+            else:
+                response_text = str(result)
+
+            code = self._extract_code_from_response(response_text)
             print("✓")
             return code
         except Exception as e:
