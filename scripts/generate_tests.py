@@ -820,6 +820,11 @@ Respond with ONLY the fixed Java code, no explanations."""
         if self.target_filter:
             test_suite['metadata']['migration_target'] = self.target_filter
 
+        # Add migration-specific prompt
+        prompt = self._generate_prompt_for_migration(self.source_filter, self.target_filter)
+        if prompt:
+            test_suite['prompt'] = prompt
+
         for rule in filtered_rules:
             rule_entry = self._create_rule_entry(rule, source_url, include_when)
             if rule_entry:
