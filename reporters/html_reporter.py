@@ -878,6 +878,7 @@ class HTMLReporter:
                         </div>
                     </div>
                     {self._build_compilation_error_section(result.get("metrics", {}))}
+                    {self._build_security_issues_section(result.get("metrics", {}))}
                     {self._build_quality_metrics_section(result.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
@@ -954,6 +955,7 @@ class HTMLReporter:
                         </div>
                     </div>
                     {self._build_compilation_error_section(failure.get("metrics", {}))}
+                    {self._build_security_issues_section(failure.get("metrics", {}))}
                     {self._build_quality_metrics_section(failure.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
@@ -1054,6 +1056,53 @@ class HTMLReporter:
         </div>
         '''
 
+    def _build_security_issues_section(self, metrics: Dict[str, Any]) -> str:
+        """Build security issues display section."""
+        security_issues = metrics.get("security_issues", 0)
+        issues = metrics.get("issues", [])
+
+        if security_issues == 0 or not issues:
+            return ""
+
+        # Build issues list
+        issues_html = []
+        for issue in issues:
+            severity = issue.get("severity", "UNKNOWN")
+            issue_type = issue.get("type", "UNKNOWN")
+            description = issue.get("description", "No description")
+            line = issue.get("line")
+
+            # Color code by severity
+            if severity == "HIGH":
+                severity_color = "#d32f2f"
+                severity_bg = "#ffebee"
+            elif severity == "MEDIUM":
+                severity_color = "#f57c00"
+                severity_bg = "#fff3e0"
+            else:
+                severity_color = "#1976d2"
+                severity_bg = "#e3f2fd"
+
+            line_info = f" (Line {line})" if line else ""
+
+            issues_html.append(f'''
+            <div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px;">
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="background: {severity_color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
+                    <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
+                    <span style="color: #666; font-size: 12px; margin-left: auto;">{line_info}</span>
+                </div>
+                <div style="color: #333; font-size: 13px;">{self._escape_html(description)}</div>
+            </div>
+            ''')
+
+        return f'''
+        <div style="margin-top: 15px; padding: 15px; background: #ffebee; border-left: 4px solid #d32f2f; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: #c62828;">🔒 Security Issues Found ({security_issues})</h4>
+            {''.join(issues_html)}
+        </div>
+        '''
+
     def _build_quality_metrics_section(self, metrics: Dict[str, Any]) -> str:
         """Build quality metrics display section."""
         has_quality_metrics = any([
@@ -1125,6 +1174,15 @@ class HTMLReporter:
 
         if metrics.get("introduces_violations"):
             details.append(f"⚠️ Introduces {metrics.get('new_violation_count', 0)} new violations")
+
+        # Security metrics
+        if metrics.get("security_issues", 0) > 0:
+            high = metrics.get("high_severity_security", 0)
+            total = metrics.get("security_issues", 0)
+            if high > 0:
+                details.append(f"🔒 {high} HIGH security issues")
+            else:
+                details.append(f"🔒 {total} security issues")
 
         # Quality metrics
         if metrics.get("cyclomatic_complexity") is not None:
