@@ -14,17 +14,20 @@ Usage:
     # Generate from all Quarkus rulesets
     python scripts/generate_tests.py --all-quarkus
 
+    # Generate from ALL Konveyor rulesets (all categories)
+    python scripts/generate_tests.py --all-rulesets
+
     # Filter by migration path (Java EE → Quarkus)
-    python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus
     # Output: java-ee-to-quarkus.yaml (39 aggregated rules)
 
     # Filter by target only (any source → Quarkus)
-    python scripts/generate_tests.py --all-quarkus --target quarkus
-    # Output: quarkus.yaml (73 aggregated rules)
+    python scripts/generate_tests.py --all-rulesets --target quarkus
+    # Output: quarkus.yaml (aggregated rules from all sources)
 
-    # Filter by source only (Spring Boot → any target)
-    python scripts/generate_tests.py --all-quarkus --source springboot
-    # Output: springboot.yaml (aggregated rules from Spring Boot)
+    # Filter by source only (EAP7 → any target)
+    python scripts/generate_tests.py --all-rulesets --source eap7
+    # Output: eap7.yaml (aggregated rules for EAP7 migrations)
 
     # Preview without writing files
     python scripts/generate_tests.py --ruleset URL --preview
@@ -143,6 +146,57 @@ class TestCaseGenerator:
             print(f"  Test cases: {num_filtered_rules} (1 per rule)")
             return str(output_file)
 
+    def generate_all_rulesets(self, preview: bool = False) -> List[str]:
+        """
+        Generate test cases from ALL Konveyor rulesets (all subdirectories).
+
+        When source/target filters are specified, aggregates all matching rules
+        across all rulesets into a single test suite file.
+
+        Args:
+            preview: If True, only preview first ruleset
+
+        Returns:
+            List of generated file paths
+        """
+        print("Fetching all Konveyor rulesets from default/generated...")
+
+        # Get all YAML files from all subdirectories
+        yaml_files = self._fetch_all_rulesets_recursive()
+
+        if not yaml_files:
+            print("No rulesets found")
+            return []
+
+        print(f"Found {len(yaml_files)} rulesets across all categories\n")
+
+        # If filtering by source/target, aggregate all matching rules
+        if self.source_filter or self.target_filter:
+            return self._generate_aggregated_by_filters(yaml_files, preview, base_path="default/generated")
+
+        # Otherwise, generate one file per ruleset
+        generated_files = []
+
+        for i, file_info in enumerate(yaml_files, 1):
+            file_url = file_info['url']
+
+            print(f"[{i}/{len(yaml_files)}] Processing {file_info['name']} ({file_info['category']})")
+
+            if preview and i > 1:
+                print("  Skipping (preview mode, showing first only)")
+                continue
+
+            result = self.generate_from_ruleset(file_url, preview=preview, include_when=True)
+            if result:
+                generated_files.append(result)
+
+            print()
+
+        if not preview:
+            print(f"\n✓ Generated {len(generated_files)} test suite files in {self.output_dir}")
+
+        return generated_files
+
     def generate_all_quarkus_rulesets(self, preview: bool = False) -> List[str]:
         """
         Generate test cases from all Quarkus rulesets.
@@ -204,10 +258,56 @@ class TestCaseGenerator:
 
         return generated_files
 
+    def _fetch_all_rulesets_recursive(self) -> List[Dict[str, Any]]:
+        """
+        Recursively fetch all YAML rulesets from all subdirectories in default/generated.
+
+        Returns:
+            List of dicts with 'name', 'url', and 'category' keys
+        """
+        base_url = "https://api.github.com/repos/konveyor/rulesets/contents/default/generated"
+        all_yaml_files = []
+
+        try:
+            response = requests.get(base_url, timeout=10)
+            response.raise_for_status()
+            subdirs = response.json()
+        except Exception as e:
+            print(f"Error fetching subdirectories: {e}")
+            return []
+
+        # Iterate through each subdirectory
+        for subdir in subdirs:
+            if not isinstance(subdir, dict) or subdir.get('type') != 'dir':
+                continue
+
+            category = subdir['name']
+            subdir_url = subdir['url']
+
+            try:
+                response = requests.get(subdir_url, timeout=10)
+                response.raise_for_status()
+                files = response.json()
+            except Exception as e:
+                print(f"Warning: Could not fetch {category}: {e}")
+                continue
+
+            # Filter for YAML files
+            for file_info in files:
+                if isinstance(file_info, dict) and file_info.get('name', '').endswith('.yaml'):
+                    all_yaml_files.append({
+                        'name': file_info['name'],
+                        'url': f"https://github.com/konveyor/rulesets/blob/main/default/generated/{category}/{file_info['name']}",
+                        'category': category
+                    })
+
+        return all_yaml_files
+
     def _generate_aggregated_by_filters(
         self,
         yaml_files: List[Dict[str, Any]],
-        preview: bool
+        preview: bool,
+        base_path: str = "default/generated/quarkus"
     ) -> List[str]:
         """
         Generate a single aggregated test suite from all matching rules across all rulesets.
@@ -216,8 +316,17 @@ class TestCaseGenerator:
         total_rules_scanned = 0
 
         for i, file_info in enumerate(yaml_files, 1):
-            file_url = f"https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/{file_info['name']}"
-            print(f"[{i}/{len(yaml_files)}] Scanning {file_info['name']}")
+            # Handle both old format (just dict from API) and new format (with url/category)
+            if 'url' in file_info:
+                file_url = file_info['url']
+                file_name = file_info['name']
+                category = file_info.get('category', '')
+                display_name = f"{file_name} ({category})" if category else file_name
+            else:
+                file_url = f"https://github.com/konveyor/rulesets/blob/main/{base_path}/{file_info['name']}"
+                display_name = file_info['name']
+
+            print(f"[{i}/{len(yaml_files)}] Scanning {display_name}")
 
             # Fetch ruleset
             raw_url = self._convert_to_raw_url(file_url)
@@ -579,20 +688,23 @@ Examples:
   # Generate from all Quarkus rulesets
   python scripts/generate_tests.py --all-quarkus
 
+  # Generate from ALL Konveyor rulesets (all categories: quarkus, eap, spring-boot, etc.)
+  python scripts/generate_tests.py --all-rulesets
+
   # Filter by migration path (source -> target)
-  python scripts/generate_tests.py --all-quarkus --source eap7 --target quarkus
+  python scripts/generate_tests.py --all-rulesets --source eap7 --target quarkus
 
-  # Filter by target only (any source)
-  python scripts/generate_tests.py --all-quarkus --target quarkus
+  # Filter by target only (any source -> Quarkus)
+  python scripts/generate_tests.py --all-rulesets --target quarkus
 
-  # Filter by source only (any target)
-  python scripts/generate_tests.py --all-quarkus --source springboot
+  # Filter by source only (EAP7 -> any target)
+  python scripts/generate_tests.py --all-rulesets --source eap7
 
   # Preview without writing files
   python scripts/generate_tests.py --ruleset URL --preview
 
   # Specify output directory
-  python scripts/generate_tests.py --all-quarkus --output benchmarks/test_cases/auto_generated/
+  python scripts/generate_tests.py --all-rulesets --output benchmarks/test_cases/auto_generated/
         """
     )
 
@@ -606,6 +718,12 @@ Examples:
         '--all-quarkus',
         action='store_true',
         help='Generate from all Quarkus rulesets'
+    )
+
+    parser.add_argument(
+        '--all-rulesets',
+        action='store_true',
+        help='Generate from ALL Konveyor rulesets (all categories: quarkus, spring-boot, eap, etc.)'
     )
 
     parser.add_argument(
@@ -642,11 +760,11 @@ Examples:
     args = parser.parse_args()
 
     # Validate arguments
-    if not args.ruleset and not args.all_quarkus:
-        parser.error("Must specify either --ruleset or --all-quarkus")
-
-    if args.ruleset and args.all_quarkus:
-        parser.error("Cannot specify both --ruleset and --all-quarkus")
+    options_count = sum([bool(args.ruleset), args.all_quarkus, args.all_rulesets])
+    if options_count == 0:
+        parser.error("Must specify one of: --ruleset, --all-quarkus, or --all-rulesets")
+    if options_count > 1:
+        parser.error("Cannot specify multiple generation modes (choose only one)")
 
     # Create generator
     generator = TestCaseGenerator(
@@ -656,7 +774,30 @@ Examples:
     )
 
     # Generate test cases
-    if args.all_quarkus:
+    if args.all_rulesets:
+        # Show filter info if applicable
+        if args.source or args.target:
+            filter_parts = []
+            if args.source:
+                filter_parts.append(f"source={args.source}")
+            if args.target:
+                filter_parts.append(f"target={args.target}")
+            print(f"\nApplying filters: {', '.join(filter_parts)}")
+
+        generated = generator.generate_all_rulesets(preview=args.preview)
+        if not args.preview:
+            if generated:
+                print(f"\n✓ Successfully generated {len(generated)} test suite files!")
+                if args.source or args.target:
+                    print(f"  Filtered by: {', '.join(filter_parts)}")
+                print(f"\nNext steps:")
+                print(f"1. Review generated files in {args.output}/")
+                print(f"2. Fill in TODO placeholders with actual code examples")
+                print(f"3. Add expected_fix code for each test case")
+                print(f"4. Run evaluation: python evaluate.py --benchmark {args.output}/")
+            else:
+                print(f"\n⚠ No test suites generated - no rules matched the filters")
+    elif args.all_quarkus:
         # Show filter info if applicable
         if args.source or args.target:
             filter_parts = []

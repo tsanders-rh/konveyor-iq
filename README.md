@@ -77,23 +77,30 @@ python scripts/generate_tests.py \
 # Generate from ALL Quarkus rulesets (30+ rulesets)
 python scripts/generate_tests.py --all-quarkus
 
-# 🎯 Filter by migration path (Java EE → Quarkus)
-python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+# 🚀 Generate from ALL Konveyor rulesets (337+ rulesets across all categories)
+python scripts/generate_tests.py --all-rulesets
+
+# 🎯 Filter by migration path (Java EE → Quarkus) - scans ALL rulesets
+python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus
 # Creates: java-ee-to-quarkus.yaml with 39 aggregated test cases
 
-# 🎯 Filter by target only (any source → Quarkus)
-python scripts/generate_tests.py --all-quarkus --target quarkus
-# Creates: quarkus.yaml with all 73 Quarkus migration rules
+# 🎯 Filter by target only (any source → EAP8) - scans ALL rulesets
+python scripts/generate_tests.py --all-rulesets --target eap8
+# Creates: eap8.yaml with 235 rules from 2,680 total rules across 337 rulesets
 ```
 
 ### Label-Based Filtering
 
-Generate **migration-focused test suites** by filtering rules based on source/target labels:
-- `--source java-ee --target quarkus` - Java EE to Quarkus migrations (39 rules)
-- `--source springboot --target quarkus` - Spring Boot to Quarkus migrations (34 rules)
-- `--target quarkus` - All migrations TO Quarkus (73 rules)
+Generate **migration-focused test suites** by filtering rules based on source/target labels. Use `--all-rulesets` to scan **all 337+ Konveyor rulesets** across all categories (quarkus, eap, spring-boot, camel, azure, etc.):
 
-When using filters, all matching rules across all rulesets are **aggregated into a single test suite file**, making it easy to evaluate specific migration scenarios.
+- `--all-rulesets --source java-ee --target quarkus` - Java EE to Quarkus migrations
+- `--all-rulesets --source eap7 --target eap8` - EAP7 to EAP8 migrations (235 rules)
+- `--all-rulesets --target quarkus` - All migrations TO Quarkus from any source
+- `--all-rulesets --source springboot` - All migrations FROM Spring Boot to any target
+
+When using filters, all matching rules across all scanned rulesets are **aggregated into a single test suite file**, making it easy to evaluate specific migration scenarios.
+
+**Coverage:** `--all-rulesets` scans 2,680+ rules across 337+ rulesets from all categories, providing comprehensive migration coverage beyond just Quarkus migrations.
 
 ### Generated Templates
 
