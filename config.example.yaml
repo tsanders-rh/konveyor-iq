@@ -95,13 +95,15 @@ prompts:
     Context: {context}
 
     Please provide:
-    1. The corrected code that resolves the violation
+    1. The COMPLETE corrected code that resolves the violation (include ALL original code - classes, fields, methods, everything)
     2. A brief explanation of the changes made
+
+    IMPORTANT: Provide the ENTIRE class with ALL fields and methods, not just the parts you changed.
 
     Format your response as:
     FIXED CODE:
     ```{language}
-    [your fixed code here]
+    [your complete fixed code here]
     ```
 
     EXPLANATION:
