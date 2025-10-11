@@ -3,19 +3,42 @@
 Automated test case generator from Konveyor rulesets.
 
 This script parses Konveyor YAML ruleset files and generates test case templates
-that can be filled in with code examples.
+that can be filled in with code examples. Supports label-based filtering to generate
+migration-focused test suites.
 
 Usage:
     # Generate from a single ruleset
     python scripts/generate_tests.py \
-        --ruleset https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml \
-        --output benchmarks/test_cases/generated/
+        --ruleset https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
 
     # Generate from all Quarkus rulesets
-    python scripts/generate_tests.py --all-quarkus --output benchmarks/test_cases/generated/
+    python scripts/generate_tests.py --all-quarkus
+
+    # Filter by migration path (Java EE → Quarkus)
+    python scripts/generate_tests.py --all-quarkus --source java-ee --target quarkus
+    # Output: java-ee-to-quarkus.yaml (39 aggregated rules)
+
+    # Filter by target only (any source → Quarkus)
+    python scripts/generate_tests.py --all-quarkus --target quarkus
+    # Output: quarkus.yaml (73 aggregated rules)
+
+    # Filter by source only (Spring Boot → any target)
+    python scripts/generate_tests.py --all-quarkus --source springboot
+    # Output: springboot.yaml (aggregated rules from Spring Boot)
 
     # Preview without writing files
     python scripts/generate_tests.py --ruleset URL --preview
+
+Label-Based Filtering:
+    Use --source and --target to filter rules by konveyor.io/source and
+    konveyor.io/target labels. When filtering with --all-quarkus, all matching
+    rules across all rulesets are aggregated into a single test suite file.
+
+    Common migration paths:
+        --source java-ee --target quarkus      # Java EE to Quarkus (39 rules)
+        --source springboot --target quarkus   # Spring Boot to Quarkus (34 rules)
+        --source jakarta-ee --target quarkus   # Jakarta EE to Quarkus
+        --target quarkus                       # All migrations to Quarkus (73 rules)
 """
 import argparse
 import sys
