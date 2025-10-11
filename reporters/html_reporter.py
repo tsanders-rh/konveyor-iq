@@ -1109,7 +1109,9 @@ class HTMLReporter:
             metrics.get("cyclomatic_complexity") is not None,
             metrics.get("pylint_score") is not None,
             metrics.get("maintainability_index") is not None,
-            metrics.get("style_violations") is not None
+            metrics.get("style_violations") is not None,
+            metrics.get("explanation_quality_score") is not None,
+            metrics.get("comment_density") is not None
         ])
 
         if not has_quality_metrics:
@@ -1156,6 +1158,28 @@ class HTMLReporter:
             <div style="background: #fff; padding: 10px; border-radius: 4px;">
                 <div style="font-size: 12px; color: #666;">Style Violations</div>
                 <div style="font-size: 20px; font-weight: bold; color: {color};">{violations}</div>
+            </div>
+            '''
+
+        if metrics.get("explanation_quality_score") is not None:
+            score = metrics["explanation_quality_score"]
+            color = "#4CAF50" if score >= 7.0 else "#ff9800" if score >= 5.0 else "#f44336"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Explanation Quality</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{score:.1f}/10</div>
+            </div>
+            '''
+
+        if metrics.get("comment_density") is not None:
+            density = metrics["comment_density"]
+            percentage = density * 100
+            # Good range is 10-30% comments
+            color = "#4CAF50" if 10 <= percentage <= 30 else "#ff9800" if percentage > 0 else "#999"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Comment Density</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{percentage:.1f}%</div>
             </div>
             '''
 
