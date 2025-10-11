@@ -373,7 +373,10 @@ class HTMLReporter:
                     "costs": [],
                     "complexities": [],
                     "pylint_scores": [],
-                    "maintainability_scores": []
+                    "maintainability_scores": [],
+                    "security_issues": [],
+                    "explanation_scores": [],
+                    "comment_densities": []
                 }
 
             stats = model_stats[model_name]
@@ -401,6 +404,16 @@ class HTMLReporter:
             if metrics.get("maintainability_index") is not None:
                 stats["maintainability_scores"].append(metrics["maintainability_index"])
 
+            # Collect security metrics
+            if metrics.get("security_issues") is not None:
+                stats["security_issues"].append(metrics["security_issues"])
+
+            # Collect explainability metrics
+            if metrics.get("explanation_quality_score") is not None:
+                stats["explanation_scores"].append(metrics["explanation_quality_score"])
+            if metrics.get("comment_density") is not None:
+                stats["comment_densities"].append(metrics["comment_density"])
+
         return model_stats
 
     def _rank_models(self, model_stats: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -420,16 +433,19 @@ class HTMLReporter:
             total_cost = sum(stats["costs"])
             avg_complexity = sum(stats["complexities"]) / len(stats["complexities"]) if stats["complexities"] else None
             avg_maintainability = sum(stats["maintainability_scores"]) / len(stats["maintainability_scores"]) if stats["maintainability_scores"] else None
+            avg_security_issues = sum(stats["security_issues"]) / len(stats["security_issues"]) if stats["security_issues"] else None
+            avg_explanation_score = sum(stats["explanation_scores"]) / len(stats["explanation_scores"]) if stats["explanation_scores"] else None
+            avg_comment_density = sum(stats["comment_densities"]) / len(stats["comment_densities"]) if stats["comment_densities"] else None
 
             # Calculate composite score (0-100)
-            # Weighted scoring: pass_rate (50%), compile_rate (20%), quality (20%), speed (5%), cost (5%)
+            # Weighted scoring: pass_rate (40%), compile_rate (15%), quality (15%), security (15%), explainability (10%), speed (2.5%), cost (2.5%)
             score = 0
 
             # Pass rate (most important)
-            score += pass_rate * 0.5
+            score += pass_rate * 0.4
 
             # Compilation rate
-            score += compile_rate * 0.2
+            score += compile_rate * 0.15
 
             # Quality metrics (average of available metrics)
             quality_score = 0
@@ -447,17 +463,51 @@ class HTMLReporter:
                 quality_count += 1
 
             if quality_count > 0:
-                score += (quality_score / quality_count) * 0.2
+                score += (quality_score / quality_count) * 0.15
+
+            # Security metrics (lower issues is better)
+            if avg_security_issues is not None:
+                # Assume 0 issues = 100 score, 5+ issues = 0 score
+                security_score = max(0, 100 - (avg_security_issues * 20))
+                score += security_score * 0.15
+
+            # Explainability metrics (average of available metrics)
+            explainability_score = 0
+            explainability_count = 0
+
+            if avg_explanation_score is not None:
+                # Higher is better, scale 0-10 to 0-100
+                explainability_score += avg_explanation_score * 10
+                explainability_count += 1
+
+            if avg_comment_density is not None:
+                # Ideal range 10-30%, convert to 0-100 score
+                percentage = avg_comment_density * 100
+                if 10 <= percentage <= 30:
+                    density_score = 100
+                elif percentage > 30:
+                    # Penalize over-commenting: 30% = 100, 60% = 0
+                    density_score = max(0, 100 - (percentage - 30) * 3.33)
+                elif percentage > 0:
+                    # Penalize under-commenting: 10% = 100, 0% = 0
+                    density_score = percentage * 10
+                else:
+                    density_score = 0
+                explainability_score += density_score
+                explainability_count += 1
+
+            if explainability_count > 0:
+                score += (explainability_score / explainability_count) * 0.1
 
             # Response time (lower is better, normalize to 0-100)
             # Assume 10000ms is max acceptable response time
             time_score = max(0, 100 - (avg_response_time / 100))
-            score += time_score * 0.05
+            score += time_score * 0.025
 
             # Cost (lower is better, normalize to 0-100)
             # Assume $1.00 total is max acceptable cost
             cost_score = max(0, 100 - (total_cost * 100)) if total_cost > 0 else 100
-            score += cost_score * 0.05
+            score += cost_score * 0.025
 
             rankings.append({
                 "model_name": model_name,
@@ -468,6 +518,9 @@ class HTMLReporter:
                 "total_cost": total_cost,
                 "avg_complexity": avg_complexity,
                 "avg_maintainability": avg_maintainability,
+                "avg_security_issues": avg_security_issues,
+                "avg_explanation_score": avg_explanation_score,
+                "avg_comment_density": avg_comment_density,
                 "tests_passed": stats["passed"],
                 "tests_total": stats["total"]
             })
@@ -537,6 +590,36 @@ class HTMLReporter:
                     <div>
                         <div style="font-size: 12px; color: #666;">Maintainability</div>
                         <div style="font-size: 20px; font-weight: bold; color: #009688;">{ranking["avg_maintainability"]:.1f}/100</div>
+                    </div>
+                '''
+
+            # Add security metrics if available
+            if ranking["avg_security_issues"] is not None:
+                security_color = "#4CAF50" if ranking["avg_security_issues"] == 0 else "#ff9800" if ranking["avg_security_issues"] < 2 else "#f44336"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Avg Security Issues</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {security_color};">{ranking["avg_security_issues"]:.1f}</div>
+                    </div>
+                '''
+
+            # Add explainability metrics if available
+            if ranking["avg_explanation_score"] is not None:
+                expl_color = "#4CAF50" if ranking["avg_explanation_score"] >= 7.0 else "#ff9800" if ranking["avg_explanation_score"] >= 5.0 else "#f44336"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Explanation Quality</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {expl_color};">{ranking["avg_explanation_score"]:.1f}/10</div>
+                    </div>
+                '''
+
+            if ranking["avg_comment_density"] is not None:
+                percentage = ranking["avg_comment_density"] * 100
+                comment_color = "#4CAF50" if 10 <= percentage <= 30 else "#ff9800"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #666;">Comment Density</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {comment_color};">{percentage:.1f}%</div>
                     </div>
                 '''
 

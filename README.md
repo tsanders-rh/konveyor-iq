@@ -189,13 +189,52 @@ security:
     - semgrep
 ```
 
+### Explainability Analysis
+
+**Heuristic-based evaluation** of code explanation quality:
+
+**Explanation Quality Score (0-10):**
+- Evaluates the quality of LLM-generated explanations
+- Checks for:
+  - **Change description**: Explains what was modified
+  - **Reason/justification**: Explains why the change was needed
+  - **Technical context**: Mentions relevant frameworks/patterns
+  - **Migration-specific**: References source/target technologies
+  - **Adequate length**: Not too brief (100+ chars) or verbose (2000+ chars)
+- Scoring thresholds:
+  - **7.0+**: GREEN (excellent explanation)
+  - **5.0-7.0**: ORANGE (acceptable)
+  - **<5.0**: RED (poor explanation)
+
+**Comment Density (0-100%):**
+- Measures ratio of comment lines to total lines in generated code
+- Ideal range: **10-30%**
+  - **10-30%**: GREEN (well-documented)
+  - **>0% but not ideal**: ORANGE (under/over-commented)
+  - **0%**: GRAY (no comments)
+- Considers both inline comments (`//`) and block comments (`/* */`)
+- Excludes blank lines from calculation
+
+**Impact on Model Ranking:**
+- Explainability contributes **10%** to overall composite score
+- Average of explanation quality (scaled 0-100) and comment density score
+- Encourages models to provide clear, well-documented fixes
+
 ## Reports
 
 ### HTML Reports (Interactive)
 - 📊 Model comparison charts with Plotly
 - 📈 Response time distributions
 - 🎯 Per-rule performance breakdown with rule selector dropdown
-- 🏆 **Top performing models ranking** with composite scoring
+- 🏆 **Top performing models ranking** with comprehensive composite scoring:
+  - **40%** Pass rate (functional correctness)
+  - **15%** Compilation rate
+  - **15%** Code quality (complexity + maintainability)
+  - **15%** Security (fewer issues = higher score)
+  - **10%** Explainability (explanation quality + comment density)
+  - **2.5%** Response time (speed)
+  - **2.5%** Cost efficiency
+  - Displays all metrics for top 3 models with medal rankings
 - 🔍 **Enhanced failure analysis**:
   - Click-to-expand failure cards
   - **Diff highlighting** - incorrect lines highlighted in red
@@ -210,7 +249,10 @@ security:
     - 🔵 LOW severity (blue) - Minor security issues
     - Line numbers (when available from Semgrep)
     - Detailed descriptions for each issue
-  - Code quality metrics visualization
+  - **Code quality and explainability metrics** visualization:
+    - Cyclomatic complexity, maintainability index, style violations
+    - Explanation quality score (0-10 scale)
+    - Comment density percentage with ideal range highlighting (10-30%)
 
 ### Markdown Reports
 - Per-model performance summary
