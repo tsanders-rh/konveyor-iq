@@ -551,6 +551,7 @@ class HTMLReporter:
                         </div>
                     </div>
                     {self._build_compilation_error_section(result.get("metrics", {}))}
+                    {self._build_quality_metrics_section(result.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
                         Response Time: {result.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
@@ -624,6 +625,7 @@ class HTMLReporter:
                         </div>
                     </div>
                     {self._build_compilation_error_section(failure.get("metrics", {}))}
+                    {self._build_quality_metrics_section(failure.get("metrics", {}))}
                     <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                         <strong>Metrics:</strong><br>
                         Response Time: {failure.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
@@ -677,6 +679,65 @@ class HTMLReporter:
         </div>
         '''
 
+    def _build_quality_metrics_section(self, metrics: Dict[str, Any]) -> str:
+        """Build quality metrics display section."""
+        has_quality_metrics = any([
+            metrics.get("cyclomatic_complexity") is not None,
+            metrics.get("pylint_score") is not None,
+            metrics.get("maintainability_index") is not None,
+            metrics.get("style_violations") is not None
+        ])
+
+        if not has_quality_metrics:
+            return ""
+
+        quality_html = '<div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 4px;">'
+        quality_html += '<h4 style="margin: 0 0 10px 0; color: #2e7d32;">📊 Code Quality Metrics</h4>'
+        quality_html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">'
+
+        if metrics.get("cyclomatic_complexity") is not None:
+            complexity = metrics["cyclomatic_complexity"]
+            color = "#4CAF50" if complexity <= 10 else "#ff9800" if complexity <= 20 else "#f44336"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Cyclomatic Complexity</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{complexity}</div>
+            </div>
+            '''
+
+        if metrics.get("pylint_score") is not None:
+            score = metrics["pylint_score"]
+            color = "#4CAF50" if score >= 7.0 else "#ff9800" if score >= 5.0 else "#f44336"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Pylint Score</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{score:.1f}/10</div>
+            </div>
+            '''
+
+        if metrics.get("maintainability_index") is not None:
+            mi = metrics["maintainability_index"]
+            color = "#4CAF50" if mi >= 65 else "#ff9800" if mi >= 40 else "#f44336"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Maintainability Index</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{mi:.1f}/100</div>
+            </div>
+            '''
+
+        if metrics.get("style_violations") is not None:
+            violations = metrics["style_violations"]
+            color = "#4CAF50" if violations == 0 else "#ff9800"
+            quality_html += f'''
+            <div style="background: #fff; padding: 10px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #666;">Style Violations</div>
+                <div style="font-size: 20px; font-weight: bold; color: {color};">{violations}</div>
+            </div>
+            '''
+
+        quality_html += '</div></div>'
+        return quality_html
+
     def _build_metric_details(self, metrics: Dict[str, Any]) -> str:
         """Build additional metric details for failure card."""
         details = []
@@ -689,6 +750,19 @@ class HTMLReporter:
 
         if metrics.get("introduces_violations"):
             details.append(f"⚠️ Introduces {metrics.get('new_violation_count', 0)} new violations")
+
+        # Quality metrics
+        if metrics.get("cyclomatic_complexity") is not None:
+            details.append(f"Complexity: {metrics['cyclomatic_complexity']}")
+
+        if metrics.get("pylint_score") is not None:
+            details.append(f"Pylint: {metrics['pylint_score']:.1f}/10")
+
+        if metrics.get("maintainability_index") is not None:
+            details.append(f"Maintainability: {metrics['maintainability_index']:.1f}/100")
+
+        if metrics.get("style_violations") is not None and metrics['style_violations'] > 0:
+            details.append(f"Style Issues: {metrics['style_violations']}")
 
         if details:
             return " | " + " | ".join(details)
