@@ -423,53 +423,74 @@ iteration:
 
 ---
 
-### 8. Cost Optimization Dashboard
+### 8. Cost Analysis Dashboard (HTML-based)
 
-**Status:** 🔴 Not Started
+**Status:** 🟡 In Progress
 **Priority:** Medium
 **Complexity:** Low
 **Impact:** Medium - Helps budget planning
 
 **Description:**
-Analyze cost vs. quality tradeoffs to recommend optimal model selection for different budgets.
+Generate interactive HTML dashboards that analyze cost vs. quality tradeoffs, combining Konveyor analysis reports with LLM evaluation results to provide actionable recommendations for budget planning and model selection.
 
-**Report Features:**
+**Implementation:**
+```bash
+# Generate cost dashboard from evaluation results
+python scripts/generate_cost_dashboard.py \
+  --konveyor-analysis analysis/results.json \
+  --evaluation-results results/results_latest.json \
+  --output reports/cost_dashboard.html
+
+# Optionally specify hourly rate for manual dev cost comparison
+python scripts/generate_cost_dashboard.py \
+  --konveyor-analysis analysis.json \
+  --evaluation-results results.json \
+  --hourly-rate 100 \
+  --output dashboard.html
 ```
-Cost-Effectiveness Analysis
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Budget Tiers:
-  Economy (<$0.05/fix):
-    → gpt-3.5-turbo: $0.027/fix, 75% pass rate
-    → Recommendation: Good for development/testing
+**Dashboard Features:**
+- **Executive Summary Panels**
+  - Total estimated cost (LLM + manual)
+  - Automation rate percentage
+  - ROI calculation
+  - Timeline estimation
 
-  Standard ($0.05-$0.20/fix):
-    → gpt-4o: $0.176/fix, 85% pass rate
-    → Recommendation: Balanced production use
+- **Cost Analysis Charts**
+  - Model cost breakdown (per-fix cost × success rate)
+  - LLM vs Manual vs Hybrid cost comparison
+  - Violation distribution by category
 
-  Premium (>$0.20/fix):
-    → claude-sonnet-4: $0.272/fix, 92% pass rate
-    → Recommendation: Critical migrations only
+- **Optimization Tables**
+  - Optimal model selection by rule category
+  - Detailed rule-by-rule cost analysis
+  - Recommended action plan with phases
 
-ROI Analysis:
-  Manual developer fix: ~30 min @ $75/hr = $37.50
-  gpt-3.5-turbo: $0.027 (99.9% savings, 75% success)
-  gpt-4o: $0.176 (99.5% savings, 85% success)
-  claude-sonnet-4: $0.272 (99.3% savings, 92% success)
+- **Performance Visualizations**
+  - Model performance by rule category
+  - Success rate trends over time
+  - Interactive Chart.js charts
 
-Recommendation: Use gpt-4o for 95% of fixes, claude-sonnet-4
-for high-risk migrations, gpt-3.5-turbo for initial testing.
-```
+**Output Format:**
+- Single HTML file with embedded CSS/JavaScript
+- Works offline, no server required
+- Can be emailed to stakeholders
+- Print-friendly for PDF export
+- Interactive charts using Chart.js
 
 **Benefits:**
 - Budget-conscious model selection
 - Justify costs with ROI data
 - Optimize spend without sacrificing quality
 - Plan for scale
+- **Portable** - single file, no infrastructure needed
+- **Shareable** - email to non-technical stakeholders
+- **Archival** - static snapshot for project records
 
 **Files to Create:**
-- `reporters/cost_optimizer.py` - Generate recommendations
-- `templates/cost_dashboard.html` - Interactive cost explorer
+- `scripts/generate_cost_dashboard.py` - Dashboard generator from evaluation results
+- `dashboards/cost_dashboard_mockup.html` - ✅ Template/mockup (COMPLETED)
+- `docs/cost_dashboard.md` - User guide for generating dashboards
 
 ---
 

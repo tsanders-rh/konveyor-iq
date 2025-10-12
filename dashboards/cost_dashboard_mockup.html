@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modernization Cost Analysis Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #111217;
+            color: #d8d9da;
+        }
+
+        .header {
+            background: #1e1e1e;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2d2d2d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .variables {
+            display: flex;
+            gap: 15px;
+        }
+
+        .variable {
+            background: #1e1e1e;
+            padding: 5px 12px;
+            border-radius: 3px;
+            border: 1px solid #3d3d3d;
+            font-size: 13px;
+        }
+
+        .dashboard {
+            padding: 20px;
+        }
+
+        .row {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .row-1 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .row-2 {
+            grid-template-columns: 1fr;
+        }
+
+        .row-3 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .row-4 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .panel {
+            background: #181b1f;
+            border: 1px solid #2d2d2d;
+            border-radius: 2px;
+            padding: 15px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #d8d9da;
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #9fa1a4;
+            text-align: center;
+        }
+
+        .green { color: #73bf69; }
+        .yellow { color: #f2cc0c; }
+        .orange { color: #ff780a; }
+        .red { color: #f2495c; }
+
+        .stat-bg-green { background: rgba(115, 191, 105, 0.15); }
+        .stat-bg-yellow { background: rgba(242, 204, 12, 0.15); }
+        .stat-bg-orange { background: rgba(255, 120, 10, 0.15); }
+        .stat-bg-red { background: rgba(242, 73, 92, 0.15); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #212124;
+            padding: 8px;
+            text-align: left;
+            font-weight: 500;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        tr:hover {
+            background: #212124;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-green { background: rgba(115, 191, 105, 0.3); color: #73bf69; }
+        .badge-yellow { background: rgba(242, 204, 12, 0.3); color: #f2cc0c; }
+        .badge-orange { background: rgba(255, 120, 10, 0.3); color: #ff780a; }
+        .badge-red { background: rgba(242, 73, 92, 0.3); color: #f2495c; }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .chart-container-sm {
+            position: relative;
+            height: 150px;
+        }
+
+        .chart-container-lg {
+            position: relative;
+            height: 350px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 Modernization Cost Analysis Dashboard</h1>
+        <div class="variables">
+            <div class="variable">Project: <strong>All</strong></div>
+            <div class="variable">Hourly Rate: <strong>$75</strong></div>
+            <div class="variable">Min Success Rate: <strong>70%</strong></div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Row 1: Executive Summary -->
+        <div class="row row-1">
+            <div class="panel stat-bg-yellow">
+                <div class="panel-title">Total Estimated Cost</div>
+                <div class="stat-value yellow">$42,815</div>
+                <div class="stat-label">LLM API ($815) + Manual Dev ($42,000)</div>
+            </div>
+
+            <div class="panel stat-bg-green">
+                <div class="panel-title">Automation Rate</div>
+                <div class="stat-value green">87.3%</div>
+                <div class="stat-label">196 of 225 violations auto-fixable</div>
+            </div>
+        </div>
+
+        <!-- Row 2: Cost Breakdown by Model -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Cost Breakdown by Model (Per-Fix Cost × Success Rate)</div>
+                <div class="chart-container">
+                    <canvas id="modelCostChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Optimization Insights -->
+        <div class="row row-3">
+            <div class="panel">
+                <div class="panel-title">Optimal Model Selection by Rule Category</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rule Category</th>
+                            <th>Best Model</th>
+                            <th>Success Rate</th>
+                            <th>Cost/Fix</th>
+                            <th># Violations</th>
+                            <th>Est. Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>EJB to CDI</td>
+                            <td>claude-3-5-sonnet</td>
+                            <td><span class="badge badge-green">92%</span></td>
+                            <td>$0.27</td>
+                            <td>67</td>
+                            <td>$18.09</td>
+                        </tr>
+                        <tr>
+                            <td>JMS to Reactive</td>
+                            <td>gpt-4o</td>
+                            <td><span class="badge badge-green">85%</span></td>
+                            <td>$0.18</td>
+                            <td>34</td>
+                            <td>$6.12</td>
+                        </tr>
+                        <tr>
+                            <td>Persistence</td>
+                            <td>gpt-4o</td>
+                            <td><span class="badge badge-green">88%</span></td>
+                            <td>$0.18</td>
+                            <td>89</td>
+                            <td>$16.02</td>
+                        </tr>
+                        <tr>
+                            <td>Configuration</td>
+                            <td>gpt-3.5-turbo</td>
+                            <td><span class="badge badge-yellow">78%</span></td>
+                            <td>$0.03</td>
+                            <td>35</td>
+                            <td>$1.05</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Violation Distribution by Category</div>
+                <div class="chart-container">
+                    <canvas id="violationPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Cost Comparison -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Cost Comparison: LLM-Automated vs Manual Development</div>
+                <div class="chart-container">
+                    <canvas id="costComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 5: Key Metrics -->
+        <div class="row row-4">
+            <div class="panel stat-bg-green">
+                <div class="panel-title">LLM Automation Savings</div>
+                <div class="stat-value green">$126,185</div>
+                <div class="stat-label">99.4% cost reduction vs manual</div>
+            </div>
+
+            <div class="panel stat-bg-yellow">
+                <div class="panel-title">Estimated Timeline</div>
+                <div class="stat-value yellow">14.0</div>
+                <div class="stat-label">weeks (40hr work weeks)</div>
+            </div>
+
+            <div class="panel stat-bg-green">
+                <div class="panel-title">ROI</div>
+                <div class="stat-value green">2,947%</div>
+                <div class="stat-label">Return on Investment</div>
+            </div>
+        </div>
+
+        <!-- Row 6: Model Performance Heatmap -->
+        <div class="row row-1">
+            <div class="panel">
+                <div class="panel-title">Model Performance by Rule Category</div>
+                <div class="chart-container-lg">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Success Rate Trends</div>
+                <div class="chart-container-lg">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 7: Detailed Analysis -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Detailed Rule-by-Rule Cost Analysis</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rule ID</th>
+                            <th>Description</th>
+                            <th>Severity</th>
+                            <th>Violations</th>
+                            <th>Best Model</th>
+                            <th>Success Rate</th>
+                            <th>Cost/Fix</th>
+                            <th>Total Cost</th>
+                            <th>Auto-Fixable</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ee-to-quarkus-00000</td>
+                            <td>Replace @Stateless with @ApplicationScoped</td>
+                            <td><span class="badge badge-yellow">Medium</span></td>
+                            <td>45</td>
+                            <td>claude-3-5-sonnet</td>
+                            <td><span class="badge badge-green">92%</span></td>
+                            <td>$0.27</td>
+                            <td>$12.15</td>
+                            <td><span class="badge badge-green">✓ Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td>jms-to-reactive-00000</td>
+                            <td>Migrate JMS to SmallRye Reactive Messaging</td>
+                            <td><span class="badge badge-orange">High</span></td>
+                            <td>23</td>
+                            <td>gpt-4o</td>
+                            <td><span class="badge badge-green">85%</span></td>
+                            <td>$0.18</td>
+                            <td>$4.14</td>
+                            <td><span class="badge badge-green">✓ Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td>persistence-to-quarkus-00003</td>
+                            <td>Update JPA EntityManager injection</td>
+                            <td><span class="badge badge-yellow">Medium</span></td>
+                            <td>67</td>
+                            <td>gpt-4o</td>
+                            <td><span class="badge badge-green">88%</span></td>
+                            <td>$0.18</td>
+                            <td>$12.06</td>
+                            <td><span class="badge badge-green">✓ Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td>config-property-quarkus-00001</td>
+                            <td>Migrate to Quarkus configuration</td>
+                            <td><span class="badge badge-green">Low</span></td>
+                            <td>35</td>
+                            <td>gpt-3.5-turbo</td>
+                            <td><span class="badge badge-yellow">78%</span></td>
+                            <td>$0.03</td>
+                            <td>$1.05</td>
+                            <td><span class="badge badge-green">✓ Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td>security-realm-quarkus-00000</td>
+                            <td>Update security realm configuration</td>
+                            <td><span class="badge badge-orange">High</span></td>
+                            <td>12</td>
+                            <td>claude-3-5-sonnet</td>
+                            <td><span class="badge badge-yellow">67%</span></td>
+                            <td>$0.27</td>
+                            <td>$3.24</td>
+                            <td><span class="badge badge-yellow">⚠ Partial</span></td>
+                        </tr>
+                        <tr>
+                            <td>transactions-quarkus-00002</td>
+                            <td>Migrate transaction management</td>
+                            <td><span class="badge badge-red">Critical</span></td>
+                            <td>8</td>
+                            <td>manual</td>
+                            <td><span class="badge badge-red">35%</span></td>
+                            <td>$75.00</td>
+                            <td>$600.00</td>
+                            <td><span class="badge badge-red">✗ No</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Row 8: Action Plan -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Recommended Action Plan</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Recommended Action</th>
+                            <th>Use Model</th>
+                            <th>Violations</th>
+                            <th>Est. Cost</th>
+                            <th>Est. Hours</th>
+                            <th>Priority</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Auto-fix EJB migrations with Claude</td>
+                            <td>claude-3-5-sonnet</td>
+                            <td>67</td>
+                            <td>$18.09</td>
+                            <td>8</td>
+                            <td><span class="badge badge-red">P0</span></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Auto-fix Persistence with GPT-4o</td>
+                            <td>gpt-4o</td>
+                            <td>89</td>
+                            <td>$16.02</td>
+                            <td>12</td>
+                            <td><span class="badge badge-red">P0</span></td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Auto-fix configuration with GPT-3.5</td>
+                            <td>gpt-3.5-turbo</td>
+                            <td>35</td>
+                            <td>$1.05</td>
+                            <td>4</td>
+                            <td><span class="badge badge-orange">P1</span></td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Manual review of complex cases</td>
+                            <td>human</td>
+                            <td>29</td>
+                            <td>$2,175</td>
+                            <td>29</td>
+                            <td><span class="badge badge-orange">P1</span></td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Integration testing and validation</td>
+                            <td>hybrid</td>
+                            <td>-</td>
+                            <td>$3,750</td>
+                            <td>50</td>
+                            <td><span class="badge badge-yellow">P2</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Model Cost Breakdown Chart
+        const modelCostCtx = document.getElementById('modelCostChart').getContext('2d');
+        new Chart(modelCostCtx, {
+            type: 'bar',
+            data: {
+                labels: ['GPT-3.5 Turbo\n($0.027/fix, 75% success)', 'GPT-4o\n($0.176/fix, 85% success)', 'Claude 3.5 Sonnet\n($0.272/fix, 92% success)'],
+                datasets: [{
+                    label: 'Effective Cost per Fix',
+                    data: [0.036, 0.207, 0.296],
+                    backgroundColor: [
+                        'rgba(115, 191, 105, 0.6)',
+                        'rgba(242, 204, 12, 0.6)',
+                        'rgba(255, 120, 10, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(115, 191, 105, 1)',
+                        'rgba(242, 204, 12, 1)',
+                        'rgba(255, 120, 10, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$' + context.parsed.x.toFixed(3);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            },
+                            color: '#9fa1a4'
+                        },
+                        grid: { color: '#2d2d2d' }
+                    },
+                    y: {
+                        ticks: { color: '#9fa1a4' },
+                        grid: { color: '#2d2d2d' }
+                    }
+                }
+            }
+        });
+
+        // Violation Distribution Pie Chart
+        const violationPieCtx = document.getElementById('violationPieChart').getContext('2d');
+        new Chart(violationPieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['EJB to CDI (67)', 'Persistence (89)', 'JMS to Reactive (34)', 'Configuration (35)'],
+                datasets: [{
+                    data: [67, 89, 34, 35],
+                    backgroundColor: [
+                        'rgba(115, 191, 105, 0.8)',
+                        'rgba(242, 204, 12, 0.8)',
+                        'rgba(255, 120, 10, 0.8)',
+                        'rgba(114, 159, 207, 0.8)'
+                    ],
+                    borderColor: '#181b1f',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#d8d9da', padding: 15 }
+                    }
+                }
+            }
+        });
+
+        // Cost Comparison Chart
+        const costComparisonCtx = document.getElementById('costComparisonChart').getContext('2d');
+        new Chart(costComparisonCtx, {
+            type: 'bar',
+            data: {
+                labels: ['LLM Automation', 'Manual Development', 'Hybrid Approach'],
+                datasets: [{
+                    label: 'Total Cost',
+                    data: [815, 168750, 42815],
+                    backgroundColor: [
+                        'rgba(115, 191, 105, 0.6)',
+                        'rgba(242, 73, 92, 0.6)',
+                        'rgba(242, 204, 12, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(115, 191, 105, 1)',
+                        'rgba(242, 73, 92, 1)',
+                        'rgba(242, 204, 12, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + (value / 1000).toFixed(0) + 'K';
+                            },
+                            color: '#9fa1a4'
+                        },
+                        grid: { color: '#2d2d2d' }
+                    },
+                    x: {
+                        ticks: { color: '#9fa1a4' },
+                        grid: { color: '#2d2d2d' }
+                    }
+                }
+            }
+        });
+
+        // Model Performance Chart
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(performanceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['EJB to CDI', 'JMS to Reactive', 'Persistence', 'Configuration'],
+                datasets: [
+                    {
+                        label: 'GPT-3.5 Turbo',
+                        data: [68, 62, 75, 78],
+                        backgroundColor: 'rgba(114, 159, 207, 0.6)',
+                        borderColor: 'rgba(114, 159, 207, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'GPT-4o',
+                        data: [82, 85, 88, 80],
+                        backgroundColor: 'rgba(242, 204, 12, 0.6)',
+                        borderColor: 'rgba(242, 204, 12, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Claude 3.5 Sonnet',
+                        data: [92, 87, 85, 88],
+                        backgroundColor: 'rgba(115, 191, 105, 0.6)',
+                        borderColor: 'rgba(115, 191, 105, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#d8d9da', padding: 15 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            },
+                            color: '#9fa1a4'
+                        },
+                        grid: { color: '#2d2d2d' }
+                    },
+                    x: {
+                        ticks: { color: '#9fa1a4' },
+                        grid: { color: '#2d2d2d' }
+                    }
+                }
+            }
+        });
+
+        // Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                datasets: [
+                    {
+                        label: 'GPT-4o',
+                        data: [82, 83, 85, 85, 86, 87],
+                        borderColor: 'rgba(242, 204, 12, 1)',
+                        backgroundColor: 'rgba(242, 204, 12, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Claude 3.5 Sonnet',
+                        data: [88, 89, 90, 91, 91, 92],
+                        borderColor: 'rgba(115, 191, 105, 1)',
+                        backgroundColor: 'rgba(115, 191, 105, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#d8d9da', padding: 15 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 70,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            },
+                            color: '#9fa1a4'
+                        },
+                        grid: { color: '#2d2d2d' }
+                    },
+                    x: {
+                        ticks: { color: '#9fa1a4' },
+                        grid: { color: '#2d2d2d' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
