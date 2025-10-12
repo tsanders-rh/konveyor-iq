@@ -1,33 +1,44 @@
-# Workflow: Generating Test Cases and Keeping Stubs Up-to-Date
+# Workflow: Generating and Evaluating Test Cases
 
-This document explains the complete workflow for generating test cases from Konveyor rulesets and ensuring the stubs JAR stays synchronized.
+This document explains the complete workflow for generating test cases from Konveyor rulesets.
 
 ---
 
-## The Problem
+## The New Approach (Post-Migration)
 
-When auto-generating test cases, LLMs generate code that uses various Java libraries (MicroProfile Config, Quarkus extensions, Jakarta EE APIs, etc.). For these test cases to compile during evaluation, the `evaluators/stubs/stubs.jar` must contain stub definitions for all referenced classes.
+We now use **real JAR dependencies** instead of auto-generated stubs. This eliminates the stub generation step entirely!
 
-**Without this workflow:**
-- ❌ New test cases fail to compile
-- ❌ Evaluation shows "compilation error" even when code is correct
-- ❌ Manual stub creation is tedious and error-prone
-
-**With this workflow:**
-- ✅ Stubs are automatically generated from test imports
-- ✅ Test cases compile successfully
-- ✅ Focus on evaluation quality, not compilation issues
+**Benefits:**
+- ✅ No stub generation needed
+- ✅ Framework code always compiles correctly
+- ✅ Simpler workflow (2 steps instead of 3)
+- ✅ Scales to unlimited test cases
 
 ---
 
 ## Complete Workflow
 
-### Step 1: Generate Test Cases from Konveyor Rulesets
+### Step 1: One-Time Setup
+
+Download real dependencies (only needed once per machine):
+
+```bash
+cd evaluators/stubs
+mvn clean package
+```
+
+This downloads 78 JARs (~25MB) from Maven Central to `lib/` directory.
+
+**You only need to do this once.** The JARs are cached locally.
+
+---
+
+### Step 2: Generate Test Cases
 
 Use the test generator to create test cases:
 
 ```bash
-# Option A: Generate from all Quarkus rulesets (uses local clone - MUCH FASTER!)
+# Option A: Use local ruleset clone (MUCH FASTER - recommended!)
 git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
 
 python scripts/generate_tests.py --all-rulesets --target quarkus \
@@ -55,247 +66,146 @@ benchmarks/test_cases/generated/
 
 ---
 
-### Step 2: Extract Imports and Generate Stubs
-
-After generating test cases, update the stubs JAR:
-
-```bash
-# Run the stub updater on generated tests
-python scripts/update_stubs_from_tests.py \
-  benchmarks/test_cases/generated/quarkus.yaml
-
-# Or update from ALL generated test files
-python scripts/update_stubs_from_tests.py \
-  benchmarks/test_cases/generated/*.yaml
-```
-
-**What this does:**
-1. ✅ Scans all test cases for `import` statements
-2. ✅ Identifies missing stub files
-3. ✅ Auto-generates stub files for:
-   - Annotations (`@ConfigProperty`, `@IfBuildProperty`)
-   - Interfaces (`Config`, `ConfigSource`)
-   - Classes (as needed)
-4. ✅ Rebuilds `stubs.jar` automatically
-
-**Output:**
-```
-Scanning test files for imports...
-  • quarkus.yaml
-Found 127 unique imports
-
-Generating missing stubs...
-  ✓ Created: src/org/eclipse/microprofile/config/Config.java
-  ✓ Created: src/org/eclipse/microprofile/config/inject/ConfigProperty.java
-  ✓ Created: src/io/quarkus/arc/properties/IfBuildProperty.java
-
-Created 3 new stub files
-
-Rebuilding stubs.jar...
-  ✓ Stubs JAR rebuilt successfully
-```
-
----
-
 ### Step 3: Run Evaluation
 
-Now run your evaluation - all test cases should compile:
-
 ```bash
-python evaluate.py \
-  --benchmark benchmarks/test_cases/generated/quarkus.yaml \
-  --limit 10
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
 ```
 
-**Expected result:**
-- ✅ Tests compile successfully
-- ✅ Evaluation focuses on correctness, not compilation errors
-- ✅ Clean results without missing import errors
+**That's it!** The evaluation automatically uses:
+- Real JARs from `lib/` (framework code)
+- Custom stubs from `stubs.jar` (test domain objects)
+
+All test cases compile correctly without any stub generation step.
 
 ---
 
-## Automated Workflow (Recommended)
+## What Changed?
 
-Combine all steps into a single workflow:
-
-```bash
-#!/bin/bash
-# generate_and_evaluate.sh
-
-set -e  # Exit on error
-
-echo "Step 1: Generate test cases..."
-python scripts/generate_tests.py --all-rulesets --target quarkus \
-  --local-rulesets ~/projects/rulesets \
-  --auto-generate \
-  --model gpt-4-turbo \
-  --batch-size 20
-
-echo "Step 2: Update stubs from generated tests..."
-python scripts/update_stubs_from_tests.py \
-  benchmarks/test_cases/generated/*.yaml
-
-echo "Step 3: Run evaluation..."
-python evaluate.py \
-  --benchmark benchmarks/test_cases/generated/quarkus.yaml
-
-echo "✓ Complete! Check results/ for evaluation reports"
+### Old Workflow (Before Migration)
+```
+1. Generate tests
+2. Run update_stubs_from_tests.py  ← Manual stub generation
+3. Fix class vs annotation errors     ← Manual fixes
+4. Run evaluation
 ```
 
-Make it executable:
+### New Workflow (After Migration)
+```
+1. Generate tests
+2. Run evaluation  ← That's it!
+```
+
+**Why?**
+- Real JARs provide all framework classes (Jakarta, Quarkus, MicroProfile)
+- Custom test classes (Order, User, Database) already in committed stubs.jar
+- No stub generation needed!
+
+---
+
+## Updating Framework Versions
+
+If you need newer Quarkus/Jakarta versions:
+
 ```bash
-chmod +x generate_and_evaluate.sh
-./generate_and_evaluate.sh
+# Edit version in pom.xml
+vim evaluators/stubs/pom.xml
+# Change: <quarkus.version>3.8.0</quarkus.version>
+
+# Re-download JARs
+cd evaluators/stubs && mvn clean package
 ```
 
 ---
 
-## Manual Stub Addition (When Needed)
+## Adding Custom Test Classes
 
-Sometimes you may need to manually create more sophisticated stubs. Here's how:
+For domain objects used across tests (not framework code):
 
-### 1. Create the Stub File
+```bash
+# Add to src/common/
+cat > evaluators/stubs/src/common/Product.java <<EOF
+package common;
 
-Example: `evaluators/stubs/src/org/eclipse/microprofile/config/Config.java`
-
-```java
-package org.eclipse.microprofile.config;
-
-import java.util.Optional;
-
-/**
- * Stub for MicroProfile Config interface.
- * Used for compilation testing only.
- */
-public interface Config {
-    <T> T getValue(String propertyName, Class<T> propertyType);
-    <T> Optional<T> getOptionalValue(String propertyName, Class<T> propertyType);
-    Iterable<String> getPropertyNames();
+public class Product {
+    private Long id;
+    private String name;
+    // getters/setters
 }
+EOF
+
+# Rebuild stubs.jar
+cd evaluators/stubs && ./build.sh
 ```
 
-### 2. Rebuild the JAR
-
-```bash
-cd evaluators/stubs
-./build.sh
-```
-
-### 3. Verify
-
-```bash
-ls -lh stubs.jar
-# Should show increased file size
-```
+**Note:** This is rare. Most classes come from real JARs.
 
 ---
 
 ## Troubleshooting
 
-### Issue: "cannot find symbol" compilation errors
+### "cannot find symbol" compilation errors
 
-**Cause:** Missing stub for a class/interface/annotation
-
-**Solution:**
+**Framework class (jakarta.*, org.eclipse.*, io.quarkus.*):**
 ```bash
-# Check what's missing from the error
-# Error: cannot find symbol: class ConfigProperty
-
-# Run stub updater
-python scripts/update_stubs_from_tests.py benchmarks/test_cases/generated/*.yaml
-
-# Or manually add the stub
-# evaluators/stubs/src/org/eclipse/microprofile/config/inject/ConfigProperty.java
+# Re-run Maven to ensure JARs are downloaded
+cd evaluators/stubs && mvn clean package
 ```
 
-### Issue: Stub generator doesn't create the right type
-
-**Cause:** Auto-detection uses naming conventions (may not always be correct)
-
-**Solution:** Manually create the stub with correct type (interface vs class vs annotation)
-
-### Issue: Generated tests use unavailable APIs
-
-**Cause:** LLM hallucinated or used experimental APIs
-
-**Solution:**
-1. **Fix the test case** - Update `expected_fix` to use correct APIs
-2. **Add guidance to prompts** - Update test suite prompt to prevent hallucination
-3. **Filter rules** - Some rules may not be suitable for auto-generation
-
----
-
-## Best Practices
-
-### 1. Generate Tests in Batches
+**Custom test class:**
 ```bash
-# Use --batch-size to save progress incrementally
-python scripts/generate_tests.py --all-rulesets --target quarkus \
-  --auto-generate --model gpt-4-turbo \
-  --batch-size 20  # Saves every 20 rules
+# Add to src/common/ and rebuild stubs.jar
+cd evaluators/stubs && ./build.sh
 ```
 
-### 2. Update Stubs Immediately After Generation
-```bash
-# Add to your workflow
-python scripts/generate_tests.py ... && \
-python scripts/update_stubs_from_tests.py benchmarks/test_cases/generated/*.yaml
-```
+### Maven not installed
 
-### 3. Preview Changes Before Committing
 ```bash
-# Dry-run to see what would be created
-python scripts/update_stubs_from_tests.py \
-  benchmarks/test_cases/generated/*.yaml \
-  --dry-run
-```
+# macOS
+brew install maven
 
-### 4. Version Control Stubs
-```bash
-# Commit both test cases AND updated stubs
-git add benchmarks/test_cases/generated/
-git add evaluators/stubs/src/
-git add evaluators/stubs/stubs.jar
-git commit -m "Add Quarkus test cases with updated stubs"
+# Linux
+sudo apt-get install maven
+
+# Or use CI with Maven pre-installed
 ```
 
 ---
 
-## Common Import Patterns and Their Stubs
+## CI/CD Integration
 
-| Import | Stub Location | Type |
-|--------|---------------|------|
-| `org.eclipse.microprofile.config.Config` | `org/eclipse/microprofile/config/Config.java` | Interface |
-| `org.eclipse.microprofile.config.inject.ConfigProperty` | `org/eclipse/microprofile/config/inject/ConfigProperty.java` | Annotation |
-| `io.quarkus.runtime.StartupEvent` | `io/quarkus/runtime/StartupEvent.java` | Class |
-| `io.quarkus.arc.properties.IfBuildProperty` | `io/quarkus/arc/properties/IfBuildProperty.java` | Annotation |
-| `jakarta.enterprise.context.ApplicationScoped` | `jakarta/enterprise/context/ApplicationScoped.java` | Annotation |
-| `jakarta.inject.Inject` | `jakarta/inject/Inject.java` | Annotation |
+```yaml
+# Example GitHub Actions workflow
+jobs:
+  evaluate:
+    steps:
+      - name: Setup dependencies (one-time)
+        run: cd evaluators/stubs && mvn clean package
+
+      - name: Generate tests
+        run: python scripts/generate_tests.py --all-rulesets --target quarkus
+
+      - name: Run evaluation
+        run: python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+```
+
+JARs are cached between builds for speed.
 
 ---
 
 ## Summary
 
-✅ **Always run after generating tests:**
-```bash
-python scripts/update_stubs_from_tests.py benchmarks/test_cases/generated/*.yaml
-```
+✅ **Simpler workflow**: No stub generation step
+✅ **More accurate**: Real APIs, not guessed stubs
+✅ **More scalable**: Works for any number of tests
+✅ **More maintainable**: Version bumps instead of manual work
 
-✅ **This ensures:**
-- No compilation errors from missing imports
-- Clean evaluation results
-- Focus on code quality, not build issues
-
-✅ **Commit together:**
-- Generated test cases
-- Updated stub files
-- Rebuilt stubs.jar
+The migration to real JARs eliminated the most error-prone step from the workflow!
 
 ---
 
-## Further Reading
+## See Also
 
-- `scripts/generate_tests.py --help` - Test generation options
-- `scripts/update_stubs_from_tests.py --help` - Stub updater options
-- `evaluators/stubs/README.md` - Stub system documentation
-- `CONTRIBUTING_TO_KONVEYOR.md` - How to contribute improvements upstream
+- `evaluators/stubs/README.md` - Detailed stub architecture
+- `MIGRATION_TO_REAL_JARS.md` - Migration rationale and benefits
+- `QUICK_REFERENCE.md` - Quick command reference

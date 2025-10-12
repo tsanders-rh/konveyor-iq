@@ -1,80 +1,159 @@
-# Quick Reference: Fixing Compilation Errors in Generated Tests
+# Quick Reference: Test Generation and Evaluation
 
-## The Problem
-Auto-generated test cases use imports that don't exist in `stubs.jar`, causing compilation errors.
+## The Simpler Workflow (Post-Migration)
 
-## The Solution
-Run this command after generating test cases:
+We now use **real JAR dependencies** - no stub generation needed!
 
 ```bash
-python scripts/update_stubs_from_tests.py benchmarks/test_cases/generated/*.yaml
-```
+# 1. One-time setup (only needed once)
+cd evaluators/stubs && mvn clean package
 
-**This will:**
-1. ✅ Scan test files for all `import` statements
-2. ✅ Generate missing stub files automatically
-3. ✅ Rebuild `stubs.jar` with new stubs
-4. ✅ Fix compilation errors
-
-## Complete Workflow
-
-### One-Time Setup
-```bash
-# Clone Konveyor rulesets locally (MUCH faster than fetching from GitHub)
-git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
-```
-
-### Every Time You Generate Tests
-
-```bash
-# Step 1: Generate test cases
+# 2. Generate tests
 python scripts/generate_tests.py --all-rulesets --target quarkus \
   --local-rulesets ~/projects/rulesets \
   --auto-generate --model gpt-4-turbo
 
-# Step 2: Update stubs (CRITICAL - don't skip!)
-python scripts/update_stubs_from_tests.py \
-  benchmarks/test_cases/generated/*.yaml
-
-# Step 3: Run evaluation
+# 3. Run evaluation
 python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
 ```
 
-## What Just Got Fixed
+**That's it!** No stub generation step needed.
 
-**Before today:**
-- ❌ `springboot-cloud-config-client-to-quarkus-00000` - compilation errors
-- ❌ Manual stub creation required
-- ❌ Time-consuming debugging
+---
 
-**After today:**
-- ✅ Automatic stub generation from test imports
-- ✅ All MicroProfile Config stubs added:
-  - `Config` interface
-  - `@ConfigProperty` annotation
-  - `@IfBuildProperty` annotation
-- ✅ Compilation errors fixed
-- ✅ Documented workflow for future test generation
+## What Changed?
 
-## Files Created Today
+### Before (Pure Stubs)
+```
+1. Generate tests
+2. python scripts/update_stubs_from_tests.py *.yaml  ← REMOVED!
+3. Fix @ConfigProperties class vs annotation errors   ← REMOVED!
+4. Run evaluation
+```
+
+### After (Real JARs)
+```
+1. mvn package  (one-time setup)
+2. Generate tests
+3. Run evaluation  ← Clean, simple!
+```
+
+**Why the change?**
+- ✅ Real JARs from Maven Central (Jakarta, Quarkus, MicroProfile)
+- ✅ No more guessing class vs annotation
+- ✅ Always accurate compilation
+- ✅ Scales to unlimited test cases
+
+---
+
+## One-Time Setup
+
+```bash
+# Clone Konveyor rulesets (optional but MUCH faster)
+git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
+
+# Download real dependencies (one-time, ~1 minute)
+cd evaluators/stubs
+mvn clean package
+# This downloads 78 JARs (~25MB) to lib/ directory
+```
+
+---
+
+## Generate Tests
+
+```bash
+# Full Quarkus migration suite
+python scripts/generate_tests.py --all-rulesets --target quarkus \
+  --local-rulesets ~/projects/rulesets \
+  --auto-generate \
+  --model gpt-4-turbo \
+  --batch-size 20
+```
+
+**Output:** `benchmarks/test_cases/generated/quarkus.yaml`
+
+---
+
+## Run Evaluation
+
+```bash
+# Evaluate all test cases
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+
+# Evaluate first N test cases (for testing)
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml --limit 10
+```
+
+---
+
+## Updating Framework Versions
+
+```bash
+# Edit pom.xml
+vim evaluators/stubs/pom.xml
+# Change: <quarkus.version>3.8.0</quarkus.version>
+
+# Re-download JARs
+cd evaluators/stubs && mvn clean package
+```
+
+---
+
+## Troubleshooting
+
+### "cannot find symbol" errors
+
+**Framework class:**
+```bash
+cd evaluators/stubs && mvn clean package
+```
+
+**Custom test class:**
+```bash
+cd evaluators/stubs && ./build.sh
+```
+
+### Maven not installed
+
+```bash
+# macOS
+brew install maven
+
+# Linux
+sudo apt-get install maven
+```
+
+---
+
+## What Got Fixed Today
+
+| Issue | Before | After |
+|-------|--------|-------|
+| @ConfigProperties | ❌ Created as class | ✅ Real annotation from JAR |
+| Compilation errors | ❌ Manual stub fixes | ✅ Always correct |
+| Scalability | ❌ Manual work per import | ✅ Unlimited tests |
+| Workflow complexity | ❌ 4 steps | ✅ 2 steps |
+
+---
+
+## Files You Care About
 
 | File | Purpose |
 |------|---------|
-| `scripts/update_stubs_from_tests.py` | Auto-generates stubs from test imports |
-| `WORKFLOW_GENERATING_TESTS.md` | Complete workflow documentation |
-| `CONTRIBUTING_TO_KONVEYOR.md` | How to contribute improvements upstream |
-| `QUICK_REFERENCE.md` | This file - quick commands |
-| `evaluators/stubs/src/org/eclipse/microprofile/config/Config.java` | Config interface stub |
-| `evaluators/stubs/src/org/eclipse/microprofile/config/ConfigSource.java` | ConfigSource interface stub |
-| `evaluators/stubs/src/org/eclipse/microprofile/config/inject/ConfigProperty.java` | @ConfigProperty annotation stub |
-| `evaluators/stubs/src/io/quarkus/arc/properties/IfBuildProperty.java` | @IfBuildProperty annotation stub |
+| `evaluators/stubs/pom.xml` | Maven deps (update versions here) |
+| `evaluators/stubs/lib/` | Downloaded JARs (gitignored, 25MB) |
+| `evaluators/stubs/stubs.jar` | Custom test classes (committed, 200KB) |
+| `WORKFLOW_GENERATING_TESTS.md` | Complete workflow guide |
+| `evaluators/stubs/README.md` | Stub architecture docs |
 
-## Never Worry About Stubs Again
+---
 
-Just remember: **After generating tests, run the stub updater!**
+## Summary
 
-```bash
-python scripts/update_stubs_from_tests.py benchmarks/test_cases/generated/*.yaml
-```
+✅ **No more stub generation** - Real JARs handle everything
+✅ **Simpler workflow** - 2 steps instead of 4
+✅ **Always accurate** - Real APIs, not guesses
+✅ **Scales infinitely** - Works for any test suite size
 
-That's it! The script handles everything else automatically.
+The migration to real JARs permanently solved the scalability problem!
