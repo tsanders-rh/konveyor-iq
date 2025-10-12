@@ -182,11 +182,14 @@ Evaluation Complete
 
 ### HTML Report Includes:
 
+Professional Grafana-style dark theme with Konveyor branding:
+
+- 🎨 **Grafana-style interface**: Dark theme with professional appearance and Konveyor logo
 - 📊 **Overall metrics**: Pass rates, costs, response times
 - 🏆 **Top performing models ranking**: Comprehensive composite scoring based on:
   - Functional correctness (40%), Compilation (15%), Quality (15%)
   - Security (15%), Explainability (10%), Speed (2.5%), Cost (2.5%)
-- 📈 **Interactive charts**: Model comparison, time distributions, per-rule performance
+- 📈 **Interactive Chart.js visualizations**: Model comparison, time distributions, scalable per-rule performance
 - 📋 **Detailed tables**: Per-model and per-rule breakdowns
 - 🔍 **Enhanced failure analysis**:
   - Click-to-expand failures with side-by-side code comparison

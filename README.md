@@ -308,9 +308,17 @@ security:
 ## Reports
 
 ### HTML Reports (Interactive)
-- 📊 Model comparison charts with Plotly
+
+Professional Grafana-style dark theme with Konveyor branding and interactive visualizations:
+
+- 🎨 **Grafana-style dark theme** with professional appearance
+- 🔷 **Konveyor logo branding** in report header
+- 📊 Model comparison charts with Chart.js (interactive, responsive)
 - 📈 Response time distributions
-- 🎯 Per-rule performance breakdown with rule selector dropdown
+- 🎯 **Per-rule performance breakdown** with scalable rule selector dropdown:
+  - Shows top 10 worst performing rules by default
+  - Individual rule drill-down capability
+  - Optimized for large rulesets (200-400 rules)
 - 🏆 **Top performing models ranking** with comprehensive composite scoring:
   - **40%** Pass rate (functional correctness)
   - **15%** Compilation rate

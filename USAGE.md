@@ -238,11 +238,21 @@ A test case **passes** if:
 
 ### HTML Report
 
-Interactive dashboard with:
-- Model comparison charts
-- Response time distributions
-- Per-rule performance breakdown
-- Detailed results table
+Interactive Grafana-style dashboard with professional dark theme:
+
+**Visual Design:**
+- Professional Grafana-style dark theme (#111217 background)
+- Konveyor logo branding in header
+- Responsive Chart.js visualizations
+
+**Features:**
+- 🏆 Top performing models with comprehensive scoring (pass rate, quality, security, explainability)
+- 📊 Model comparison charts
+- 📈 Response time distributions
+- 🎯 Scalable per-rule performance (optimized for 200-400 rules)
+- 🔍 Enhanced failure analysis with diff highlighting
+- 🔒 Security issues with severity-based color coding
+- 📝 Code quality and explainability metrics
 
 Open in browser:
 ```bash
