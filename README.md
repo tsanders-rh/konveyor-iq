@@ -1,6 +1,6 @@
 # Konveyor AI Evaluation Framework
 
-A comprehensive evaluation framework for assessing LLM-generated code fixes for rule-based static analysis violations.
+A comprehensive evaluation framework for assessing LLM performance in application modernization. Evaluates AI-generated code fixes for Konveyor rule violations across functional correctness, code quality, security, and explainability—with professional Grafana-style reporting for cost estimation and model selection.
 
 ## Overview
 
