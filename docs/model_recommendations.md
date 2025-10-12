@@ -9,7 +9,7 @@ For most evaluation scenarios, start with these 2-5 models:
 ### Minimal Setup (2 models)
 ```yaml
 models:
-  - name: claude-3-5-sonnet-20241022
+  - name: claude-3-5-sonnet-20240620
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
@@ -24,7 +24,7 @@ models:
 ```yaml
 models:
   # Best overall commercial model
-  - name: claude-3-5-sonnet-20241022
+  - name: claude-3-5-sonnet-20240620
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
@@ -36,7 +36,7 @@ models:
     temperature: 0.7
 
   # Budget option (fast & cheap)
-  - name: claude-3-5-haiku-20241022
+  - name: claude-3-haiku-20240307
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
@@ -94,7 +94,7 @@ models:
 
 ### Anthropic Models
 
-#### `claude-3-5-sonnet-20241022` ⭐ Top Recommendation
+#### `claude-3-5-sonnet-20240620` ⭐ Top Recommendation
 - **Best for**: Overall best code generation quality and explanations
 - **Strengths**:
   - Superior code explanations
@@ -105,7 +105,7 @@ models:
 - **Expected Performance**: 85-92% pass rate on Java migrations
 - **Cost per 100 tests**: ~$0.25-0.30
 
-#### `claude-3-5-haiku-20241022`
+#### `claude-3-haiku-20240307`
 - **Best for**: Budget-conscious evaluations, simple pattern replacements
 - **Strengths**:
   - Very fast response times
@@ -232,7 +232,7 @@ These models can be run locally using Ollama, vLLM, or other local inference ser
 **Models**: 2
 ```yaml
 models:
-  - claude-3-5-sonnet-20241022  # Best quality
+  - claude-3-5-sonnet-20240620  # Best quality
   - gpt-4o                       # Best value
 ```
 
@@ -245,7 +245,7 @@ models:
 
 **Models**: Add 3 more
 ```yaml
-  - claude-3-5-haiku-20241022   # Budget option
+  - claude-3-haiku-20240307   # Budget option
   - gemini-1.5-pro               # Google alternative
   - o1-preview                   # Reasoning model (optional)
 ```
