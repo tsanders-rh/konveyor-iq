@@ -98,7 +98,7 @@ models:
 
 ```yaml
 models:
-  - name: claude-3-5-sonnet-20241022
+  - name: claude-3-7-sonnet-latest
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
 

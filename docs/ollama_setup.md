@@ -302,7 +302,7 @@ Compare local models against commercial APIs:
 ```yaml
 models:
   # Commercial (for comparison)
-  - name: claude-3-5-sonnet-20241022
+  - name: claude-3-7-sonnet-latest
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7

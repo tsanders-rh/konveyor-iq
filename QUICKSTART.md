@@ -80,7 +80,7 @@ models:
     api_key: "${OPENAI_API_KEY}"
 
   # Anthropic models
-  - name: "claude-3-5-sonnet-20241022"  # Recommended: best quality
+  - name: "claude-3-7-sonnet-latest"  # Recommended: best quality
     provider: "anthropic"
     api_key: "${ANTHROPIC_API_KEY}"
 
@@ -94,7 +94,7 @@ models:
 
 **Recommended Starting Lineup:**
 - **gpt-4o** - Best cost/performance balance (~$0.15/100 tests)
-- **claude-3-5-sonnet-20241022** - Best overall quality (~$0.27/100 tests)
+- **claude-3-7-sonnet-latest** - Best overall quality (~$0.27/100 tests)
 - **gemini-1.5-pro** - Best for large context (~$0.15/100 tests)
 
 See [docs/model_recommendations.md](docs/model_recommendations.md) for detailed model comparison.

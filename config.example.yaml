@@ -19,7 +19,7 @@ models:
     #   Increase for larger code fixes
     max_tokens: 2000
 
-  - name: "claude-3-5-sonnet-20240620"
+  - name: "claude-3-7-sonnet-latest"
     provider: "anthropic"
     api_key: "${ANTHROPIC_API_KEY}"
     temperature: 0.2  # Low temperature for consistent code fixes

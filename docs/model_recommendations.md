@@ -9,7 +9,7 @@ For most evaluation scenarios, start with these 2-5 models:
 ### Minimal Setup (2 models)
 ```yaml
 models:
-  - name: claude-3-5-sonnet-20240620
+  - name: claude-3-7-sonnet-latest
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
@@ -24,7 +24,7 @@ models:
 ```yaml
 models:
   # Best overall commercial model
-  - name: claude-3-5-sonnet-20240620
+  - name: claude-3-7-sonnet-latest
     provider: anthropic
     api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
@@ -94,7 +94,7 @@ models:
 
 ### Anthropic Models
 
-#### `claude-3-5-sonnet-20240620` ⭐ Top Recommendation
+#### `claude-3-7-sonnet-latest` ⭐ Top Recommendation
 - **Best for**: Overall best code generation quality and explanations
 - **Strengths**:
   - Superior code explanations
@@ -232,7 +232,7 @@ These models can be run locally using Ollama, vLLM, or other local inference ser
 **Models**: 2
 ```yaml
 models:
-  - claude-3-5-sonnet-20240620  # Best quality
+  - claude-3-7-sonnet-latest  # Best quality
   - gpt-4o                       # Best value
 ```
 
