@@ -1375,10 +1375,17 @@ Examples:
                 if args.source or args.target:
                     print(f"  Filtered by: {', '.join(filter_parts)}")
                 print(f"\nNext steps:")
-                print(f"1. Review generated files in {args.output}/")
-                print(f"2. Fill in TODO placeholders with actual code examples")
-                print(f"3. Add expected_fix code for each test case")
-                print(f"4. Run evaluation: python evaluate.py --benchmark {args.output}/")
+                print(f"1. Review generated file(s):")
+                for gen_file in generated:
+                    print(f"   - {gen_file}")
+                if not args.auto_generate:
+                    print(f"2. Fill in TODO placeholders with actual code examples")
+                    print(f"3. Run evaluation: python evaluate.py --benchmark {generated[0]}")
+                    print(f"   (Or use --auto-generate next time to skip manual TODO-filling)")
+                else:
+                    print(f"2. Run evaluation:")
+                    print(f"   python evaluate.py --benchmark {generated[0]}")
+                    print(f"   (Use --limit 5 for quick testing with just 5 test cases)")
             else:
                 print(f"\n⚠ No test suites generated - no rules matched the filters")
     elif args.all_quarkus:
@@ -1398,10 +1405,17 @@ Examples:
                 if args.source or args.target:
                     print(f"  Filtered by: {', '.join(filter_parts)}")
                 print(f"\nNext steps:")
-                print(f"1. Review generated files in {args.output}/")
-                print(f"2. Fill in TODO placeholders with actual code examples")
-                print(f"3. Add expected_fix code for each test case")
-                print(f"4. Run evaluation: python evaluate.py --benchmark {args.output}/")
+                print(f"1. Review generated file(s):")
+                for gen_file in generated:
+                    print(f"   - {gen_file}")
+                if not args.auto_generate:
+                    print(f"2. Fill in TODO placeholders with actual code examples")
+                    print(f"3. Run evaluation: python evaluate.py --benchmark {generated[0]}")
+                    print(f"   (Or use --auto-generate next time to skip manual TODO-filling)")
+                else:
+                    print(f"2. Run evaluation:")
+                    print(f"   python evaluate.py --benchmark {generated[0]}")
+                    print(f"   (Use --limit 5 for quick testing with just 5 test cases)")
             else:
                 print(f"\n⚠ No test suites generated - no rules matched the filters")
     else:
@@ -1423,8 +1437,14 @@ Examples:
             print(f"\n✓ Successfully generated test suite!")
             print(f"\nNext steps:")
             print(f"1. Review generated file: {result}")
-            print(f"2. Fill in TODO placeholders with actual code examples")
-            print(f"3. Add expected_fix code for each test case")
+            if not args.auto_generate:
+                print(f"2. Fill in TODO placeholders with actual code examples")
+                print(f"3. Run evaluation: python evaluate.py --benchmark {result}")
+                print(f"   (Or use --auto-generate next time to skip manual TODO-filling)")
+            else:
+                print(f"2. Run evaluation:")
+                print(f"   python evaluate.py --benchmark {result}")
+                print(f"   (Use --limit 5 for quick testing with just 5 test cases)")
         elif not args.preview and (args.source or args.target):
             print(f"\n⚠ No test suite generated - no rules matched the filters")
 
