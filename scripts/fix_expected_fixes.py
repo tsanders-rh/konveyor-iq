@@ -13,6 +13,7 @@ Usage:
     python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --model gpt-4-turbo
     python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --dry-run
     python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --rule-id jms-to-reactive-quarkus-00010
+    python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --validate-only
 """
 
 import argparse
@@ -23,6 +24,9 @@ import yaml
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Import validator for shared compilation logic
+from validate_expected_fixes import ExpectedFixValidator
 
 from benchmarks.schema import TestSuite
 from evaluators.functional import FunctionalCorrectnessEvaluator
@@ -36,7 +40,9 @@ class ExpectedFixFixer:
         self.model = get_model(model_name, api_key=None, config={})
         self.dry_run = dry_run
         self.verbose = verbose
-        self.evaluator = FunctionalCorrectnessEvaluator({"compile_check": True})
+        # Use shared validator for compilation checks
+        self.validator = ExpectedFixValidator(verbose=False)
+        self.evaluator = self.validator.evaluator
 
     def build_fix_prompt(
         self,
@@ -309,6 +315,11 @@ def main():
         action="store_true",
         help="Show detailed output including LLM responses"
     )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Only validate expected_fix code, don't attempt fixes (same as validate_expected_fixes.py)"
+    )
 
     args = parser.parse_args()
 
@@ -316,6 +327,30 @@ def main():
         print(f"Error: File not found: {args.file}")
         return 1
 
+    # If validate-only, use the validator directly
+    if args.validate_only:
+        validator = ExpectedFixValidator(verbose=args.verbose)
+        result = validator.validate_file(args.file)
+        results = [result]
+        return validator.print_overall_summary(results)
+
+    # Run initial validation to show what needs fixing
+    print(f"\n{'='*80}")
+    print("INITIAL VALIDATION")
+    print(f"{'='*80}\n")
+
+    validator = ExpectedFixValidator(verbose=False)
+    validation_result = validator.validate_file(args.file)
+
+    if validation_result["failed"] == 0:
+        print("\n✓ All expected_fix code segments compile successfully!")
+        print("Nothing to fix.\n")
+        return 0
+
+    print(f"\nFound {validation_result['failed']} compilation failure(s).")
+    print("Proceeding with automated fixes...\n")
+
+    # Create fixer and attempt fixes
     fixer = ExpectedFixFixer(
         model_name=args.model,
         dry_run=args.dry_run,

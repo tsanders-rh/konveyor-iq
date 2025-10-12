@@ -10,6 +10,10 @@ Usage:
     python scripts/validate_expected_fixes.py
     python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
     python scripts/validate_expected_fixes.py --verbose
+
+To automatically fix compilation errors:
+    python scripts/fix_expected_fixes.py --file path/to/file.yaml
+    python scripts/fix_expected_fixes.py --file path/to/file.yaml --dry-run
 """
 
 import argparse

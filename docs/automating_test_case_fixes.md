@@ -39,6 +39,18 @@ The `fix_expected_fixes.py` script uses an LLM to automatically fix compilation 
 
 ## Usage
 
+### Validate Only (No Fixes)
+
+Just check for compilation errors without attempting fixes:
+
+```bash
+# Using dedicated validator (fast, no API key needed)
+python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
+
+# OR using fix script in validate-only mode
+python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --validate-only
+```
+
 ### Basic Usage
 
 Fix all compilation errors in a file:
@@ -46,6 +58,12 @@ Fix all compilation errors in a file:
 ```bash
 python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
 ```
+
+The script will:
+1. **Automatically validate first** and show what needs fixing
+2. Skip fixing if everything already compiles
+3. Attempt to fix each compilation error with LLM
+4. Update the YAML file with fixes
 
 ### Dry Run (Preview Changes)
 
@@ -89,6 +107,27 @@ python scripts/fix_expected_fixes.py \
 
 ```bash
 $ python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
+
+================================================================================
+INITIAL VALIDATION
+================================================================================
+
+================================================================================
+Validating: benchmarks/test_cases/generated/quarkus.yaml
+================================================================================
+
+✗ jms-to-reactive-quarkus-00010 - tc001: COMPILATION FAILED
+✗ jms-to-reactive-quarkus-00020 - tc001: COMPILATION FAILED
+
+--------------------------------------------------------------------------------
+Summary for quarkus.yaml:
+  Total: 50
+  Passed: 48 (96.0%)
+  Failed: 2 (4.0%)
+--------------------------------------------------------------------------------
+
+Found 2 compilation failure(s).
+Proceeding with automated fixes...
 
 ================================================================================
 Processing: benchmarks/test_cases/generated/quarkus.yaml
@@ -277,36 +316,44 @@ For a file with 50 failures:
 
 ### Recommended Process
 
-1. **Validate first:**
-   ```bash
-   python scripts/validate_expected_fixes.py --file path/to/tests.yaml
-   ```
-
-2. **Preview fixes:**
+1. **Preview fixes (validates automatically):**
    ```bash
    python scripts/fix_expected_fixes.py --file path/to/tests.yaml --dry-run
    ```
 
-3. **Apply fixes:**
+2. **Apply fixes:**
    ```bash
    python scripts/fix_expected_fixes.py --file path/to/tests.yaml
    ```
 
-4. **Re-validate:**
-   ```bash
-   python scripts/validate_expected_fixes.py --file path/to/tests.yaml
-   ```
+   The script automatically:
+   - Validates first and shows what needs fixing
+   - Skips if everything compiles
+   - Attempts fixes for each failure
+   - Shows summary of results
 
-5. **Review changes:**
+3. **Review changes:**
    ```bash
    git diff path/to/tests.yaml
    ```
 
-6. **Commit if satisfied:**
+4. **Commit if satisfied:**
    ```bash
    git add path/to/tests.yaml
    git commit -m "Fix compilation errors in expected_fix code"
    ```
+
+### Alternative: Validate-Only Workflow
+
+If you just want to check without fixing:
+
+```bash
+# Fast validation (no API key needed)
+python scripts/validate_expected_fixes.py --file path/to/tests.yaml
+
+# OR use fix script in validate-only mode
+python scripts/fix_expected_fixes.py --file path/to/tests.yaml --validate-only
+```
 
 ### Incremental Fixing
 
