@@ -341,6 +341,14 @@ class HTMLReporterGrafana:
             {self._build_summary_stats(results, model_stats)}
         </div>
 
+        <!-- Row 1.5: Top Performing Models -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">🏆 Top Performing Models</div>
+                {self._build_top_performers_section(model_stats)}
+            </div>
+        </div>
+
         <!-- Row 2: Model Performance Comparison -->
         <div class="row row-2">
             <div class="panel">
@@ -468,6 +476,133 @@ class HTMLReporterGrafana:
                 rule_stats[rule_id][model_name]["passed"] += 1
 
         return rule_stats
+
+    def _rank_models(self, model_stats: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Rank models based on multiple performance criteria.
+
+        Returns:
+            List of model rankings with scores
+        """
+        rankings = []
+
+        for model_name, stats in model_stats.items():
+            # Calculate metrics
+            pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            avg_response_time = sum(stats["response_times"]) / len(stats["response_times"]) if stats["response_times"] else 0
+            total_cost = sum(stats["costs"])
+
+            # Calculate composite score (0-100)
+            # Weighted scoring: pass_rate (70%), speed (15%), cost (15%)
+            score = 0
+
+            # Pass rate (most important)
+            score += pass_rate * 0.7
+
+            # Response time (lower is better, normalize to 0-100)
+            # Assume 10000ms is max acceptable response time
+            time_score = max(0, 100 - (avg_response_time / 100))
+            score += time_score * 0.15
+
+            # Cost (lower is better, normalize to 0-100)
+            # Assume $1.00 total is max acceptable cost
+            cost_score = max(0, 100 - (total_cost * 100)) if total_cost > 0 else 100
+            score += cost_score * 0.15
+
+            rankings.append({
+                "model_name": model_name,
+                "score": score,
+                "pass_rate": pass_rate,
+                "avg_response_time": avg_response_time,
+                "total_cost": total_cost,
+                "tests_passed": stats["passed"],
+                "tests_total": stats["total"]
+            })
+
+        # Sort by score descending
+        rankings.sort(key=lambda x: x["score"], reverse=True)
+        return rankings
+
+    def _build_top_performers_section(self, model_stats: Dict[str, Dict[str, Any]]) -> str:
+        """Build top performing models section with Grafana dark theme."""
+        rankings = self._rank_models(model_stats)
+
+        if not rankings:
+            return "<p>No rankings available.</p>"
+
+        html = '<div style="margin: 20px 0;">'
+
+        # Show podium for top 3
+        for i, ranking in enumerate(rankings[:3]):
+            rank = i + 1
+            medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉"
+            # Grafana color scheme
+            border_color = "#f2cc0c" if rank == 1 else "#9fa1a4" if rank == 2 else "#ff780a"
+
+            html += f'''
+            <div style="background: #1e1e1e; border: 2px solid {border_color}; border-radius: 4px; padding: 20px; margin: 15px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 32px; margin-right: 10px;">{medal}</span>
+                        <span style="font-size: 24px; font-weight: bold; color: #d8d9da;">{ranking["model_name"]}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 36px; font-weight: bold; color: {border_color};">{ranking["score"]:.1f}</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Overall Score</div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #2d2d2d;">
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Pass Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #73bf69;">{ranking["pass_rate"]:.1f}%</div>
+                        <div style="font-size: 11px; color: #6e7074;">{ranking["tests_passed"]}/{ranking["tests_total"]} passed</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Response Time</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #729fcf;">{ranking["avg_response_time"]:.0f}ms</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Total Cost</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #ff780a;">${ranking["total_cost"]:.4f}</div>
+                    </div>
+                </div>
+            </div>
+            '''
+
+        # Show remaining models in a compact table
+        if len(rankings) > 3:
+            html += '<div style="margin-top: 20px;"><h3 style="color: #9fa1a4; font-size: 18px;">Other Models</h3>'
+            html += '<table style="width: 100%; border-collapse: collapse;">'
+            html += '''
+            <thead>
+                <tr style="background: #212124;">
+                    <th style="padding: 10px; text-align: left; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Rank</th>
+                    <th style="padding: 10px; text-align: left; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Model</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Score</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Pass Rate</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Avg Response</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+            '''
+
+            for i, ranking in enumerate(rankings[3:], start=4):
+                html += f'''
+                <tr style="border-bottom: 1px solid #2d2d2d;">
+                    <td style="padding: 10px; color: #d8d9da;">#{i}</td>
+                    <td style="padding: 10px; font-weight: 500; color: #d8d9da;">{ranking["model_name"]}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold; color: #d8d9da;">{ranking["score"]:.1f}</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["pass_rate"]:.1f}%</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["avg_response_time"]:.0f}ms</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">${ranking["total_cost"]:.4f}</td>
+                </tr>
+                '''
+
+            html += '</tbody></table></div>'
+
+        html += '</div>'
+        return html
 
     def _build_summary_stats(
         self,
