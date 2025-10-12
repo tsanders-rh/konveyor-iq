@@ -261,7 +261,104 @@ prompt_experiments:
 
 ---
 
-### 6. Interactive Fix Iteration & Self-Correction
+### 6. Rule Message Optimization via Feedback Loop
+
+**Status:** 🔴 Not Started
+**Priority:** Medium
+**Complexity:** Medium
+**Impact:** High - Improves Konveyor rule quality and LLM success rates
+
+**Description:**
+Analyze evaluation results to identify poorly-performing rules, use LLMs to generate improved guidance messages, validate improvements, and export optimized messages for contribution back to the Konveyor rulesets repository.
+
+**Implementation:**
+```bash
+# Analyze existing evaluation results
+python scripts/optimize_rules.py \
+    --results results/results_20241011.json \
+    --threshold 0.5  # Rules below 50% pass rate
+```
+
+**Workflow:**
+1. **Identify Problematic Rules** - Analyze evaluation results to find rules with low pass rates (<50%)
+2. **Analyze Failure Patterns** - Group failures by error type (compilation, wrong pattern, incomplete fix, etc.)
+3. **Generate Improved Messages** - Use GPT-4/Claude to suggest enhanced guidance based on:
+   - Original Konveyor message
+   - Observed failure patterns
+   - Successful fixes from other models
+   - Common pitfalls identified
+4. **Validate Improvements** - Re-run evaluation with enhanced messages to measure impact
+5. **Export for Contribution** - Generate YAML patches or GitHub PRs for konveyor/rulesets
+
+**Output Format:**
+```yaml
+rule_improvements:
+  - rule_id: jms-to-reactive-quarkus-00000
+    original_pass_rate: 33%  # 1/3 models passed
+
+    original_message: |
+      Usage of JMS is not supported in Quarkus. It is recommended to use
+      Quarkus' SmallRye Reactive Messaging instead of JMS...
+
+    suggested_message: |
+      JMS is not supported in Quarkus. Migrate to SmallRye Reactive Messaging:
+
+      Step 1: Replace JMS dependency with:
+      <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-smallrye-reactive-messaging</artifactId>
+      </dependency>
+
+      Step 2: Replace @MessageDriven with @ApplicationScoped
+      Step 3: Use @Incoming("channel-name") on message handler methods
+      Step 4: Configure channels in application.properties
+
+      Common pitfall: Don't forget to remove @ActivationConfigProperty -
+      it's not used in reactive messaging.
+
+    new_pass_rate: 100%  # 3/3 models passed with improved message
+    improvement: +67%
+
+    failed_models_before: [gpt-4o, claude-3-5-sonnet]
+    failed_models_after: []
+
+    pr_url: https://github.com/konveyor/rulesets/pulls/1234
+```
+
+**Features:**
+- Automatic detection of low-performing rules
+- LLM-powered message enhancement suggestions
+- A/B testing to validate improvements
+- Statistical significance testing
+- Contribution-ready output (YAML patches, PRs)
+- Track improvement metrics over time
+- Integration with Konveyor rulesets repo
+
+**Benefits:**
+- Improve Konveyor rule quality systematically
+- Increase LLM migration success rates
+- Reduce manual rule authoring effort
+- Data-driven rule improvement process
+- Community contributions with validated improvements
+- Close the feedback loop between evaluation and rule creation
+
+**Metrics Tracked:**
+- Pass rate improvement per rule
+- Cost per successful fix (before/after)
+- Number of models that benefit
+- False positive reduction
+- Time saved on manual debugging
+
+**Files to Create:**
+- `scripts/optimize_rules.py` - Main optimization engine
+- `analyzers/failure_analyzer.py` - Categorize and analyze failures
+- `generators/message_enhancer.py` - LLM-powered message generation
+- `exporters/ruleset_patcher.py` - Generate Konveyor PR patches
+- `docs/rule_optimization.md` - User guide
+
+---
+
+### 7. Interactive Fix Iteration & Self-Correction
 
 **Status:** 🔴 Not Started
 **Priority:** Medium
@@ -326,7 +423,7 @@ iteration:
 
 ---
 
-### 7. Cost Optimization Dashboard
+### 8. Cost Optimization Dashboard
 
 **Status:** 🔴 Not Started
 **Priority:** Medium
@@ -376,7 +473,7 @@ for high-risk migrations, gpt-3.5-turbo for initial testing.
 
 ---
 
-### 8. Export for Fine-Tuning
+### 9. Export for Fine-Tuning
 
 **Status:** 🔴 Not Started
 **Priority:** Medium
@@ -429,7 +526,7 @@ python export.py \
 
 ## Low Priority (Nice to Have)
 
-### 9. Parallel & Incremental Evaluation
+### 10. Parallel & Incremental Evaluation
 
 **Status:** 🔴 Not Started
 **Priority:** Low
@@ -456,7 +553,7 @@ python evaluate.py --distributed --workers 5
 
 ---
 
-### 10. Human Review Interface
+### 11. Human Review Interface
 
 **Status:** 🔴 Not Started
 **Priority:** Low
