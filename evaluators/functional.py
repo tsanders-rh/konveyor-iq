@@ -469,8 +469,8 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
         }
 
         if rule_id not in patterns:
-            # Unknown rule - can't validate, assume resolved
-            print(f"Warning: No pattern defined for rule {rule_id}")
+            # Unknown rule - can't validate pattern-based, assume resolved
+            # (Compilation and other checks still run)
             return True, 0
 
         pattern = patterns[rule_id]

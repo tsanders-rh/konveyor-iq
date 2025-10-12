@@ -20,7 +20,7 @@ class KonveyorRuleFetcher:
         Fetch a specific rule from a Konveyor ruleset.
 
         Args:
-            source_url: GitHub URL to the ruleset file
+            source_url: GitHub URL to the ruleset file or local file path
             rule_id: The rule ID to fetch
 
         Returns:
@@ -31,10 +31,14 @@ class KonveyorRuleFetcher:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
+        # Check if this is a local file path
+        if source_url.startswith('/') or source_url.startswith('.'):
+            return self._fetch_from_local_file(source_url, rule_id, cache_key)
+
         # Convert GitHub blob URL to raw content URL
         raw_url = self._convert_to_raw_url(source_url)
         if not raw_url:
-            print(f"Warning: Could not convert URL to raw format: {source_url}")
+            # Silently skip - likely a local path that wasn't caught above
             return None
 
         # Fetch and parse the ruleset
@@ -61,6 +65,46 @@ class KonveyorRuleFetcher:
             return None
         except yaml.YAMLError as e:
             print(f"Warning: Failed to parse YAML from {raw_url}: {e}")
+            return None
+
+    def _fetch_from_local_file(self, file_path: str, rule_id: str, cache_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a rule from a local file.
+
+        Args:
+            file_path: Local file path to the ruleset YAML
+            rule_id: The rule ID to fetch
+            cache_key: Cache key for this rule
+
+        Returns:
+            Dictionary with rule details or None if not found
+        """
+        import os
+
+        if not os.path.exists(file_path):
+            # Silently skip - file doesn't exist
+            return None
+
+        try:
+            with open(file_path, 'r') as f:
+                ruleset_data = yaml.safe_load(f)
+
+            # Find the specific rule
+            rule_data = self._find_rule_by_id(ruleset_data, rule_id)
+
+            if rule_data:
+                # Cache the result
+                self._cache[cache_key] = rule_data
+                return rule_data
+            else:
+                # Silently skip - rule not found in local file
+                return None
+
+        except yaml.YAMLError as e:
+            print(f"Warning: Failed to parse YAML from {file_path}: {e}")
+            return None
+        except Exception as e:
+            print(f"Warning: Failed to read local file {file_path}: {e}")
             return None
 
     def _convert_to_raw_url(self, github_url: str) -> Optional[str]:
