@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from benchmarks.schema import TestSuite, EvaluationResult, EvaluationMetrics
 from benchmarks.rule_fetcher import get_rule_fetcher
-from models import OpenAIModel, AnthropicModel
+from models import OpenAIModel, AnthropicModel, GoogleModel
 from evaluators import (
     FunctionalCorrectnessEvaluator,
     CodeQualityEvaluator,
@@ -70,6 +70,8 @@ class EvaluationEngine:
                 models.append(OpenAIModel(name, model_config))
             elif provider == "anthropic":
                 models.append(AnthropicModel(name, model_config))
+            elif provider == "google":
+                models.append(GoogleModel(name, model_config))
             else:
                 print(f"Warning: Unknown provider '{provider}' for model '{name}'")
 

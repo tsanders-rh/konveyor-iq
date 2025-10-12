@@ -4,7 +4,7 @@
 # Each model will be tested against all test cases
 models:
   - name: "gpt-4-turbo"
-    provider: "openai"  # Options: openai, anthropic
+    provider: "openai"  # Options: openai, anthropic, google
     api_key: "${OPENAI_API_KEY}"  # Use env var or set directly "sk-..."
 
     # temperature: Controls randomness (0.0-2.0)
@@ -24,6 +24,13 @@ models:
     api_key: "${ANTHROPIC_API_KEY}"
     temperature: 0.2  # Low temperature for consistent code fixes
     max_tokens: 2000
+
+  # Google Gemini models
+  # - name: "gemini-1.5-pro"
+  #   provider: "google"
+  #   api_key: "${GOOGLE_API_KEY}"
+  #   temperature: 0.7
+  #   max_tokens: 8192
 
   - name: "gpt-3.5-turbo"
     provider: "openai"
