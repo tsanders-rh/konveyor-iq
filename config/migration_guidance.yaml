@@ -63,11 +63,35 @@ migrations:
         - @Repository → @ApplicationScoped with CDI
         - @RestController → @Path (JAX-RS)
         - @RequestMapping → @Path, @GET, @POST, etc.
-      - Use MicroProfile Config instead of @ConfigurationProperties
-      - Use Quarkus Panache for data access instead of Spring Data JPA
+      - Use Jakarta EE packages (jakarta.*) NOT javax.*
       - DO NOT use Spring Framework classes in the fixed code
 
-    specific_patterns: []
+    specific_patterns:
+      - name: CONFIGURATION MIGRATIONS
+        guidance: |
+          - @ConfigurationProperties → Use MicroProfile Config with @ConfigProperty
+          - @RefreshScope → Use @ApplicationScoped (Quarkus supports dynamic config)
+          - Spring Environment → Use org.eclipse.microprofile.config.Config
+          - @Value → @ConfigProperty from MicroProfile Config
+          - Spring Cloud Config → Use quarkus-spring-cloud-config-client extension
+          - Import: org.eclipse.microprofile.config.inject.ConfigProperty
+          - Import: org.eclipse.microprofile.config.Config
+
+      - name: DEPENDENCY INJECTION MIGRATIONS
+        guidance: |
+          - @Autowired → @Inject (jakarta.inject.Inject)
+          - @Component, @Service, @Repository → @ApplicationScoped (jakarta.enterprise.context)
+          - DO NOT use javax.inject or javax.enterprise (use jakarta.* instead)
+          - Import: jakarta.inject.Inject
+          - Import: jakarta.enterprise.context.ApplicationScoped
+
+      - name: DATA ACCESS MIGRATIONS
+        guidance: |
+          - Spring Data JPA → Quarkus Panache or plain Jakarta Persistence
+          - JpaRepository → PanacheRepository or @PersistenceContext EntityManager
+          - @Transactional (Spring) → @Transactional (jakarta.transaction)
+          - Import: jakarta.transaction.Transactional
+          - Import: jakarta.persistence.EntityManager
 
   # Generic fallback (no specific source/target)
   - source: null
