@@ -1,5 +1,5 @@
 """
-HTML report generator with interactive visualizations.
+HTML report generator with Grafana-style dark theme and modern visualizations.
 """
 from typing import List, Dict, Any
 from pathlib import Path
@@ -8,7 +8,7 @@ import json
 
 
 class HTMLReporter:
-    """Generate interactive HTML evaluation reports."""
+    """Generate dark-themed HTML evaluation reports with Grafana styling."""
 
     def __init__(self, output_dir: str = "results"):
         self.output_dir = Path(output_dir)
@@ -20,7 +20,7 @@ class HTMLReporter:
         config: Dict[str, Any]
     ) -> str:
         """
-        Generate HTML report with charts.
+        Generate Grafana-style HTML report.
 
         Args:
             results: Evaluation results
@@ -42,307 +42,402 @@ class HTMLReporter:
         results: List[Dict[str, Any]],
         config: Dict[str, Any]
     ) -> str:
-        """Build HTML report content."""
+        """Build Grafana-style HTML report content."""
 
         # Aggregate data
         model_stats = self._aggregate_by_model(results)
+        rule_stats = self._aggregate_by_rule(results)
 
         html = f"""
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Konveyor AI Evaluation Report</title>
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        * {{
             margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
+            padding: 0;
+            box-sizing: border-box;
         }}
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #111217;
+            color: #d8d9da;
         }}
-        h1 {{
-            color: #333;
-            border-bottom: 3px solid #4CAF50;
-            padding-bottom: 10px;
+
+        .header {{
+            background: #1e1e1e;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2d2d2d;
         }}
-        h2 {{
-            color: #555;
-            margin-top: 30px;
+
+        .header h1 {{
+            font-size: 20px;
+            font-weight: 500;
+            color: #ffffff;
         }}
+
         .metadata {{
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+            background: #1e1e1e;
+            padding: 10px 20px;
+            border-bottom: 1px solid #2d2d2d;
+            font-size: 13px;
+            color: #9fa1a4;
         }}
-        .chart {{
-            margin: 30px 0;
+
+        .metadata span {{
+            margin-right: 25px;
+        }}
+
+        .dashboard {{
             padding: 20px;
-            background: #fafafa;
-            border-radius: 5px;
         }}
+
+        .row {{
+            display: grid;
+            gap: 15px;
+            margin-bottom: 15px;
+        }}
+
+        .row-1 {{
+            grid-template-columns: 1fr 1fr;
+        }}
+
+        .row-2 {{
+            grid-template-columns: 1fr;
+        }}
+
+        .row-3 {{
+            grid-template-columns: 1fr 1fr 1fr;
+        }}
+
+        .row-4 {{
+            grid-template-columns: 1fr 1fr;
+        }}
+
+        .panel {{
+            background: #181b1f;
+            border: 1px solid #2d2d2d;
+            border-radius: 2px;
+            padding: 15px;
+        }}
+
+        .panel-title {{
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #d8d9da;
+        }}
+
+        .stat-value {{
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }}
+
+        .stat-label {{
+            font-size: 12px;
+            color: #9fa1a4;
+            text-align: center;
+        }}
+
+        .green {{ color: #73bf69; }}
+        .yellow {{ color: #f2cc0c; }}
+        .orange {{ color: #ff780a; }}
+        .red {{ color: #f2495c; }}
+
+        .stat-bg-green {{ background: rgba(115, 191, 105, 0.15); }}
+        .stat-bg-yellow {{ background: rgba(242, 204, 12, 0.15); }}
+        .stat-bg-orange {{ background: rgba(255, 120, 10, 0.15); }}
+        .stat-bg-red {{ background: rgba(242, 73, 92, 0.15); }}
+
         table {{
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            font-size: 13px;
         }}
-        th, td {{
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }}
+
         th {{
-            background: #4CAF50;
-            color: white;
-            font-weight: 600;
+            background: #212124;
+            padding: 8px;
+            text-align: left;
+            font-weight: 500;
+            border-bottom: 1px solid #2d2d2d;
+            color: #d8d9da;
         }}
+
+        td {{
+            padding: 8px;
+            border-bottom: 1px solid #2d2d2d;
+        }}
+
         tr:hover {{
-            background: #f5f5f5;
+            background: #212124;
         }}
-        .pass {{
-            color: #4CAF50;
-            font-weight: bold;
-        }}
-        .fail {{
-            color: #f44336;
-            font-weight: bold;
-        }}
-        .metric-card {{
+
+        .badge {{
             display: inline-block;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 10px;
-            min-width: 200px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
         }}
-        .metric-value {{
-            font-size: 32px;
-            font-weight: bold;
-            color: #4CAF50;
+
+        .badge-green {{ background: rgba(115, 191, 105, 0.3); color: #73bf69; }}
+        .badge-yellow {{ background: rgba(242, 204, 12, 0.3); color: #f2cc0c; }}
+        .badge-orange {{ background: rgba(255, 120, 10, 0.3); color: #ff780a; }}
+        .badge-red {{ background: rgba(242, 73, 92, 0.3); color: #f2495c; }}
+
+        .chart-container {{
+            position: relative;
+            height: 250px;
         }}
-        .metric-label {{
-            color: #777;
-            font-size: 14px;
-            margin-top: 5px;
+
+        .chart-container-sm {{
+            position: relative;
+            height: 150px;
         }}
-        .failure-card {{
-            background: #fff;
-            border: 1px solid #f44336;
-            border-left: 4px solid #f44336;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .chart-container-lg {{
+            position: relative;
+            height: 350px;
         }}
-        .success-card {{
-            background: #fff;
-            border: 1px solid #4CAF50;
-            border-left: 4px solid #4CAF50;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .test-card {{
-            background: #fff;
-            border: 1px solid #ddd;
-            border-left: 4px solid #ddd;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .test-card.passed {{
-            border-color: #4CAF50;
-            border-left-color: #4CAF50;
-        }}
-        .test-card.failed {{
-            border-color: #f44336;
-            border-left-color: #f44336;
-        }}
-        .failure-header {{
+
+        .test-details {{
+            background: #212124;
+            border: 1px solid #2d2d2d;
+            border-radius: 3px;
+            padding: 15px;
+            margin: 10px 0;
             cursor: pointer;
+        }}
+
+        .test-details:hover {{
+            background: #282a2e;
+        }}
+
+        .test-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
         }}
-        .failure-header:hover {{
-            background: #f9f9f9;
-            margin: -5px;
-            padding: 5px;
-            border-radius: 3px;
-        }}
-        .failure-title {{
-            font-weight: bold;
-            color: #333;
-        }}
-        .failure-reason {{
-            color: #f44336;
+
+        .test-title {{
+            font-weight: 500;
             font-size: 14px;
-            margin: 5px 0;
         }}
-        .failure-details {{
+
+        .test-content {{
             display: none;
             margin-top: 15px;
             padding-top: 15px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #2d2d2d;
         }}
-        .failure-details.expanded {{
+
+        .test-content.expanded {{
             display: block;
         }}
-        .code-comparison {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 15px 0;
-        }}
+
         .code-block {{
-            background: #f5f5f5;
-            border: 1px solid #ddd;
+            background: #0d1117;
+            border: 1px solid #2d2d2d;
             border-radius: 4px;
-            padding: 10px;
+            padding: 12px;
             overflow-x: auto;
+            margin: 10px 0;
         }}
-        .code-block h4 {{
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #666;
-        }}
+
         .code-block pre {{
             margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 12px;
+            color: #c9d1d9;
             white-space: pre-wrap;
         }}
+
+        .code-header {{
+            font-size: 12px;
+            color: #9fa1a4;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }}
+
         .expand-icon {{
             transition: transform 0.3s;
+            color: #9fa1a4;
         }}
+
         .expand-icon.expanded {{
             transform: rotate(180deg);
         }}
-        .filter-buttons {{
-            margin: 20px 0;
+
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
         }}
-        .filter-btn {{
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            padding: 8px 16px;
-            margin: 5px;
+
+        .metric-item {{
+            background: #0d1117;
+            padding: 10px;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
+            border: 1px solid #2d2d2d;
         }}
-        .filter-btn.active {{
-            background: #4CAF50;
-            color: white;
-            border-color: #4CAF50;
-        }}
-        .badge {{
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-left: 10px;
-        }}
-        .badge-error {{
-            background: #f44336;
-            color: white;
-        }}
-        .badge-regression {{
-            background: #ff9800;
-            color: white;
-        }}
-        .badge-compilation {{
-            background: #9c27b0;
-            color: white;
-        }}
-        .badge-security {{
-            background: #e91e63;
-            color: white;
-        }}
-        .badge-success {{
-            background: #4CAF50;
-            color: white;
-        }}
-        .success-message {{
-            color: #4CAF50;
-            font-size: 14px;
-            margin: 5px 0;
-        }}
-        .diff-legend {{
+
+        .metric-item-label {{
             font-size: 11px;
-            color: #666;
-            margin: 5px 0;
-            padding: 5px;
-            background: #f9f9f9;
-            border-radius: 3px;
+            color: #9fa1a4;
+            margin-bottom: 5px;
         }}
-        .diff-legend span {{
-            margin-right: 15px;
+
+        .metric-item-value {{
+            font-size: 16px;
+            font-weight: 500;
+        }}
+
+        .filter-btn {{
+            background: #212124;
+            border: 1px solid #2d2d2d;
+            color: #d8d9da;
+            padding: 6px 12px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+        }}
+
+        .filter-btn:hover {{
+            background: #282a2e;
+        }}
+
+        .filter-btn.active {{
+            background: #3d5afe;
+            border-color: #3d5afe;
+            color: white;
         }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Konveyor AI Evaluation Report</h1>
+    <div class="header">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <svg width="120" height="46" viewBox="0 0 575.19 221.79" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(-9.3672,-9.1211)">
+                    <path d="m174.6 82.258h38.348v14.941h-38.348z"/>
+                    <path d="m246.31 82.258h38.348v14.941h-38.348z"/>
+                    <path d="m209.96 14.031h38.348v14.941h-38.348z"/>
+                </g>
+                <path d="m247.85 78.121h15.727c1.418 0 2.5586 1.1367 2.5586 2.5547s-1.1406 2.5586-2.5586 2.5586h-15.727c-1.418 0-2.5586-1.1406-2.5586-2.5586s1.1406-2.5547 2.5586-2.5547m-70.941 0h15.727c1.4141 0 2.5586 1.1367 2.5586 2.5547s-1.1445 2.5586-2.5586 2.5586h-15.727c-1.4141 0-2.5586-1.1406-2.5586-2.5586s1.1445-2.5547 2.5586-2.5547m47.938-8.7539c-0.8789 0-1.5859 0.70703-1.5859 1.582v61.738c0 0.87891 0.70703 1.5859 1.5859 1.5859h61.734c0.8789 0 1.582-0.71094 1.582-1.5859v-61.738c0-0.875-0.70313-1.582-1.582-1.582zm-70.945 0c-0.875 0-1.5781 0.70703-1.5781 1.582v61.738c0 0.87891 0.70312 1.5859 1.5781 1.5859h61.742c0.875 0 1.5781-0.71094 1.5781-1.5859v-61.738c0-0.875-0.70312-1.582-1.5781-1.582zm58.477-60.613h15.727c1.418 0 2.5586 1.1367 2.5586 2.5547s-1.1406 2.5586-2.5586 2.5586h-15.727c-1.418 0-2.5547-1.1406-2.5547-2.5586s1.1367-2.5547 2.5547-2.5547m-23.004-8.7539c-0.87891 0-1.5859 0.70703-1.5859 1.582v61.738c0 0.875 0.70703 1.5781 1.5859 1.5781h61.738c0.875 0 1.582-0.70312 1.582-1.5781v-61.738c0-0.875-0.70703-1.582-1.582-1.582z" fill="#b09454"/>
+                <g transform="translate(-9.3672,-9.1211)" fill="#ffffff">
+                    <path d="m110.98 164c13.109 0 23.523 10.414 23.523 23.523 0 13.113-10.414 23.523-23.523 23.523s-23.523-10.41-23.523-23.523c0-13.109 10.414-23.523 23.523-23.523m0-19.871c-23.848 0-43.395 19.547-43.395 43.395 0 23.852 19.547 43.395 43.395 43.395 23.852 0 43.398-19.543 43.398-43.395 0-23.848-19.547-43.395-43.398-43.395"/>
+                    <path d="m9.3672 224.48v-73.914h20.301v28.109l22.488-28.109h22.902l-26.859 33.105 28.734 40.809h-23.32l-18.324-27.172-5.6211 5.832v21.34z"/>
+                    <path d="m181.01 188.14v36.332h-20.301v-73.914h15.824l29.672 37.582v-37.582h20.301v73.914h-16.137z"/>
+                    <path d="m253.47 150.56 14.469 48.41 14.266-48.41h21.34l-27.172 73.914h-16.863l-27.484-73.914z"/>
+                    <path d="m361.84 206.78v17.695h-52.676v-73.914h51.742v17.699h-31.441v10.41h26.859v16.449h-26.859v11.66z"/>
+                    <path d="m386.3 150.56 13.223 31.961 13.531-31.961h22.07l-25.504 49.449v24.465h-20.195v-24.672l-25.09-49.242z"/>
+                    <path d="m541.04 184.09h12.805c1.25 0 2.3945-0.69532 3.4375-2.082 1.1094-1.3906 1.6641-3.332 1.6641-5.832 0-2.5664-0.625-4.5117-1.875-5.8281-1.2461-1.3867-2.4961-2.082-3.7461-2.082h-12.285zm-20.301 40.391v-73.914h33.938c3.6094 0 6.9414 0.76562 9.9961 2.293 3.0547 1.457 5.6562 3.3984 7.8086 5.8281 2.2188 2.3594 3.9531 5.1016 5.2031 8.2227 1.25 3.0547 1.875 6.1445 1.875 9.2656 0 4.3047-0.9375 8.3281-2.8125 12.078-1.8711 3.6797-4.4766 6.6953-7.8086 9.0586l15.617 27.168h-22.902l-13.012-22.695h-7.6016v22.695z"/>
+                    <path d="m471.77 164c13.109 0 23.523 10.414 23.523 23.523 0 13.113-10.414 23.523-23.523 23.523s-23.523-10.41-23.523-23.523c0-13.109 10.414-23.523 23.523-23.523m0-19.871c-23.848 0-43.395 19.547-43.395 43.395 0 23.852 19.547 43.395 43.395 43.395 23.852 0 43.398-19.543 43.398-43.395 0-23.848-19.547-43.395-43.398-43.395"/>
+                </g>
+            </svg>
+            <h1>AI Evaluation Report</h1>
+        </div>
+    </div>
 
-        <div class="metadata">
-            <strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br>
-            <strong>Test Suite:</strong> {config.get('test_suite', 'Unknown')}<br>
-            <strong>Total Test Cases:</strong> {len(results)}<br>
-            <strong>Models Evaluated:</strong> {len(model_stats)}
+    <div class="metadata">
+        <span><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</span>
+        <span><strong>Test Suite:</strong> {config.get('test_suite', 'Unknown')}</span>
+        <span><strong>Total Evaluations:</strong> {len(results)}</span>
+        <span><strong>Models:</strong> {len(model_stats)}</span>
+    </div>
+
+    <div class="dashboard">
+        <!-- Row 1: Summary Stats -->
+        <div class="row row-3">
+            {self._build_summary_stats(results, model_stats)}
         </div>
 
-        <h2>Overall Summary</h2>
-        <div id="metrics-cards">
-            {self._build_metric_cards(model_stats)}
+        <!-- Row 1.5: Top Performing Models -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">🏆 Top Performing Models</div>
+                {self._build_top_performers_section(model_stats)}
+            </div>
         </div>
 
-        <h2>🏆 Top Performing Models</h2>
-        {self._build_top_performers_section(model_stats)}
-
-        <h2>Model Comparison</h2>
-        <div class="chart" id="comparison-chart"></div>
-
-        <h2>Response Time Distribution</h2>
-        <div class="chart" id="response-time-chart"></div>
-
-        <h2>Per-Rule Performance</h2>
-        <div style="margin-bottom: 15px;">
-            <label for="rule-selector" style="font-weight: 600; margin-right: 10px;">Select Rule:</label>
-            <select id="rule-selector" style="padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; min-width: 300px;">
-                <option value="all">All Rules</option>
-            </select>
+        <!-- Row 2: Model Performance Comparison -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Model Pass Rate Comparison</div>
+                <div class="chart-container">
+                    <canvas id="modelPassRateChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="chart" id="rule-performance-chart"></div>
 
-        <h2>Detailed Results</h2>
-        {self._build_results_table(model_stats)}
+        <!-- Row 3: Performance by Rule -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Performance by Rule</div>
+                <div style="margin-bottom: 15px;">
+                    <label for="rule-selector" style="font-weight: 500; margin-right: 10px; color: #d8d9da;">Select Rule:</label>
+                    <select id="rule-selector" style="padding: 8px 12px; font-size: 14px; border: 1px solid #2d2d2d; border-radius: 4px; min-width: 300px; background: #212124; color: #d8d9da;">
+                        <option value="all">All Rules - Summary</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="rulePerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
 
-        <h2>All Test Results</h2>
-        {self._build_all_results_section(results)}
+        <!-- Row 4: Cost and Response Time -->
+        <div class="row row-4">
+            <div class="panel">
+                <div class="panel-title">Response Time Distribution</div>
+                <div class="chart-container">
+                    <canvas id="responseTimeChart"></canvas>
+                </div>
+            </div>
 
-        <h2>Failure Analysis</h2>
-        {self._build_failure_section(results)}
+            <div class="panel">
+                <div class="panel-title">Cost by Model</div>
+                <div class="chart-container">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+        </div>
 
+        <!-- Row 5: Detailed Results Table -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Model Summary</div>
+                {self._build_model_summary_table(model_stats)}
+            </div>
+        </div>
+
+        <!-- Row 6: All Test Results -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Test Results</div>
+                <div style="margin-bottom: 15px;">
+                    <button class="filter-btn active" onclick="filterTests('all')">All ({len(results)})</button>
+                    <button class="filter-btn" onclick="filterTests('passed')">Passed ({sum(1 for r in results if r.get('passed', False))})</button>
+                    <button class="filter-btn" onclick="filterTests('failed')">Failed ({sum(1 for r in results if not r.get('passed', False))})</button>
+                </div>
+                <div id="test-results">
+                    {self._build_test_results(results)}
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        {self._build_charts_script(results, model_stats)}
+        {self._build_charts_script(results, model_stats, rule_stats)}
         {self._build_interaction_script()}
     </script>
 </body>
@@ -368,7 +463,6 @@ class HTMLReporter:
                     "passed": 0,
                     "failed": 0,
                     "compiled": 0,
-                    "results": [],
                     "response_times": [],
                     "costs": [],
                     "complexities": [],
@@ -381,7 +475,6 @@ class HTMLReporter:
 
             stats = model_stats[model_name]
             stats["total"] += 1
-            stats["results"].append(result)
 
             if result.get("passed", False):
                 stats["passed"] += 1
@@ -392,7 +485,7 @@ class HTMLReporter:
             if result.get("metrics", {}).get("compiles", False):
                 stats["compiled"] += 1
 
-            stats["response_times"].append(result["metrics"]["response_time_ms"])
+            stats["response_times"].append(result.get("metrics", {}).get("response_time_ms", 0))
             stats["costs"].append(result.get("estimated_cost", 0))
 
             # Collect quality metrics
@@ -415,6 +508,30 @@ class HTMLReporter:
                 stats["comment_densities"].append(metrics["comment_density"])
 
         return model_stats
+
+    def _aggregate_by_rule(
+        self,
+        results: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Aggregate results by rule."""
+
+        rule_stats = {}
+
+        for result in results:
+            rule_id = result.get("rule_id", "Unknown")
+            model_name = result.get("model_name", "Unknown")
+
+            if rule_id not in rule_stats:
+                rule_stats[rule_id] = {}
+
+            if model_name not in rule_stats[rule_id]:
+                rule_stats[rule_id][model_name] = {"total": 0, "passed": 0}
+
+            rule_stats[rule_id][model_name]["total"] += 1
+            if result.get("passed", False):
+                rule_stats[rule_id][model_name]["passed"] += 1
+
+        return rule_stats
 
     def _rank_models(self, model_stats: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -530,7 +647,7 @@ class HTMLReporter:
         return rankings
 
     def _build_top_performers_section(self, model_stats: Dict[str, Dict[str, Any]]) -> str:
-        """Build top performing models section."""
+        """Build top performing models section with Grafana dark theme."""
         rankings = self._rank_models(model_stats)
 
         if not rankings:
@@ -542,37 +659,38 @@ class HTMLReporter:
         for i, ranking in enumerate(rankings[:3]):
             rank = i + 1
             medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉"
-            border_color = "#FFD700" if rank == 1 else "#C0C0C0" if rank == 2 else "#CD7F32"
+            # Grafana color scheme
+            border_color = "#f2cc0c" if rank == 1 else "#9fa1a4" if rank == 2 else "#ff780a"
 
             html += f'''
-            <div style="background: #fff; border: 2px solid {border_color}; border-radius: 8px; padding: 20px; margin: 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="background: #1e1e1e; border: 2px solid {border_color}; border-radius: 4px; padding: 20px; margin: 15px 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <span style="font-size: 32px; margin-right: 10px;">{medal}</span>
-                        <span style="font-size: 24px; font-weight: bold; color: #333;">{ranking["model_name"]}</span>
+                        <span style="font-size: 24px; font-weight: bold; color: #d8d9da;">{ranking["model_name"]}</span>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 36px; font-weight: bold; color: {border_color};">{ranking["score"]:.1f}</div>
-                        <div style="font-size: 12px; color: #666;">Overall Score</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Overall Score</div>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #2d2d2d;">
                     <div>
-                        <div style="font-size: 12px; color: #666;">Pass Rate</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">{ranking["pass_rate"]:.1f}%</div>
-                        <div style="font-size: 11px; color: #999;">{ranking["tests_passed"]}/{ranking["tests_total"]} passed</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Pass Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #73bf69;">{ranking["pass_rate"]:.1f}%</div>
+                        <div style="font-size: 11px; color: #6e7074;">{ranking["tests_passed"]}/{ranking["tests_total"]} passed</div>
                     </div>
                     <div>
-                        <div style="font-size: 12px; color: #666;">Compilation Rate</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">{ranking["compile_rate"]:.1f}%</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Compilation Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #73bf69;">{ranking["compile_rate"]:.1f}%</div>
                     </div>
                     <div>
-                        <div style="font-size: 12px; color: #666;">Avg Response Time</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #2196F3;">{ranking["avg_response_time"]:.0f}ms</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Response Time</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #729fcf;">{ranking["avg_response_time"]:.0f}ms</div>
                     </div>
                     <div>
-                        <div style="font-size: 12px; color: #666;">Total Cost</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #FF9800;">${ranking["total_cost"]:.4f}</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Total Cost</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #ff780a;">${ranking["total_cost"]:.4f}</div>
                     </div>
             '''
 
@@ -580,45 +698,45 @@ class HTMLReporter:
             if ranking["avg_complexity"] is not None:
                 html += f'''
                     <div>
-                        <div style="font-size: 12px; color: #666;">Avg Complexity</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #9C27B0;">{ranking["avg_complexity"]:.1f}</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Complexity</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #b09bf5;">{ranking["avg_complexity"]:.1f}</div>
                     </div>
                 '''
 
             if ranking["avg_maintainability"] is not None:
                 html += f'''
                     <div>
-                        <div style="font-size: 12px; color: #666;">Maintainability</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #009688;">{ranking["avg_maintainability"]:.1f}/100</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Maintainability</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #56d9fe;">{ranking["avg_maintainability"]:.1f}/100</div>
                     </div>
                 '''
 
             # Add security metrics if available
             if ranking["avg_security_issues"] is not None:
-                security_color = "#4CAF50" if ranking["avg_security_issues"] == 0 else "#ff9800" if ranking["avg_security_issues"] < 2 else "#f44336"
+                security_color = "#73bf69" if ranking["avg_security_issues"] == 0 else "#ff780a" if ranking["avg_security_issues"] < 2 else "#f2495c"
                 html += f'''
                     <div>
-                        <div style="font-size: 12px; color: #666;">Avg Security Issues</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Security Issues</div>
                         <div style="font-size: 20px; font-weight: bold; color: {security_color};">{ranking["avg_security_issues"]:.1f}</div>
                     </div>
                 '''
 
             # Add explainability metrics if available
             if ranking["avg_explanation_score"] is not None:
-                expl_color = "#4CAF50" if ranking["avg_explanation_score"] >= 7.0 else "#ff9800" if ranking["avg_explanation_score"] >= 5.0 else "#f44336"
+                expl_color = "#73bf69" if ranking["avg_explanation_score"] >= 7.0 else "#ff780a" if ranking["avg_explanation_score"] >= 5.0 else "#f2495c"
                 html += f'''
                     <div>
-                        <div style="font-size: 12px; color: #666;">Explanation Quality</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Explanation Quality</div>
                         <div style="font-size: 20px; font-weight: bold; color: {expl_color};">{ranking["avg_explanation_score"]:.1f}/10</div>
                     </div>
                 '''
 
             if ranking["avg_comment_density"] is not None:
                 percentage = ranking["avg_comment_density"] * 100
-                comment_color = "#4CAF50" if 10 <= percentage <= 30 else "#ff9800"
+                comment_color = "#73bf69" if 10 <= percentage <= 30 else "#ff780a"
                 html += f'''
                     <div>
-                        <div style="font-size: 12px; color: #666;">Comment Density</div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Comment Density</div>
                         <div style="font-size: 20px; font-weight: bold; color: {comment_color};">{percentage:.1f}%</div>
                     </div>
                 '''
@@ -628,19 +746,20 @@ class HTMLReporter:
             </div>
             '''
 
-        # Show remaining models in a compact list
+        # Show remaining models in a compact table
         if len(rankings) > 3:
-            html += '<div style="margin-top: 20px;"><h3 style="color: #666; font-size: 18px;">Other Models</h3>'
+            html += '<div style="margin-top: 20px;"><h3 style="color: #9fa1a4; font-size: 18px;">Other Models</h3>'
             html += '<table style="width: 100%; border-collapse: collapse;">'
             html += '''
             <thead>
-                <tr style="background: #f5f5f5;">
-                    <th style="padding: 10px; text-align: left;">Rank</th>
-                    <th style="padding: 10px; text-align: left;">Model</th>
-                    <th style="padding: 10px; text-align: right;">Score</th>
-                    <th style="padding: 10px; text-align: right;">Pass Rate</th>
-                    <th style="padding: 10px; text-align: right;">Avg Response</th>
-                    <th style="padding: 10px; text-align: right;">Cost</th>
+                <tr style="background: #212124;">
+                    <th style="padding: 10px; text-align: left; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Rank</th>
+                    <th style="padding: 10px; text-align: left; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Model</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Score</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Pass Rate</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Compile Rate</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Avg Response</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Cost</th>
                 </tr>
             </thead>
             <tbody>
@@ -648,13 +767,14 @@ class HTMLReporter:
 
             for i, ranking in enumerate(rankings[3:], start=4):
                 html += f'''
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">#{i}</td>
-                    <td style="padding: 10px; font-weight: 500;">{ranking["model_name"]}</td>
-                    <td style="padding: 10px; text-align: right; font-weight: bold;">{ranking["score"]:.1f}</td>
-                    <td style="padding: 10px; text-align: right;">{ranking["pass_rate"]:.1f}%</td>
-                    <td style="padding: 10px; text-align: right;">{ranking["avg_response_time"]:.0f}ms</td>
-                    <td style="padding: 10px; text-align: right;">${ranking["total_cost"]:.4f}</td>
+                <tr style="border-bottom: 1px solid #2d2d2d;">
+                    <td style="padding: 10px; color: #d8d9da;">#{i}</td>
+                    <td style="padding: 10px; font-weight: 500; color: #d8d9da;">{ranking["model_name"]}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold; color: #d8d9da;">{ranking["score"]:.1f}</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["pass_rate"]:.1f}%</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["compile_rate"]:.1f}%</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["avg_response_time"]:.0f}ms</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">${ranking["total_cost"]:.4f}</td>
                 </tr>
                 '''
 
@@ -663,38 +783,48 @@ class HTMLReporter:
         html += '</div>'
         return html
 
-    def _build_metric_cards(
+    def _build_summary_stats(
         self,
+        results: List[Dict[str, Any]],
         model_stats: Dict[str, Dict[str, Any]]
     ) -> str:
-        """Build metric summary cards."""
+        """Build summary stat panels."""
 
-        total_tests = sum(s["total"] for s in model_stats.values())
-        total_passed = sum(s["passed"] for s in model_stats.values())
-        total_cost = sum(sum(s["costs"]) for s in model_stats.values())
+        total_tests = len(results)
+        total_passed = sum(1 for r in results if r.get("passed", False))
+        total_cost = sum(r.get("estimated_cost", 0) for r in results)
 
         pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
 
+        # Determine colors
+        pass_color = "green" if pass_rate >= 85 else "yellow" if pass_rate >= 70 else "orange" if pass_rate >= 50 else "red"
+        cost_color = "green" if total_cost < 1.0 else "yellow" if total_cost < 5.0 else "orange" if total_cost < 10.0 else "red"
+
         return f"""
-        <div class="metric-card">
-            <div class="metric-value">{total_tests}</div>
-            <div class="metric-label">Total Tests</div>
+        <div class="panel stat-bg-{pass_color}">
+            <div class="panel-title">Pass Rate</div>
+            <div class="stat-value {pass_color}">{pass_rate:.1f}%</div>
+            <div class="stat-label">{total_passed} of {total_tests} tests passed</div>
         </div>
-        <div class="metric-card">
-            <div class="metric-value">{pass_rate:.1f}%</div>
-            <div class="metric-label">Overall Pass Rate</div>
+
+        <div class="panel">
+            <div class="panel-title">Total Tests</div>
+            <div class="stat-value">{total_tests}</div>
+            <div class="stat-label">{len(model_stats)} models evaluated</div>
         </div>
-        <div class="metric-card">
-            <div class="metric-value">${total_cost:.3f}</div>
-            <div class="metric-label">Total Cost</div>
+
+        <div class="panel stat-bg-{cost_color}">
+            <div class="panel-title">Total Cost</div>
+            <div class="stat-value {cost_color}">${total_cost:.3f}</div>
+            <div class="stat-label">API costs for all evaluations</div>
         </div>
         """
 
-    def _build_results_table(
+    def _build_model_summary_table(
         self,
         model_stats: Dict[str, Dict[str, Any]]
     ) -> str:
-        """Build detailed results table."""
+        """Build model summary table."""
 
         rows = []
 
@@ -703,13 +833,15 @@ class HTMLReporter:
             avg_response = sum(stats["response_times"]) / len(stats["response_times"]) if stats["response_times"] else 0
             total_cost = sum(stats["costs"])
 
+            pass_color = "green" if pass_rate >= 85 else "yellow" if pass_rate >= 70 else "orange" if pass_rate >= 50 else "red"
+
             rows.append(f"""
                 <tr>
                     <td>{model_name}</td>
                     <td>{stats["total"]}</td>
-                    <td class="pass">{stats["passed"]}</td>
-                    <td class="fail">{stats["failed"]}</td>
-                    <td>{pass_rate:.1f}%</td>
+                    <td><span class="badge badge-{pass_color}">{stats["passed"]}</span></td>
+                    <td><span class="badge badge-red">{stats["failed"]}</span></td>
+                    <td><span class="{pass_color}">{pass_rate:.1f}%</span></td>
                     <td>{avg_response:.0f}ms</td>
                     <td>${total_cost:.4f}</td>
                 </tr>
@@ -720,11 +852,11 @@ class HTMLReporter:
             <thead>
                 <tr>
                     <th>Model</th>
-                    <th>Total Tests</th>
+                    <th>Total</th>
                     <th>Passed</th>
                     <th>Failed</th>
                     <th>Pass Rate</th>
-                    <th>Avg Response Time</th>
+                    <th>Avg Response</th>
                     <th>Total Cost</th>
                 </tr>
             </thead>
@@ -734,62 +866,363 @@ class HTMLReporter:
         </table>
         """
 
+    def _build_test_results(self, results: List[Dict[str, Any]]) -> str:
+        """Build collapsible test results."""
+
+        html = ""
+
+        for i, result in enumerate(results):
+            passed = result.get("passed", False)
+            status_class = "passed" if passed else "failed"
+            status_icon = "✓" if passed else "✗"
+            status_color = "green" if passed else "red"
+
+            failure_reason = result.get("failure_reason", "Test failed") if not passed else "Test passed"
+
+            html += f"""
+            <div class="test-details" data-status="{status_class}" onclick="toggleTest({i})">
+                <div class="test-header">
+                    <div class="test-title">
+                        <span class="{status_color}">{status_icon}</span>
+                        {result.get("model_name", "Unknown")} -
+                        {result.get("rule_id", "Unknown")} -
+                        {result.get("test_case_id", "Unknown")}
+                    </div>
+                    <div>
+                        <span class="badge badge-{status_color}">{status_class.upper()}</span>
+                        <span class="expand-icon" id="test-icon-{i}">▼</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 5px; font-size: 12px; color: #9fa1a4;">
+                    {failure_reason}
+                </div>
+
+                <div class="test-content" id="test-content-{i}">
+                    <div class="metrics-grid">
+                        {self._build_metrics_grid(result.get("metrics", {}))}
+                        <div class="metric-item">
+                            <div class="metric-item-label">Cost</div>
+                            <div class="metric-item-value">${result.get("estimated_cost", 0):.4f}</div>
+                        </div>
+                    </div>
+
+                    <div class="code-header">Generated Code</div>
+                    <div class="code-block">
+                        <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
+                    </div>
+
+                    {self._build_expected_code_section(result)}
+                    {self._build_explanation_section(result)}
+                    {self._build_security_issues_section(result.get("metrics", {}))}
+                </div>
+            </div>
+            """
+
+        return html
+
+    def _build_metrics_grid(self, metrics: Dict[str, Any]) -> str:
+        """Build metrics grid."""
+
+        html = ""
+
+        # Response time
+        response_time = metrics.get("response_time_ms", 0)
+        html += f"""
+        <div class="metric-item">
+            <div class="metric-item-label">Response Time</div>
+            <div class="metric-item-value">{response_time:.0f}ms</div>
+        </div>
+        """
+
+        # Compilation
+        if "compiles" in metrics:
+            compiles = metrics["compiles"]
+            color = "green" if compiles else "red"
+            value = "✓" if compiles else "✗"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Compiles</div>
+                <div class="metric-item-value {color}">{value}</div>
+            </div>
+            """
+
+        # Functional correctness
+        if "functional_correctness" in metrics:
+            correct = metrics["functional_correctness"]
+            color = "green" if correct else "red"
+            value = "✓" if correct else "✗"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Functional</div>
+                <div class="metric-item-value {color}">{value}</div>
+            </div>
+            """
+
+        # Security issues
+        if "security_issues" in metrics:
+            issues = metrics["security_issues"]
+            color = "green" if issues == 0 else "orange" if issues < 3 else "red"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Security Issues</div>
+                <div class="metric-item-value {color}">{issues}</div>
+            </div>
+            """
+
+        return html
+
+    def _build_expected_code_section(self, result: Dict[str, Any]) -> str:
+        """Build expected code section if available."""
+
+        expected = result.get("expected_code")
+        if not expected:
+            return ""
+
+        return f"""
+        <div class="code-header">Expected Code</div>
+        <div class="code-block">
+            <pre>{self._escape_html(expected)}</pre>
+        </div>
+        """
+
+    def _build_explanation_section(self, result: Dict[str, Any]) -> str:
+        """Build explanation section if available."""
+
+        explanation = result.get("generated_explanation")
+        if not explanation:
+            return ""
+
+        return f"""
+        <div class="code-header">Explanation</div>
+        <div class="code-block">
+            <pre>{self._escape_html(explanation)}</pre>
+        </div>
+        """
+
+    def _build_security_issues_section(self, metrics: Dict[str, Any]) -> str:
+        """Build security issues display section (Grafana dark theme)."""
+        security_issues = metrics.get("security_issues", 0)
+        issues = metrics.get("issues", [])
+
+        if security_issues == 0 or not issues:
+            return ""
+
+        # Build issues list
+        issues_html = []
+        for issue in issues:
+            severity = issue.get("severity", "UNKNOWN")
+            issue_type = issue.get("type", "UNKNOWN")
+            description = issue.get("description", "No description")
+            line = issue.get("line")
+
+            # Color code by severity (Grafana-style)
+            if severity == "HIGH":
+                severity_color = "#f2495c"  # Red
+                severity_bg = "rgba(242, 73, 92, 0.15)"
+            elif severity == "MEDIUM":
+                severity_color = "#ff780a"  # Orange
+                severity_bg = "rgba(255, 120, 10, 0.15)"
+            else:
+                severity_color = "#f2cc0c"  # Yellow
+                severity_bg = "rgba(242, 204, 12, 0.15)"
+
+            line_info = f" (Line {line})" if line else ""
+
+            issues_html.append(f'''
+            <div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px; border: 1px solid #2d2d2d;">
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="background: {severity_color}; color: #0d1117; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
+                    <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
+                    <span style="color: #9fa1a4; font-size: 12px; margin-left: auto;">{line_info}</span>
+                </div>
+                <div style="color: #d8d9da; font-size: 13px;">{self._escape_html(description)}</div>
+            </div>
+            ''')
+
+        return f'''
+        <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
+            <div class="code-header" style="color: #f2495c; font-weight: 600;">🔒 Security Issues Found ({security_issues})</div>
+            {''.join(issues_html)}
+        </div>
+        '''
+
     def _build_charts_script(
         self,
         results: List[Dict[str, Any]],
-        model_stats: Dict[str, Dict[str, Any]]
+        model_stats: Dict[str, Dict[str, Any]],
+        rule_stats: Dict[str, Dict[str, Any]]
     ) -> str:
-        """Build JavaScript for interactive charts."""
+        """Build JavaScript for charts."""
 
-        # Comparison chart data
+        # Model pass rate data
         models = list(model_stats.keys())
         pass_rates = [
             (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
             for stats in model_stats.values()
         ]
 
+        # Rule performance data
+        rules = sorted(rule_stats.keys())
+        rule_pass_rates = {}
+        for model in models:
+            rule_pass_rates[model] = []
+            for rule in rules:
+                if model in rule_stats.get(rule, {}):
+                    stats = rule_stats[rule][model]
+                    rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+                    rule_pass_rates[model].append(rate)
+                else:
+                    rule_pass_rates[model].append(0)
+
         # Response time data
-        response_time_data = {
-            model: stats["response_times"]
-            for model, stats in model_stats.items()
-        }
+        response_times = {model: stats["response_times"] for model, stats in model_stats.items()}
+
+        # Cost data
+        costs = [sum(stats["costs"]) for stats in model_stats.values()]
 
         return f"""
-        // Model comparison chart
-        var comparisonData = [{{
-            x: {json.dumps(models)},
-            y: {json.dumps(pass_rates)},
+        // Model pass rate chart
+        const modelPassRateCtx = document.getElementById('modelPassRateChart').getContext('2d');
+        new Chart(modelPassRateCtx, {{
             type: 'bar',
-            marker: {{color: '#4CAF50'}}
-        }}];
+            data: {{
+                labels: {json.dumps(models)},
+                datasets: [{{
+                    label: 'Pass Rate',
+                    data: {json.dumps(pass_rates)},
+                    backgroundColor: 'rgba(115, 191, 105, 0.6)',
+                    borderColor: 'rgba(115, 191, 105, 1)',
+                    borderWidth: 1
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: false }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                return context.parsed.y.toFixed(1) + '%';
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
 
-        var comparisonLayout = {{
-            title: 'Pass Rate by Model',
-            xaxis: {{title: 'Model'}},
-            yaxis: {{title: 'Pass Rate (%)', range: [0, 100]}}
-        }};
-
-        Plotly.newPlot('comparison-chart', comparisonData, comparisonLayout);
-
-        // Response time distribution
-        var responseTimeData = {json.dumps([
-            {
-                "x": times,
-                "type": "box",
-                "name": model
-            }
-            for model, times in response_time_data.items()
-        ])};
-
-        var responseTimeLayout = {{
-            title: 'Response Time Distribution',
-            yaxis: {{title: 'Response Time (ms)'}}
-        }};
-
-        Plotly.newPlot('response-time-chart', responseTimeData, responseTimeLayout);
-
-        // Per-rule performance
+        // Rule performance chart with dropdown selector
         {self._build_per_rule_chart_data(results, models)}
+
+        // Response time chart
+        const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+        new Chart(responseTimeCtx, {{
+            type: 'line',
+            data: {{
+                labels: Array.from({{ length: Math.max(...{json.dumps([len(times) for times in response_times.values()])}) }}, (_, i) => i + 1),
+                datasets: {json.dumps([
+                    {
+                        "label": model,
+                        "data": times,
+                        "borderColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 1)",
+                        "backgroundColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 0.1)",
+                        "tension": 0.4,
+                        "fill": True
+                    }
+                    for i, (model, times) in enumerate(response_times.items())
+                ])}
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        position: 'top',
+                        labels: {{ color: '#d8d9da', padding: 15 }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + 'ms';
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
+
+        // Cost chart
+        const costCtx = document.getElementById('costChart').getContext('2d');
+        new Chart(costCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(models)},
+                datasets: [{{
+                    label: 'Total Cost',
+                    data: {json.dumps(costs)},
+                    backgroundColor: 'rgba(255, 120, 10, 0.6)',
+                    borderColor: 'rgba(255, 120, 10, 1)',
+                    borderWidth: 1
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: false }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                return '$' + context.parsed.y.toFixed(4);
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        ticks: {{
+                            callback: function(value) {{
+                                return '$' + value.toFixed(3);
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
         """
 
     def _build_per_rule_chart_data(self, results: List[Dict[str, Any]], models: List[str]) -> str:
@@ -815,13 +1248,31 @@ class HTMLReporter:
         rule_data_map = {}
         sorted_rules = sorted(rule_stats.keys())
 
-        # For "all rules" view
+        # Calculate average pass rate per rule (across all models)
+        rule_avg_pass_rates = {}
+        for rule_id in sorted_rules:
+            total_tests = 0
+            total_passed = 0
+            for model in models:
+                if model in rule_stats[rule_id]:
+                    total_tests += rule_stats[rule_id][model]["total"]
+                    total_passed += rule_stats[rule_id][model]["passed"]
+            avg_pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
+            rule_avg_pass_rates[rule_id] = avg_pass_rate
+
+        # Sort rules by pass rate (ascending) to identify worst performers
+        sorted_by_performance = sorted(rule_avg_pass_rates.items(), key=lambda x: x[1])
+
+        # For "all rules" view, show top 10 worst performing rules
+        worst_10_rules = [rule_id for rule_id, _ in sorted_by_performance[:10]]
+
+        # Build "all" view with worst 10 rules
         all_traces = []
         for model in models:
             rule_ids = []
             pass_rates = []
 
-            for rule_id in sorted_rules:
+            for rule_id in worst_10_rules:
                 rule_ids.append(rule_id)
                 stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
                 pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
@@ -836,7 +1287,7 @@ class HTMLReporter:
 
         rule_data_map["all"] = all_traces
 
-        # For individual rules
+        # For individual rules, show model performance
         for rule_id in sorted_rules:
             rule_traces = []
             for model in models:
@@ -857,41 +1308,148 @@ class HTMLReporter:
         // Store all rule performance data
         var allRuleData = {json.dumps(rule_data_map)};
         var ruleIds = {json.dumps(sorted_rules)};
+        var ruleAvgPassRates = {json.dumps(rule_avg_pass_rates)};
 
         // Populate dropdown
         var selector = document.getElementById('rule-selector');
         ruleIds.forEach(function(ruleId) {{
             var option = document.createElement('option');
             option.value = ruleId;
-            option.textContent = ruleId;
+            var avgRate = ruleAvgPassRates[ruleId].toFixed(1);
+            option.textContent = ruleId + ' (' + avgRate + '% avg pass rate)';
             selector.appendChild(option);
         }});
 
         // Initial chart layout
         var rulePerformanceLayout = {{
-            title: 'Pass Rate by Rule (All Rules)',
-            xaxis: {{title: 'Rule ID'}},
-            yaxis: {{title: 'Pass Rate (%)', range: [0, 100]}},
-            barmode: 'group'
+            title: {{
+                text: 'Pass Rate by Rule (Top 10 Worst Performing)',
+                font: {{ color: '#d8d9da' }}
+            }},
+            xaxis: {{
+                title: {{ text: 'Rule ID', font: {{ color: '#d8d9da' }} }},
+                tickangle: -45,
+                tickfont: {{ color: '#9fa1a4' }},
+                gridcolor: '#2d2d2d'
+            }},
+            yaxis: {{
+                title: {{ text: 'Pass Rate (%)', font: {{ color: '#d8d9da' }} }},
+                range: [0, 100],
+                tickfont: {{ color: '#9fa1a4' }},
+                gridcolor: '#2d2d2d'
+            }},
+            barmode: 'group',
+            plot_bgcolor: '#181b1f',
+            paper_bgcolor: '#181b1f',
+            legend: {{
+                font: {{ color: '#d8d9da' }}
+            }}
         }};
+
+        // Chart.js colors for models
+        const modelColors = [
+            {{ bg: 'rgba(115, 191, 105, 0.6)', border: 'rgba(115, 191, 105, 1)' }},  // Green
+            {{ bg: 'rgba(242, 204, 12, 0.6)', border: 'rgba(242, 204, 12, 1)' }},    // Yellow
+            {{ bg: 'rgba(114, 159, 207, 0.6)', border: 'rgba(114, 159, 207, 1)' }}   // Blue
+        ];
 
         // Function to update chart based on selection
         function updateRuleChart(selectedRule) {{
             var data = allRuleData[selectedRule];
 
             if (selectedRule === 'all') {{
-                rulePerformanceLayout.title = 'Pass Rate by Rule (All Rules)';
-                rulePerformanceLayout.xaxis.title = 'Rule ID';
+                rulePerformanceLayout.title.text = 'Pass Rate by Rule (Top 10 Worst Performing)';
+                rulePerformanceLayout.xaxis.title.text = 'Rule ID';
                 rulePerformanceLayout.barmode = 'group';
                 rulePerformanceLayout.showlegend = true;
             }} else {{
-                rulePerformanceLayout.title = 'Pass Rate for ' + selectedRule;
-                rulePerformanceLayout.xaxis.title = 'Model';
+                var avgRate = ruleAvgPassRates[selectedRule].toFixed(1);
+                rulePerformanceLayout.title.text = selectedRule + ' - Pass Rate by Model (Avg: ' + avgRate + '%)';
+                rulePerformanceLayout.xaxis.title.text = 'Model';
                 rulePerformanceLayout.barmode = 'group';
                 rulePerformanceLayout.showlegend = false;
             }}
 
-            Plotly.newPlot('rule-performance-chart', data, rulePerformanceLayout);
+            // Convert to Chart.js format
+            const ctx = document.getElementById('rulePerformanceChart').getContext('2d');
+
+            // Destroy existing chart if it exists
+            if (window.ruleChart) {{
+                window.ruleChart.destroy();
+            }}
+
+            // Extract labels and datasets
+            let labels = [];
+            let datasets = [];
+
+            if (selectedRule === 'all') {{
+                // Multiple models, multiple rules
+                labels = data[0].x;
+                datasets = data.map((trace, idx) => ({{
+                    label: trace.name,
+                    data: trace.y,
+                    backgroundColor: modelColors[idx % modelColors.length].bg,
+                    borderColor: modelColors[idx % modelColors.length].border,
+                    borderWidth: 1
+                }}));
+            }} else {{
+                // Multiple models, single rule
+                labels = data.map(trace => trace.x[0]);
+                datasets = [{{
+                    label: 'Pass Rate',
+                    data: data.map(trace => trace.y[0]),
+                    backgroundColor: modelColors.map(c => c.bg),
+                    borderColor: modelColors.map(c => c.border),
+                    borderWidth: 1
+                }}];
+            }}
+
+            window.ruleChart = new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: labels,
+                    datasets: datasets
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{
+                            display: selectedRule === 'all',
+                            position: 'top',
+                            labels: {{ color: '#d8d9da', padding: 15 }}
+                        }},
+                        tooltip: {{
+                            callbacks: {{
+                                label: function(context) {{
+                                    return (context.dataset.label || '') + ': ' + context.parsed.y.toFixed(1) + '%';
+                                }}
+                            }}
+                        }}
+                    }},
+                    scales: {{
+                        y: {{
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {{
+                                callback: function(value) {{
+                                    return value + '%';
+                                }},
+                                color: '#9fa1a4'
+                            }},
+                            grid: {{ color: '#2d2d2d' }}
+                        }},
+                        x: {{
+                            ticks: {{
+                                color: '#9fa1a4',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }},
+                            grid: {{ color: '#2d2d2d' }}
+                        }}
+                    }}
+                }}
+            }});
         }}
 
         // Add change event listener
@@ -899,416 +1457,42 @@ class HTMLReporter:
             updateRuleChart(this.value);
         }});
 
-        // Initial render with all rules
+        // Initial render with worst 10 rules
         updateRuleChart('all');
         """
 
-    def _build_all_results_section(self, results: List[Dict[str, Any]]) -> str:
-        """Build section showing all test results (both passing and failing)."""
-
-        if not results:
-            return "<p>No test results available.</p>"
-
-        passed_count = sum(1 for r in results if r.get("passed", False))
-        failed_count = len(results) - passed_count
-
-        # Build filter buttons
-        filter_html = '<div class="filter-buttons">'
-        filter_html += f'<button class="result-filter-btn active" onclick="filterResults(\'all\')">All ({len(results)})</button>'
-        filter_html += f'<button class="result-filter-btn" onclick="filterResults(\'passed\')">Passed ({passed_count})</button>'
-        filter_html += f'<button class="result-filter-btn" onclick="filterResults(\'failed\')">Failed ({failed_count})</button>'
-        filter_html += '</div>'
-
-        # Build result cards
-        cards_html = '<div id="all-results">'
-
-        for i, result in enumerate(results):
-            passed = result.get("passed", False)
-            status = "passed" if passed else "failed"
-            card_class = f"test-card {status}"
-
-            status_icon = "✓" if passed else "✗"
-            status_class = "success-message" if passed else "failure-reason"
-            status_text = "Test passed" if passed else result.get("failure_reason", "Test failed")
-
-            cards_html += f'''
-            <div class="{card_class}" data-status="{status}">
-                <div class="failure-header" onclick="toggleResult({i})">
-                    <div>
-                        <span class="failure-title">
-                            {result.get("model_name", "Unknown")} -
-                            {result.get("rule_id", "Unknown")} -
-                            {result.get("test_case_id", "Unknown")}
-                        </span>
-                        <span class="badge {'badge-success' if passed else 'badge-error'}">{status.upper()}</span>
-                    </div>
-                    <span class="expand-icon" id="result-icon-{i}">▼</span>
-                </div>
-                <div class="{status_class}">
-                    {status_icon} {status_text}
-                </div>
-                <div class="failure-details" id="result-details-{i}">
-                    {self._build_failure_explanation(result)}
-                    <div class="code-comparison">
-                        <div class="code-block">
-                            <h4>Generated Code</h4>
-                            {'<div class="diff-legend">Legend: <span style="background: #ffebee; padding: 2px 4px;">🔴 Incorrect/Different Line</span> <span style="background: #fff3e0; padding: 2px 4px;">⚠️ Extra Line</span></div>' if result.get("expected_code") and not result.get("passed") else ''}
-                            <pre>{self._generate_code_diff_html(result.get("generated_code", ""), result.get("expected_code", "")) if result.get("expected_code") and not result.get("passed") else self._escape_html(result.get("generated_code", "N/A"))}</pre>
-                        </div>
-                        <div class="code-block">
-                            <h4>{'Expected Code' if result.get("expected_code") and not result.get("passed") else 'Explanation'}</h4>
-                            <pre>{self._escape_html(result.get("expected_code") or result.get("generated_explanation", "No explanation provided"))}</pre>
-                        </div>
-                    </div>
-                    {self._build_compilation_error_section(result.get("metrics", {}))}
-                    {self._build_security_issues_section(result.get("metrics", {}))}
-                    {self._build_quality_metrics_section(result.get("metrics", {}))}
-                    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
-                        <strong>Metrics:</strong><br>
-                        Response Time: {result.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
-                        Cost: ${result.get("estimated_cost", 0):.4f}
-                        {self._build_metric_details(result.get("metrics", {}))}
-                    </div>
-                </div>
-            </div>
-            '''
-
-        cards_html += '</div>'
-
-        return filter_html + cards_html
-
-    def _build_failure_section(self, results: List[Dict[str, Any]]) -> str:
-        """Build interactive failure analysis section."""
-
-        failures = [r for r in results if not r.get("passed", False)]
-
-        if not failures:
-            return """
-            <p style="color: #4CAF50; font-size: 18px; text-align: center; padding: 40px;">
-                🎉 No failures detected! All test cases passed.
-            </p>
-            """
-
-        # Categorize failures
-        failure_categories = self._categorize_failures(failures)
-
-        # Build filter buttons
-        filter_html = '<div class="filter-buttons">'
-        filter_html += '<button class="filter-btn active" onclick="filterFailures(\'all\')">All ({0})</button>'.format(len(failures))
-
-        for category, count in failure_categories.items():
-            filter_html += f'<button class="filter-btn" onclick="filterFailures(\'{category}\')">{category.title()} ({count})</button>'
-
-        filter_html += '</div>'
-
-        # Build failure cards
-        cards_html = '<div id="failure-cards">'
-
-        for i, failure in enumerate(failures):
-            category = self._get_failure_category(failure)
-            badge_class = f"badge-{category}"
-
-            cards_html += f'''
-            <div class="failure-card" data-category="{category}">
-                <div class="failure-header" onclick="toggleFailure({i})">
-                    <div>
-                        <span class="failure-title">
-                            {failure.get("model_name", "Unknown")} -
-                            {failure.get("rule_id", "Unknown")} -
-                            {failure.get("test_case_id", "Unknown")}
-                        </span>
-                        <span class="badge {badge_class}">{category.upper()}</span>
-                    </div>
-                    <span class="expand-icon" id="icon-{i}">▼</span>
-                </div>
-                <div class="failure-reason">
-                    ❌ {failure.get("failure_reason", "Unknown failure")}
-                </div>
-                <div class="failure-details" id="details-{i}">
-                    {self._build_failure_explanation(failure)}
-                    <div class="code-comparison">
-                        <div class="code-block">
-                            <h4>Generated Code</h4>
-                            {'<div class="diff-legend">Legend: <span style="background: #ffebee; padding: 2px 4px;">🔴 Incorrect/Different Line</span> <span style="background: #fff3e0; padding: 2px 4px;">⚠️ Extra Line</span></div>' if failure.get("expected_code") else ''}
-                            <pre>{self._generate_code_diff_html(failure.get("generated_code", ""), failure.get("expected_code", ""))}</pre>
-                        </div>
-                        <div class="code-block">
-                            <h4>{'Expected Code' if failure.get("expected_code") else 'Explanation'}</h4>
-                            <pre>{self._escape_html(failure.get("expected_code") or failure.get("generated_explanation", "No explanation provided"))}</pre>
-                        </div>
-                    </div>
-                    {self._build_compilation_error_section(failure.get("metrics", {}))}
-                    {self._build_security_issues_section(failure.get("metrics", {}))}
-                    {self._build_quality_metrics_section(failure.get("metrics", {}))}
-                    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
-                        <strong>Metrics:</strong><br>
-                        Response Time: {failure.get("metrics", {}).get("response_time_ms", 0):.0f}ms |
-                        Cost: ${failure.get("estimated_cost", 0):.4f}
-                        {self._build_metric_details(failure.get("metrics", {}))}
-                    </div>
-                </div>
-            </div>
-            '''
-
-        cards_html += '</div>'
-
-        return filter_html + cards_html
-
-    def _categorize_failures(self, failures: List[Dict[str, Any]]) -> Dict[str, int]:
-        """Categorize failures by type."""
-        categories = {}
-
-        for failure in failures:
-            category = self._get_failure_category(failure)
-            categories[category] = categories.get(category, 0) + 1
-
-        return categories
-
-    def _get_failure_category(self, failure: Dict[str, Any]) -> str:
-        """Determine failure category from failure reason."""
-        reason = failure.get("failure_reason", "").lower()
-
-        if "compil" in reason:
-            return "compilation"
-        elif "regression" in reason or "introduc" in reason:
-            return "regression"
-        elif "security" in reason:
-            return "security"
-        elif "resolve" in reason or "violation" in reason:
-            return "error"
-        else:
-            return "error"
-
-    def _build_failure_explanation(self, result: Dict[str, Any]) -> str:
-        """Build detailed failure explanation based on metrics and failure reason."""
-        if result.get("passed", False):
-            return ""
-
-        metrics = result.get("metrics", {})
-        failure_reason = result.get("failure_reason", "Unknown failure")
-
-        explanation_parts = []
-
-        # Main failure reason
-        explanation_parts.append(f"<strong>Primary Issue:</strong> {failure_reason}")
-
-        # Detailed breakdown based on metrics
-        if not metrics.get("compiles", True):
-            explanation_parts.append("<strong>Compilation:</strong> The generated code failed to compile. This indicates syntax errors or missing dependencies.")
-
-        if not metrics.get("functional_correctness", True):
-            explanation_parts.append("<strong>Functional Correctness:</strong> The code does not resolve the original static analysis violation.")
-
-        if metrics.get("introduces_violations", False):
-            violation_count = metrics.get("new_violation_count", 0)
-            explanation_parts.append(f"<strong>New Violations:</strong> The generated code introduces {violation_count} new static analysis violation(s).")
-
-        if metrics.get("high_severity_security", 0) > 0:
-            security_count = metrics.get("high_severity_security", 0)
-            explanation_parts.append(f"<strong>Security Issues:</strong> {security_count} high-severity security issue(s) detected in the generated code.")
-
-        if not metrics.get("matches_expected", True) and "matches_expected" in metrics:
-            explanation_parts.append("<strong>Expected Output:</strong> The generated code does not match the expected fix pattern.")
-
-        # Add quality concerns if relevant
-        if metrics.get("cyclomatic_complexity", 0) > 20:
-            explanation_parts.append(f"<strong>Code Complexity:</strong> High cyclomatic complexity ({metrics['cyclomatic_complexity']}) may indicate overly complex code.")
-
-        if len(explanation_parts) > 1:  # More than just the primary issue
-            html = '<div style="margin-top: 15px; padding: 15px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 4px;">'
-            html += '<h4 style="margin: 0 0 10px 0; color: #c62828;">🔍 Failure Explanation</h4>'
-            html += '<div style="line-height: 1.8;">'
-            for part in explanation_parts:
-                html += f'<div style="margin: 5px 0;">• {part}</div>'
-            html += '</div></div>'
-            return html
-
-        return ""
-
-    def _build_compilation_error_section(self, metrics: Dict[str, Any]) -> str:
-        """Build compilation error display section."""
-        compilation_error = metrics.get("compilation_error", "")
-
-        if not compilation_error:
-            return ""
-
-        return f'''
-        <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
-            <h4 style="margin: 0 0 10px 0; color: #e65100;">⚠️ Compilation Error</h4>
-            <pre style="background: #fff; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 11px; margin: 0;">{self._escape_html(compilation_error)}</pre>
-        </div>
-        '''
-
-    def _build_security_issues_section(self, metrics: Dict[str, Any]) -> str:
-        """Build security issues display section."""
-        security_issues = metrics.get("security_issues", 0)
-        issues = metrics.get("issues", [])
-
-        if security_issues == 0 or not issues:
-            return ""
-
-        # Build issues list
-        issues_html = []
-        for issue in issues:
-            severity = issue.get("severity", "UNKNOWN")
-            issue_type = issue.get("type", "UNKNOWN")
-            description = issue.get("description", "No description")
-            line = issue.get("line")
-
-            # Color code by severity
-            if severity == "HIGH":
-                severity_color = "#d32f2f"
-                severity_bg = "#ffebee"
-            elif severity == "MEDIUM":
-                severity_color = "#f57c00"
-                severity_bg = "#fff3e0"
-            else:
-                severity_color = "#1976d2"
-                severity_bg = "#e3f2fd"
-
-            line_info = f" (Line {line})" if line else ""
-
-            issues_html.append(f'''
-            <div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px;">
-                <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <span style="background: {severity_color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
-                    <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
-                    <span style="color: #666; font-size: 12px; margin-left: auto;">{line_info}</span>
-                </div>
-                <div style="color: #333; font-size: 13px;">{self._escape_html(description)}</div>
-            </div>
-            ''')
-
-        return f'''
-        <div style="margin-top: 15px; padding: 15px; background: #ffebee; border-left: 4px solid #d32f2f; border-radius: 4px;">
-            <h4 style="margin: 0 0 10px 0; color: #c62828;">🔒 Security Issues Found ({security_issues})</h4>
-            {''.join(issues_html)}
-        </div>
-        '''
-
-    def _build_quality_metrics_section(self, metrics: Dict[str, Any]) -> str:
-        """Build quality metrics display section."""
-        has_quality_metrics = any([
-            metrics.get("cyclomatic_complexity") is not None,
-            metrics.get("pylint_score") is not None,
-            metrics.get("maintainability_index") is not None,
-            metrics.get("style_violations") is not None,
-            metrics.get("explanation_quality_score") is not None,
-            metrics.get("comment_density") is not None
-        ])
-
-        if not has_quality_metrics:
-            return ""
-
-        quality_html = '<div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 4px;">'
-        quality_html += '<h4 style="margin: 0 0 10px 0; color: #2e7d32;">📊 Code Quality Metrics</h4>'
-        quality_html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">'
-
-        if metrics.get("cyclomatic_complexity") is not None:
-            complexity = metrics["cyclomatic_complexity"]
-            color = "#4CAF50" if complexity <= 10 else "#ff9800" if complexity <= 20 else "#f44336"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Cyclomatic Complexity</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{complexity}</div>
-            </div>
-            '''
-
-        if metrics.get("pylint_score") is not None:
-            score = metrics["pylint_score"]
-            color = "#4CAF50" if score >= 7.0 else "#ff9800" if score >= 5.0 else "#f44336"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Pylint Score</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{score:.1f}/10</div>
-            </div>
-            '''
-
-        if metrics.get("maintainability_index") is not None:
-            mi = metrics["maintainability_index"]
-            color = "#4CAF50" if mi >= 65 else "#ff9800" if mi >= 40 else "#f44336"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Maintainability Index</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{mi:.1f}/100</div>
-            </div>
-            '''
-
-        if metrics.get("style_violations") is not None:
-            violations = metrics["style_violations"]
-            color = "#4CAF50" if violations == 0 else "#ff9800"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Style Violations</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{violations}</div>
-            </div>
-            '''
-
-        if metrics.get("explanation_quality_score") is not None:
-            score = metrics["explanation_quality_score"]
-            color = "#4CAF50" if score >= 7.0 else "#ff9800" if score >= 5.0 else "#f44336"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Explanation Quality</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{score:.1f}/10</div>
-            </div>
-            '''
-
-        if metrics.get("comment_density") is not None:
-            density = metrics["comment_density"]
-            percentage = density * 100
-            # Good range is 10-30% comments
-            color = "#4CAF50" if 10 <= percentage <= 30 else "#ff9800" if percentage > 0 else "#999"
-            quality_html += f'''
-            <div style="background: #fff; padding: 10px; border-radius: 4px;">
-                <div style="font-size: 12px; color: #666;">Comment Density</div>
-                <div style="font-size: 20px; font-weight: bold; color: {color};">{percentage:.1f}%</div>
-            </div>
-            '''
-
-        quality_html += '</div></div>'
-        return quality_html
-
-    def _build_metric_details(self, metrics: Dict[str, Any]) -> str:
-        """Build additional metric details for failure card."""
-        details = []
-
-        if metrics.get("compiles") is not None:
-            details.append(f"Compiles: {'✓' if metrics['compiles'] else '✗'}")
-
-        if metrics.get("functional_correctness") is not None:
-            details.append(f"Functional: {'✓' if metrics['functional_correctness'] else '✗'}")
-
-        if metrics.get("introduces_violations"):
-            details.append(f"⚠️ Introduces {metrics.get('new_violation_count', 0)} new violations")
-
-        # Security metrics (always show)
-        if "security_issues" in metrics:
-            total = metrics.get("security_issues", 0)
-            high = metrics.get("high_severity_security", 0)
-            if total == 0:
-                details.append(f"Security: ✓")
-            elif high > 0:
-                details.append(f"🔒 {high} HIGH security issues")
-            else:
-                details.append(f"🔒 {total} security issues")
-
-        # Quality metrics
-        if metrics.get("cyclomatic_complexity") is not None:
-            details.append(f"Complexity: {metrics['cyclomatic_complexity']}")
-
-        if metrics.get("pylint_score") is not None:
-            details.append(f"Pylint: {metrics['pylint_score']:.1f}/10")
-
-        if metrics.get("maintainability_index") is not None:
-            details.append(f"Maintainability: {metrics['maintainability_index']:.1f}/100")
-
-        if metrics.get("style_violations") is not None and metrics['style_violations'] > 0:
-            details.append(f"Style Issues: {metrics['style_violations']}")
-
-        if details:
-            return " | " + " | ".join(details)
-        return ""
+    def _build_interaction_script(self) -> str:
+        """Build JavaScript for interactions."""
+
+        return """
+        // Toggle test details
+        function toggleTest(index) {
+            const content = document.getElementById('test-content-' + index);
+            const icon = document.getElementById('test-icon-' + index);
+
+            content.classList.toggle('expanded');
+            icon.classList.toggle('expanded');
+        }
+
+        // Filter tests
+        function filterTests(status) {
+            const tests = document.querySelectorAll('.test-details');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter tests
+            tests.forEach(test => {
+                if (status === 'all' || test.dataset.status === status) {
+                    test.style.display = 'block';
+                } else {
+                    test.style.display = 'none';
+                }
+            });
+        }
+        """
 
     def _escape_html(self, text: str) -> str:
         """Escape HTML special characters."""
@@ -1320,103 +1504,3 @@ class HTMLReporter:
                 .replace(">", "&gt;")
                 .replace('"', "&quot;")
                 .replace("'", "&#39;"))
-
-    def _generate_code_diff_html(self, generated: str, expected: str) -> str:
-        """
-        Generate HTML showing code with highlighted differences.
-
-        Args:
-            generated: Generated code
-            expected: Expected code
-
-        Returns:
-            HTML with highlighted differences
-        """
-        if not generated or not expected:
-            return self._escape_html(generated or "N/A")
-
-        gen_lines = generated.strip().split('\n')
-        exp_lines = expected.strip().split('\n')
-
-        # Simple line-by-line comparison
-        html_lines = []
-        max_lines = max(len(gen_lines), len(exp_lines))
-
-        for i in range(max_lines):
-            gen_line = gen_lines[i] if i < len(gen_lines) else None
-            exp_line = exp_lines[i] if i < len(exp_lines) else None
-
-            if gen_line is None:
-                # Missing line in generated code
-                html_lines.append(f'<span style="background-color: #ffebee; display: block; margin: 0; padding: 2px 0;">{self._escape_html("")}</span>')
-            elif exp_line is None:
-                # Extra line in generated code
-                html_lines.append(f'<span style="background-color: #fff3e0; display: block; margin: 0; padding: 2px 0;">{self._escape_html(gen_line)}</span>')
-            elif gen_line.strip() != exp_line.strip():
-                # Different line
-                html_lines.append(f'<span style="background-color: #ffebee; display: block; margin: 0; padding: 2px 0;">{self._escape_html(gen_line)}</span>')
-            else:
-                # Matching line
-                html_lines.append(self._escape_html(gen_line))
-
-        return '\n'.join(html_lines)
-
-    def _build_interaction_script(self) -> str:
-        """Build JavaScript for interactive features."""
-        return """
-        // Toggle failure details
-        function toggleFailure(index) {
-            const details = document.getElementById('details-' + index);
-            const icon = document.getElementById('icon-' + index);
-
-            details.classList.toggle('expanded');
-            icon.classList.toggle('expanded');
-        }
-
-        // Filter failures by category
-        function filterFailures(category) {
-            const cards = document.querySelectorAll('.failure-card');
-            const buttons = document.querySelectorAll('.filter-btn');
-
-            // Update active button
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Filter cards
-            cards.forEach(card => {
-                if (category === 'all' || card.dataset.category === category) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-
-        // Toggle all results
-        function toggleResult(index) {
-            const details = document.getElementById('result-details-' + index);
-            const icon = document.getElementById('result-icon-' + index);
-
-            details.classList.toggle('expanded');
-            icon.classList.toggle('expanded');
-        }
-
-        // Filter all results by status
-        function filterResults(status) {
-            const cards = document.querySelectorAll('.test-card');
-            const buttons = document.querySelectorAll('.result-filter-btn');
-
-            // Update active button
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Filter cards
-            cards.forEach(card => {
-                if (status === 'all' || card.dataset.status === status) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-        """

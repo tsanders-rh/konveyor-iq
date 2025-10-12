@@ -27,7 +27,6 @@ from evaluators import (
     ExplainabilityEvaluator,
 )
 from reporters import HTMLReporter, MarkdownReporter
-from reporters.html_reporter_grafana import HTMLReporterGrafana
 
 
 class EvaluationEngine:
@@ -464,12 +463,6 @@ def main():
         metavar="N",
         help="Limit evaluation to first N test cases (useful for quick testing)"
     )
-    parser.add_argument(
-        "--style",
-        choices=["classic", "grafana"],
-        default="classic",
-        help="HTML report style (classic or grafana dark theme)"
-    )
 
     args = parser.parse_args()
 
@@ -528,15 +521,10 @@ def main():
         print(f"  → file://{md_path}")
 
     if args.format in ["html", "both"]:
-        # Select reporter style
-        if args.style == "grafana":
-            html_reporter = HTMLReporterGrafana(str(output_dir))
-        else:
-            html_reporter = HTMLReporter(str(output_dir))
-
+        html_reporter = HTMLReporter(str(output_dir))
         html_report = html_reporter.generate_report(results, report_config)
         html_path = Path(html_report).absolute()
-        print(f"HTML report ({args.style} style): {html_report}")
+        print(f"HTML report: {html_report}")
         print(f"  → file://{html_path}")
 
     print()
