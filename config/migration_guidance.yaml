@@ -1,0 +1,79 @@
+# Migration-Specific Guidance
+#
+# This file contains migration guidance for different source/target technology pairs.
+# The guidance is injected into test generation prompts to help LLMs produce
+# better migration code examples.
+#
+# Structure:
+#   - source: Source technology (e.g., java-ee, springboot, eap7)
+#   - target: Target technology (e.g., quarkus, eap8)
+#   - base_guidance: Core migration rules and target framework info
+#   - specific_patterns: Array of specific pattern guidance (optional)
+#
+# Usage:
+#   python scripts/generate_tests.py --source java-ee --target quarkus
+#   → Uses java-ee-to-quarkus guidance
+
+migrations:
+  # Java EE to Quarkus
+  - source: java-ee
+    target: quarkus
+    base_guidance: |
+      MIGRATION TARGET: Quarkus with Jakarta EE APIs
+      - Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
+      - Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
+      - Use Jakarta Persistence and Jakarta Transactions
+      - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
+
+    specific_patterns:
+      - name: MESSAGING MIGRATIONS
+        guidance: |
+          - @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming annotation)
+          - DO NOT convert messaging to JAX-RS REST endpoints (@Path, @POST, etc.)
+          - DO NOT use JMSContext or Queue injection for messaging
+          - Use org.eclipse.microprofile.reactive.messaging.Incoming for message consumers
+
+      - name: SINGLETON AND STARTUP MIGRATIONS
+        guidance: |
+          - @Singleton (javax.ejb) → @ApplicationScoped (jakarta.enterprise.context)
+          - @Startup → Use @Observes StartupEvent pattern
+          - For startup logic: Add parameter "@Observes StartupEvent event" to init method
+          - Import: io.quarkus.runtime.StartupEvent and jakarta.enterprise.event.Observes
+          - DO NOT use @PostConstruct as a replacement for @Startup
+
+  # JBoss EAP 7 to EAP 8
+  - source: eap7
+    target: eap8
+    base_guidance: |
+      MIGRATION TARGET: JBoss EAP 8 with Jakarta EE 10
+      - Use Jakarta EE 10 packages (jakarta.*) instead of Java EE (javax.*)
+      - Follow EAP 8 configuration best practices
+      - Update deprecated APIs to their EAP 8 equivalents
+
+    specific_patterns: []
+
+  # Spring Boot to Quarkus
+  - source: springboot
+    target: quarkus
+    base_guidance: |
+      MIGRATION TARGET: Quarkus
+      - Replace Spring annotations with Quarkus/Jakarta EE equivalents:
+        - @Service, @Component → @ApplicationScoped
+        - @Autowired → @Inject
+        - @Repository → @ApplicationScoped with CDI
+        - @RestController → @Path (JAX-RS)
+        - @RequestMapping → @Path, @GET, @POST, etc.
+      - Use MicroProfile Config instead of @ConfigurationProperties
+      - Use Quarkus Panache for data access instead of Spring Data JPA
+      - DO NOT use Spring Framework classes in the fixed code
+
+    specific_patterns: []
+
+  # Generic fallback (no specific source/target)
+  - source: null
+    target: null
+    base_guidance: |
+      Please migrate the code according to the rule violation and guidance provided.
+      Follow the target framework's best practices and conventions.
+
+    specific_patterns: []

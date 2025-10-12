@@ -155,6 +155,9 @@ public class {class_name} {{
                 print(f"Warning: Local rulesets path does not exist: {self.local_rulesets_path}")
             self.github_headers = {}  # Not needed for local files
 
+        # Load migration guidance from config
+        self.migration_guidance = self._load_migration_guidance()
+
         # Initialize model for auto-generation if requested
         if auto_generate:
             if not model_name:
@@ -1204,130 +1207,137 @@ Respond with ONLY the fixed Java code, no explanations."""
         # Remove .yaml extension
         return filename.replace('.yaml', '')
 
+    def _load_migration_guidance(self) -> List[Dict[str, Any]]:
+        """Load migration guidance from config file."""
+        config_path = Path(__file__).parent.parent / "config" / "migration_guidance.yaml"
+
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                return config.get('migrations', [])
+        except FileNotFoundError:
+            print(f"Warning: Migration guidance config not found at {config_path}")
+            print("Using fallback generic prompts.")
+            return []
+        except Exception as e:
+            print(f"Warning: Failed to load migration guidance: {e}")
+            print("Using fallback generic prompts.")
+            return []
+
     def _generate_prompt_for_migration(self, source: Optional[str], target: Optional[str]) -> Optional[str]:
         """Generate migration-specific prompt template based on source/target."""
 
-        # Prompt templates for different migration scenarios
-        prompts = {
-            # Quarkus migrations
-            ('java-ee', 'quarkus'): """You are helping migrate Java EE code to Quarkus based on static analysis rules.
+        # Build prompt from migration guidance config
+        guidance_entry = self._find_guidance(source, target)
 
-MIGRATION TARGET: Quarkus with Jakarta EE APIs
-- Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
-- Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
-- Use Jakarta Persistence and Jakarta Transactions
-- DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
+        if guidance_entry:
+            return self._build_prompt_from_guidance(guidance_entry)
 
-Rule Violation:
-{rule_description}
+        # Fallback to generic prompt
+        return self._build_generic_prompt()
 
-Konveyor Migration Guidance:
-{konveyor_message}
+    def _find_guidance(self, source: Optional[str], target: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Find matching guidance entry for source/target pair."""
 
-Original Code:
-```{language}
-{code_snippet}
-```
+        # Try exact match first
+        for entry in self.migration_guidance:
+            if entry['source'] == source and entry['target'] == target:
+                return entry
 
-Context: {context}
+        # Try target-only match if no source specified
+        if target and not source:
+            for entry in self.migration_guidance:
+                if entry['target'] == target and entry['source'] is None:
+                    return entry
 
-Please provide:
-1. The COMPLETE corrected code that resolves the violation (include ALL original code)
-2. A brief explanation of the changes made
+        # Try fallback (null source and target)
+        for entry in self.migration_guidance:
+            if entry['source'] is None and entry['target'] is None:
+                return entry
 
-IMPORTANT:
-- Provide the ENTIRE class with ALL fields and methods, not just the parts you changed
-- Use Jakarta EE (jakarta.*) packages, not Spring Framework
-- Follow Quarkus best practices
+        return None
 
-Format your response as:
-FIXED CODE:
-```{language}
-[your complete fixed code here]
-```
+    def _build_prompt_from_guidance(self, guidance: Dict[str, Any]) -> str:
+        """Build prompt template from guidance entry."""
 
-EXPLANATION:
-[your explanation here]""",
+        source = guidance.get('source', 'code')
+        target = guidance.get('target', 'target framework')
 
-            # EAP migrations
-            ('eap7', 'eap8'): """You are helping migrate JBoss EAP 7 code to JBoss EAP 8 based on static analysis rules.
+        # Build intro based on source/target
+        if source and target:
+            intro = f"You are helping migrate {source.upper()} code to {target.title()} based on static analysis rules."
+        elif target:
+            intro = f"You are helping migrate code to {target.title()} based on static analysis rules."
+        else:
+            intro = "You are helping with code migration based on static analysis rules."
 
-MIGRATION TARGET: JBoss EAP 8 with Jakarta EE 10
-- Use Jakarta EE 10 packages (jakarta.*) instead of Java EE (javax.*)
-- Follow EAP 8 configuration best practices
-- Update deprecated APIs to their EAP 8 equivalents
+        # Start building the prompt
+        parts = [intro, ""]
 
-Rule Violation:
-{rule_description}
+        # Add base guidance
+        base_guidance = guidance.get('base_guidance', '').strip()
+        if base_guidance:
+            parts.append(base_guidance)
+            parts.append("")
 
-Konveyor Migration Guidance:
-{konveyor_message}
+        # Add specific patterns
+        specific_patterns = guidance.get('specific_patterns', [])
+        for pattern in specific_patterns:
+            pattern_name = pattern.get('name', '')
+            pattern_guidance = pattern.get('guidance', '').strip()
+            if pattern_name and pattern_guidance:
+                parts.append(f"{pattern_name}:")
+                parts.append(pattern_guidance)
+                parts.append("")
 
-Original Code:
-```{language}
-{code_snippet}
-```
+        # Add standard template structure
+        parts.extend([
+            "Rule Violation:",
+            "{rule_description}",
+            "",
+            "Konveyor Migration Guidance:",
+            "{konveyor_message}",
+            "",
+            "Original Code:",
+            "```{language}",
+            "{code_snippet}",
+            "```",
+            "",
+            "Context: {context}",
+            "",
+            "Please provide:",
+            "1. The COMPLETE corrected code that resolves the violation (include ALL original code)",
+            "2. A brief explanation of the changes made",
+            "",
+            "IMPORTANT:",
+            "- Provide the ENTIRE class with ALL fields and methods, not just the parts you changed",
+        ])
 
-Context: {context}
+        # Add target-specific important notes
+        if target and 'quarkus' in target.lower():
+            parts.append("- Use Jakarta EE (jakarta.*) packages, not Spring Framework")
+            parts.append("- Follow Quarkus best practices")
+        elif source and 'spring' in source.lower():
+            parts.append("- DO NOT use any Spring Framework annotations")
+            parts.append("- Use Quarkus and Jakarta EE APIs only")
 
-Please provide:
-1. The COMPLETE corrected code that resolves the violation
-2. A brief explanation of the changes made
+        parts.extend([
+            "",
+            "Format your response as:",
+            "FIXED CODE:",
+            "```{language}",
+            "[your complete fixed code here]",
+            "```",
+            "",
+            "EXPLANATION:",
+            "[your explanation here]"
+        ])
 
-Format your response as:
-FIXED CODE:
-```{language}
-[your complete fixed code here]
-```
+        return "\n".join(parts)
 
-EXPLANATION:
-[your explanation here]""",
-
-            # Spring Boot migrations
-            ('springboot', 'quarkus'): """You are helping migrate Spring Boot code to Quarkus based on static analysis rules.
-
-MIGRATION TARGET: Quarkus
-- Replace Spring annotations with Quarkus/Jakarta EE equivalents:
-  - @Service, @Component → @ApplicationScoped
-  - @Autowired → @Inject
-  - @Repository → @ApplicationScoped with CDI
-  - @RestController → @Path (JAX-RS)
-- Use JAX-RS instead of Spring MVC
-- Use CDI instead of Spring DI
-
-Rule Violation:
-{rule_description}
-
-Konveyor Migration Guidance:
-{konveyor_message}
-
-Original Code:
-```{language}
-{code_snippet}
-```
-
-Context: {context}
-
-Please provide:
-1. The COMPLETE corrected code that resolves the violation
-2. A brief explanation of the changes made
-
-IMPORTANT:
-- DO NOT use any Spring Framework annotations
-- Use Quarkus and Jakarta EE APIs only
-
-Format your response as:
-FIXED CODE:
-```{language}
-[your complete fixed code here]
-```
-
-EXPLANATION:
-[your explanation here]""",
-        }
-
-        # Generic template when no specific match
-        generic_template = """You are helping with code migration based on static analysis rules.
+    def _build_generic_prompt(self) -> str:
+        """Build generic fallback prompt when no specific guidance found."""
+        return """You are helping with code migration based on static analysis rules.
 
 Rule Violation:
 {rule_description}
@@ -1354,18 +1364,6 @@ FIXED CODE:
 
 EXPLANATION:
 [your explanation here]"""
-
-        # Try to find exact match
-        if source and target and (source, target) in prompts:
-            return prompts[(source, target)]
-
-        # Try target-only templates
-        for (s, t), prompt in prompts.items():
-            if target and t == target and not source:
-                return prompt
-
-        # Return generic template
-        return generic_template
 
     def _convert_to_raw_url(self, github_url: str) -> Optional[str]:
         """Convert GitHub blob URL to raw content URL."""
