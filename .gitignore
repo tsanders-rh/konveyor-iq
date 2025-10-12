@@ -39,6 +39,9 @@ evaluators/stubs/build/
 evaluators/stubs/lib/
 evaluators/stubs/target/
 
+# Quarkus build artifacts
+panache-archive.marker
+
 # IDE
 .vscode/
 .idea/
