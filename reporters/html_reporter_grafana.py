@@ -600,6 +600,7 @@ class HTMLReporterGrafana:
 
                     {self._build_expected_code_section(result)}
                     {self._build_explanation_section(result)}
+                    {self._build_security_issues_section(result.get("metrics", {}))}
                 </div>
             </div>
             """
@@ -684,6 +685,53 @@ class HTMLReporterGrafana:
             <pre>{self._escape_html(explanation)}</pre>
         </div>
         """
+
+    def _build_security_issues_section(self, metrics: Dict[str, Any]) -> str:
+        """Build security issues display section (Grafana dark theme)."""
+        security_issues = metrics.get("security_issues", 0)
+        issues = metrics.get("issues", [])
+
+        if security_issues == 0 or not issues:
+            return ""
+
+        # Build issues list
+        issues_html = []
+        for issue in issues:
+            severity = issue.get("severity", "UNKNOWN")
+            issue_type = issue.get("type", "UNKNOWN")
+            description = issue.get("description", "No description")
+            line = issue.get("line")
+
+            # Color code by severity (Grafana-style)
+            if severity == "HIGH":
+                severity_color = "#f2495c"  # Red
+                severity_bg = "rgba(242, 73, 92, 0.15)"
+            elif severity == "MEDIUM":
+                severity_color = "#ff780a"  # Orange
+                severity_bg = "rgba(255, 120, 10, 0.15)"
+            else:
+                severity_color = "#f2cc0c"  # Yellow
+                severity_bg = "rgba(242, 204, 12, 0.15)"
+
+            line_info = f" (Line {line})" if line else ""
+
+            issues_html.append(f'''
+            <div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px; border: 1px solid #2d2d2d;">
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="background: {severity_color}; color: #0d1117; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
+                    <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
+                    <span style="color: #9fa1a4; font-size: 12px; margin-left: auto;">{line_info}</span>
+                </div>
+                <div style="color: #d8d9da; font-size: 13px;">{self._escape_html(description)}</div>
+            </div>
+            ''')
+
+        return f'''
+        <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
+            <div class="code-header" style="color: #f2495c; font-weight: 600;">🔒 Security Issues Found ({security_issues})</div>
+            {''.join(issues_html)}
+        </div>
+        '''
 
     def _build_charts_script(
         self,
