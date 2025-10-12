@@ -232,8 +232,17 @@ class MarkdownReporter:
             # Add compilation error details if available
             metrics = failure.get("metrics", {})
             if not metrics.get("compiles", True) and "compilation_error" in metrics:
+                # Add human-readable explanation if available
+                if "compilation_error_explanation" in metrics:
+                    lines.extend([
+                        "**Compilation Error Explanation:**",
+                        "",
+                        metrics["compilation_error_explanation"],
+                        "",
+                    ])
+
                 lines.extend([
-                    "**Compilation Error:**",
+                    "**Compilation Error Details:**",
                     "```",
                     metrics["compilation_error"],
                     "```",

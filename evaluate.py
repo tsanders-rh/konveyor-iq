@@ -334,6 +334,12 @@ class EvaluationEngine:
             metrics["response_time_ms"] = generation_result["response_time_ms"]
             metrics["tokens_used"] = generation_result.get("tokens_used", 0)
 
+            # Add human-readable compilation error explanation if compilation failed
+            if not metrics.get("compiles", True) and "compilation_error" in metrics:
+                metrics["compilation_error_explanation"] = self._explain_compilation_error(
+                    metrics["compilation_error"]
+                )
+
             # Determine pass/fail
             passed = self._determine_pass(metrics)
             failure_reason = None if passed else self._determine_failure_reason(metrics)
@@ -493,6 +499,48 @@ class EvaluationEngine:
             return f"High severity security issues ({count} issue(s))"
 
         return "Unknown failure"
+
+    def _explain_compilation_error(self, error_msg: str) -> str:
+        """Generate human-readable explanation of compilation error."""
+        error_lower = error_msg.lower()
+
+        # Missing symbol/package errors
+        if "cannot find symbol" in error_lower or "package" in error_lower and "does not exist" in error_lower:
+            if "package" in error_lower:
+                return "❌ **Missing Dependency**: The code uses a package that isn't available in the classpath. This usually means a required library/JAR is missing from the dependencies."
+            else:
+                return "❌ **Missing Symbol**: The code references a class, method, or variable that doesn't exist. This could be due to a typo, missing import, or incorrect API usage."
+
+        # Interface implementation errors
+        if "is not abstract and does not override abstract method" in error_lower:
+            return "❌ **Interface Implementation Error**: The class implements an interface but doesn't provide all required methods, or the method signature doesn't match. Make sure all interface methods are implemented with exact signatures."
+
+        # Method signature mismatch
+        if "cannot be applied to given types" in error_lower or "incompatible types" in error_lower:
+            return "❌ **Type Mismatch**: The code is calling a method with the wrong parameter types, or assigning a value to a variable of an incompatible type. Check that method arguments and return types match their declarations."
+
+        # Duplicate declarations
+        if "already defined" in error_lower:
+            return "❌ **Duplicate Declaration**: A variable, method, or class is declared more than once in the same scope. Remove the duplicate declaration."
+
+        # Access modifiers
+        if "has private access" in error_lower or "is not visible" in error_lower:
+            return "❌ **Access Restriction**: The code is trying to access a private or protected member from outside its class. Use public methods or change the access modifier if appropriate."
+
+        # Static context errors
+        if "non-static" in error_lower and "cannot be referenced from a static context" in error_lower:
+            return "❌ **Static Context Error**: Trying to access an instance member from a static context. Either make the member static or create an instance of the class first."
+
+        # Return type errors
+        if "missing return statement" in error_lower:
+            return "❌ **Missing Return Statement**: A non-void method doesn't return a value in all code paths. Ensure all branches return the correct type."
+
+        # Import errors (class not found)
+        if "class file for" in error_lower and "not found" in error_lower:
+            return "❌ **Class Not Found**: The compiler can't find a referenced class file. This usually indicates a missing dependency or incorrect classpath."
+
+        # Generic fallback
+        return "❌ **Compilation Failed**: The generated code contains syntax or semantic errors that prevent compilation. Review the error details below and the generated code."
 
     def _build_error_result(
         self,

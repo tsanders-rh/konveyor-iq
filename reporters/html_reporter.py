@@ -981,11 +981,22 @@ class HTMLReporter:
             return ""
 
         compilation_error = metrics.get("compilation_error", "No error details available")
+        error_explanation = metrics.get("compilation_error_explanation", "")
+
+        explanation_html = ""
+        if error_explanation:
+            explanation_html = f'''
+            <div style="margin: 15px 0; padding: 12px; background: rgba(242, 73, 92, 0.05); border-radius: 4px; border: 1px solid rgba(242, 73, 92, 0.3);">
+                <div style="color: #d8d9da; font-size: 13px; line-height: 1.6;">{error_explanation}</div>
+            </div>
+            '''
 
         return f'''
         <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
             <div class="code-header" style="color: #f2495c; font-weight: 600;">⚠️ Compilation Error</div>
+            {explanation_html}
             <div style="margin-top: 10px; padding: 12px; background: #1e1e1e; border-radius: 4px; border: 1px solid #2d2d2d;">
+                <div style="color: #9fa1a4; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Error Details:</div>
                 <pre style="color: #f2495c; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; margin: 0;">{self._escape_html(compilation_error)}</pre>
             </div>
         </div>
