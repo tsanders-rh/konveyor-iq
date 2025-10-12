@@ -29,9 +29,15 @@ migrations:
       - name: MESSAGING MIGRATIONS
         guidance: |
           - @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming annotation)
+          - REMOVE "implements MessageListener" interface entirely
+          - REMOVE jakarta.jms.Message and jakarta.jms.MessageListener imports
+          - Convert to plain CDI bean with @ApplicationScoped
+          - Change method signature from "onMessage(Message msg)" to "onMessage(String message)"
+          - Annotate message handler method with @Incoming("channel-name")
+          - Import: org.eclipse.microprofile.reactive.messaging.Incoming
+          - Import: jakarta.enterprise.context.ApplicationScoped
           - DO NOT convert messaging to JAX-RS REST endpoints (@Path, @POST, etc.)
-          - DO NOT use JMSContext or Queue injection for messaging
-          - Use org.eclipse.microprofile.reactive.messaging.Incoming for message consumers
+          - DO NOT keep JMS interfaces or imports in the migrated code
 
       - name: SINGLETON AND STARTUP MIGRATIONS
         guidance: |
