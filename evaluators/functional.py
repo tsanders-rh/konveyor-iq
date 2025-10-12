@@ -447,8 +447,8 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
                 "new": ["@Transactional", "@ApplicationScoped"],
             },
             "ee-to-quarkus-00030": {
-                "old": ["@Singleton", "import javax.ejb.Singleton", "@Startup"],
-                "new": ["@ApplicationScoped", "StartupEvent"],
+                "old": ["import javax.ejb.Singleton", "import javax.ejb.Startup"],
+                "new": ["@ApplicationScoped", "@Observes StartupEvent"],
             },
             "jakarta-package-00000": {
                 "old": ["import javax.persistence"],
@@ -463,7 +463,7 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
                 "new": [],  # Should remove @Produces
             },
             "remote-ejb-to-quarkus-00000": {
-                "old": ["@MessageDriven", "MessageListener"],
+                "old": ["@MessageDriven", "implements MessageListener"],
                 "new": ["@Incoming", "@ApplicationScoped"],
             },
         }

@@ -17,6 +17,19 @@ prompt: |
   - Use Jakarta Persistence and Jakarta Transactions
   - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
 
+  MESSAGING MIGRATIONS:
+  - @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming annotation)
+  - DO NOT convert messaging to JAX-RS REST endpoints (@Path, @POST, etc.)
+  - DO NOT use JMSContext or Queue injection for messaging
+  - Use org.eclipse.microprofile.reactive.messaging.Incoming for message consumers
+
+  SINGLETON AND STARTUP MIGRATIONS:
+  - @Singleton (javax.ejb) → @ApplicationScoped (jakarta.enterprise.context)
+  - @Startup → Use @Observes StartupEvent pattern
+  - For startup logic: Add parameter "@Observes StartupEvent event" to init method
+  - Import: io.quarkus.runtime.StartupEvent and jakarta.enterprise.event.Observes
+  - DO NOT use @PostConstruct as a replacement for @Startup
+
   Rule Violation:
   {rule_description}
 
