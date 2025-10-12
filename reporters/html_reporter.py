@@ -912,6 +912,7 @@ class HTMLReporter:
                         <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
                     </div>
 
+                    {self._build_compilation_error_section(result.get("metrics", {}))}
                     {self._build_expected_code_section(result)}
                     {self._build_explanation_section(result)}
                     {self._build_security_issues_section(result.get("metrics", {}))}
@@ -971,6 +972,24 @@ class HTMLReporter:
             """
 
         return html
+
+    def _build_compilation_error_section(self, metrics: Dict[str, Any]) -> str:
+        """Build compilation error display section (Grafana dark theme)."""
+        compiles = metrics.get("compiles", True)
+
+        if compiles:
+            return ""
+
+        compilation_error = metrics.get("compilation_error", "No error details available")
+
+        return f'''
+        <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
+            <div class="code-header" style="color: #f2495c; font-weight: 600;">⚠️ Compilation Error</div>
+            <div style="margin-top: 10px; padding: 12px; background: #1e1e1e; border-radius: 4px; border: 1px solid #2d2d2d;">
+                <pre style="color: #f2495c; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; margin: 0;">{self._escape_html(compilation_error)}</pre>
+            </div>
+        </div>
+        '''
 
     def _build_expected_code_section(self, result: Dict[str, Any]) -> str:
         """Build expected code section if available."""

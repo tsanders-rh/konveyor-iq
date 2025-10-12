@@ -227,6 +227,20 @@ class MarkdownReporter:
                 "",
                 f"**Reason:** {failure.get('failure_reason', 'Unknown')}",
                 "",
+            ])
+
+            # Add compilation error details if available
+            metrics = failure.get("metrics", {})
+            if not metrics.get("compiles", True) and "compilation_error" in metrics:
+                lines.extend([
+                    "**Compilation Error:**",
+                    "```",
+                    metrics["compilation_error"],
+                    "```",
+                    "",
+                ])
+
+            lines.extend([
                 "**Generated Code:**",
                 "```",
                 failure.get("generated_code", "N/A"),

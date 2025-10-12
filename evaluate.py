@@ -470,18 +470,27 @@ class EvaluationEngine:
         return True
 
     def _determine_failure_reason(self, metrics: Dict[str, Any]) -> str:
-        """Determine reason for failure."""
+        """Determine reason for failure with detailed explanation."""
         if not metrics.get("functional_correctness", False):
             return "Does not resolve violation"
 
         if metrics.get("introduces_violations", False):
-            return "Introduces new violations"
+            new_count = metrics.get("new_violation_count", 0)
+            return f"Introduces new violations ({new_count} new violation(s))"
 
         if "compiles" in metrics and not metrics["compiles"]:
+            # Include compilation error details if available
+            if "compilation_error" in metrics:
+                error_msg = metrics["compilation_error"]
+                # Truncate very long error messages for the summary
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "..."
+                return f"Compilation error: {error_msg}"
             return "Compilation error"
 
         if metrics.get("high_severity_security", 0) > 0:
-            return "High severity security issues"
+            count = metrics.get("high_severity_security", 0)
+            return f"High severity security issues ({count} issue(s))"
 
         return "Unknown failure"
 
