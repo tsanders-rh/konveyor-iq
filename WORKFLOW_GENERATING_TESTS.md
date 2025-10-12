@@ -4,6 +4,27 @@ This document explains the complete workflow for generating test cases from Konv
 
 ---
 
+## Quick Command Reference
+
+The simplest workflow - just 3 steps:
+
+```bash
+# 1. One-time setup (only needed once)
+cd evaluators/stubs && mvn clean package
+
+# 2. Generate tests
+python scripts/generate_tests.py --all-rulesets --target quarkus \
+  --local-rulesets ~/projects/rulesets \
+  --auto-generate --model gpt-4-turbo
+
+# 3. Run evaluation
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+```
+
+**That's it!** No stub generation step needed.
+
+---
+
 ## The New Approach (Post-Migration)
 
 We now use **real JAR dependencies** instead of auto-generated stubs. This eliminates the stub generation step entirely!
@@ -12,6 +33,12 @@ We now use **real JAR dependencies** instead of auto-generated stubs. This elimi
 - ✅ No stub generation needed
 - ✅ Framework code always compiles correctly
 - ✅ Simpler workflow (2 steps instead of 3)
+- ✅ Scales to unlimited test cases
+
+**Why the change?**
+- ✅ Real JARs from Maven Central (Jakarta, Quarkus, MicroProfile)
+- ✅ No more guessing class vs annotation
+- ✅ Always accurate compilation
 - ✅ Scales to unlimited test cases
 
 ---
@@ -82,24 +109,29 @@ All test cases compile correctly without any stub generation step.
 
 ## What Changed?
 
-### Old Workflow (Before Migration)
+### Before (Pure Stubs)
 ```
 1. Generate tests
-2. Run update_stubs_from_tests.py  ← Manual stub generation
-3. Fix class vs annotation errors     ← Manual fixes
+2. python scripts/update_stubs_from_tests.py *.yaml  ← REMOVED!
+3. Fix @ConfigProperties class vs annotation errors   ← REMOVED!
 4. Run evaluation
 ```
 
-### New Workflow (After Migration)
+### After (Real JARs)
 ```
-1. Generate tests
-2. Run evaluation  ← That's it!
+1. mvn package  (one-time setup)
+2. Generate tests
+3. Run evaluation  ← Clean, simple!
 ```
 
-**Why?**
-- Real JARs provide all framework classes (Jakarta, Quarkus, MicroProfile)
-- Custom test classes (Order, User, Database) already in committed stubs.jar
-- No stub generation needed!
+**What got fixed:**
+
+| Issue | Before | After |
+|-------|--------|-------|
+| @ConfigProperties | ❌ Created as class | ✅ Real annotation from JAR |
+| Compilation errors | ❌ Manual stub fixes | ✅ Always correct |
+| Scalability | ❌ Manual work per import | ✅ Unlimited tests |
+| Workflow complexity | ❌ 4 steps | ✅ 2 steps |
 
 ---
 
@@ -139,6 +171,18 @@ cd evaluators/stubs && ./build.sh
 ```
 
 **Note:** This is rare. Most classes come from real JARs.
+
+---
+
+## Files You Care About
+
+| File | Purpose |
+|------|---------|
+| `evaluators/stubs/pom.xml` | Maven deps (update versions here) |
+| `evaluators/stubs/lib/` | Downloaded JARs (gitignored, 25MB) |
+| `evaluators/stubs/stubs.jar` | Custom test classes (committed, 200KB) |
+| `WORKFLOW_GENERATING_TESTS.md` | This guide |
+| `evaluators/stubs/README.md` | Stub architecture docs |
 
 ---
 
@@ -195,12 +239,12 @@ JARs are cached between builds for speed.
 
 ## Summary
 
-✅ **Simpler workflow**: No stub generation step
-✅ **More accurate**: Real APIs, not guessed stubs
-✅ **More scalable**: Works for any number of tests
-✅ **More maintainable**: Version bumps instead of manual work
+✅ **No more stub generation** - Real JARs handle everything
+✅ **Simpler workflow** - 2 steps instead of 4
+✅ **Always accurate** - Real APIs, not guesses
+✅ **Scales infinitely** - Works for any test suite size
 
-The migration to real JARs eliminated the most error-prone step from the workflow!
+The migration to real JARs permanently solved the scalability problem!
 
 ---
 
@@ -208,4 +252,3 @@ The migration to real JARs eliminated the most error-prone step from the workflo
 
 - `evaluators/stubs/README.md` - Detailed stub architecture
 - `MIGRATION_TO_REAL_JARS.md` - Migration rationale and benefits
-- `QUICK_REFERENCE.md` - Quick command reference
