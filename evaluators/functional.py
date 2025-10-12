@@ -134,14 +134,32 @@ class FunctionalCorrectnessEvaluator(BaseEvaluator):
             java_file = Path(tmpdir) / f"{class_name}.java"
             java_file.write_text(code)
 
-            # Get stub JAR path
-            stub_jar = Path(__file__).parent / "stubs" / "stubs.jar"
+            # Build classpath from real JARs (preferred) and stubs.jar (fallback)
+            stubs_dir = Path(__file__).parent / "stubs"
+            lib_dir = stubs_dir / "lib"
+            stub_jar = stubs_dir / "stubs.jar"
+
+            # Collect all JARs for classpath
+            classpath_parts = []
+
+            # First, add all real JARs from lib/ directory
+            if lib_dir.exists():
+                jar_files = list(lib_dir.glob("*.jar"))
+                if jar_files:
+                    classpath_parts.extend(str(jar) for jar in jar_files)
+
+            # Add stubs.jar for custom test classes (Order, User, Database, etc.)
+            if stub_jar.exists():
+                classpath_parts.append(str(stub_jar))
 
             try:
-                # Build javac command with classpath if stub JAR exists
+                # Build javac command with combined classpath
                 javac_cmd = ["javac"]
-                if stub_jar.exists():
-                    javac_cmd.extend(["-cp", str(stub_jar)])
+                if classpath_parts:
+                    # Use : on Unix/Mac, ; on Windows
+                    separator = ";" if os.name == 'nt' else ":"
+                    classpath = separator.join(classpath_parts)
+                    javac_cmd.extend(["-cp", classpath])
                 javac_cmd.append(str(java_file))
 
                 result = subprocess.run(

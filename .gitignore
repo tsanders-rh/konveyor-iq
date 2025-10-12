@@ -35,6 +35,10 @@ results/
 # Stub builds
 evaluators/stubs/build/
 
+# Maven dependencies (downloaded on-demand, not committed)
+evaluators/stubs/lib/
+evaluators/stubs/target/
+
 # IDE
 .vscode/
 .idea/
