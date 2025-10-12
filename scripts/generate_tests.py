@@ -79,6 +79,48 @@ from models import OpenAIModel, AnthropicModel
 class TestCaseGenerator:
     """Generate test cases from Konveyor rulesets."""
 
+    # Stub templates for common Java/Jakarta EE patterns
+    STUB_TEMPLATES = {
+        'jpa_entity': '''@Entity
+@Table(name = "{table_name}")
+public class {class_name} {{
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Additional fields would be here
+}}''',
+        'repository_interface': '''public interface {repo_name} {{
+    void save({entity_name} entity);
+    {entity_name} findById(Long id);
+    void delete({entity_name} entity);
+}}''',
+        'service_interface': '''public interface {service_name} {{
+    void process();
+}}''',
+        'dto_class': '''public class {class_name} {{
+    private Long id;
+    private String name;
+
+    // Getters and setters
+    public Long getId() {{ return id; }}
+    public void setId(Long id) {{ this.id = id; }}
+    public String getName() {{ return name; }}
+    public void setName(String name) {{ this.name = name; }}
+}}''',
+        'generic_pojo': '''public class {class_name} {{
+    private Long id;
+    private String name;
+
+    public {class_name}() {{}}
+
+    public Long getId() {{ return id; }}
+    public void setId(Long id) {{ this.id = id; }}
+    public String getName() {{ return name; }}
+    public void setName(String name) {{ this.name = name; }}
+}}''',
+    }
+
     def __init__(self, output_dir: str = "benchmarks/test_cases/generated",
                  source_filter: Optional[str] = None,
                  target_filter: Optional[str] = None,
@@ -185,6 +227,12 @@ Requirements:
 - Make it a complete, realistic code example
 - Keep it concise (10-30 lines)
 - Include the specific patterns mentioned in the rule
+- Use standard naming conventions for external classes:
+  * JPA entities: end with 'Entity' (e.g., CustomerEntity, OrderEntity)
+  * DTOs: end with 'DTO' (e.g., CustomerDTO)
+  * Repositories: end with 'Repository' (e.g., CustomerRepository)
+  * Services: end with 'Service' (e.g., OrderService)
+- Minimize external dependencies - reference only 2-3 supporting classes if needed
 
 Respond with ONLY the Java code, no explanations."""
 
@@ -246,6 +294,8 @@ Requirements:
 - Include all necessary imports
 - Follow the migration guidance exactly
 - Keep the same structure and logic, only fix the violation
+- Maintain the same external class references (don't add new dependencies)
+- Use the same class naming conventions as the original code
 
 Respond with ONLY the fixed Java code, no explanations."""
 
@@ -296,6 +346,124 @@ Respond with ONLY the fixed Java code, no explanations."""
 
         # No code blocks found, return as-is (might be plain code)
         return response.strip()
+
+    def _detect_referenced_classes(self, code: str) -> set:
+        """Detect class names referenced in the code that might need stubs."""
+        referenced = set()
+
+        # Find class names in type declarations (fields, parameters, return types)
+        # Match patterns like: "private CustomerEntity customer" or "public Order findOrder"
+        type_patterns = [
+            r'(?:private|public|protected)\s+(\w+)\s+\w+\s*[;=]',  # Fields
+            r'(?:private|public|protected)\s+(\w+)\s+\w+\s*\(',     # Method return types
+            r'\(\s*(\w+)\s+\w+\s*\)',                               # Method parameters
+            r'<\s*(\w+)\s*>',                                       # Generics
+        ]
+
+        for pattern in type_patterns:
+            matches = re.findall(pattern, code)
+            for match in matches:
+                # Filter out primitives and common JDK classes
+                if match not in {'String', 'Integer', 'Long', 'Double', 'Float', 'Boolean',
+                               'List', 'Set', 'Map', 'Collection', 'Optional', 'void', 'int',
+                               'long', 'double', 'float', 'boolean', 'byte', 'char', 'short'}:
+                    referenced.add(match)
+
+        # Detect classes referenced in annotations like @ManyToOne
+        annotation_refs = re.findall(r'@\w+.*?(\w+Entity|\w+DTO)(?:\s|\))', code)
+        referenced.update(annotation_refs)
+
+        return referenced
+
+    def _generate_test_stubs(self, code_snippet: str, expected_fix: str) -> str:
+        """
+        Generate stub classes based on detected patterns in code.
+
+        Returns:
+            Java code containing stub classes needed for compilation
+        """
+        stubs = []
+        combined_code = f"{code_snippet}\n{expected_fix}"
+
+        # Detect referenced classes
+        referenced_classes = self._detect_referenced_classes(combined_code)
+
+        # Check for JPA patterns
+        has_jpa = any(annotation in combined_code for annotation in
+                     ['@Entity', '@Table', '@ManyToOne', '@OneToMany', '@JoinColumn'])
+
+        # Check for repository/DAO patterns
+        has_repository = 'Repository' in combined_code or 'DAO' in combined_code
+
+        # Check for service patterns
+        has_service = 'Service' in combined_code and '@Inject' in combined_code
+
+        # Generate stubs for referenced classes
+        for class_name in referenced_classes:
+            # Skip the main class being tested
+            if class_name in code_snippet and 'class ' + class_name in code_snippet:
+                continue
+
+            # Determine stub type based on naming and context
+            if class_name.endswith('Entity') and has_jpa:
+                table_name = class_name.replace('Entity', '').lower() + 's'
+                stub = self.STUB_TEMPLATES['jpa_entity'].format(
+                    class_name=class_name,
+                    table_name=table_name
+                )
+                stubs.append(f"// Stub for {class_name}\n{stub}")
+
+            elif class_name.endswith('Repository') and has_repository:
+                # Repository interface - figure out the entity type
+                entity_base = class_name.replace('Repository', '')
+                # Check if we have a matching Entity class
+                entity_name = entity_base + 'Entity' if entity_base + 'Entity' in referenced_classes else entity_base
+                stub = self.STUB_TEMPLATES['repository_interface'].format(
+                    repo_name=class_name,
+                    entity_name=entity_name
+                )
+                stubs.append(f"// Stub for {class_name}\n{stub}")
+
+            elif class_name.endswith('Service') and has_service:
+                # Service interface
+                stub = self.STUB_TEMPLATES['service_interface'].format(
+                    service_name=class_name
+                )
+                stubs.append(f"// Stub for {class_name}\n{stub}")
+
+            elif class_name.endswith('DTO'):
+                # DTO class - template now uses class_name as-is (already has DTO suffix)
+                stub = self.STUB_TEMPLATES['dto_class'].format(class_name=class_name)
+                stubs.append(f"// Stub for {class_name}\n{stub}")
+
+            else:
+                # Generic POJO stub
+                stub = self.STUB_TEMPLATES['generic_pojo'].format(class_name=class_name)
+                stubs.append(f"// Stub for {class_name}\n{stub}")
+
+        if not stubs:
+            return ""
+
+        # Build complete test_code section with necessary imports
+        imports = []
+        if has_jpa:
+            imports.extend([
+                'import jakarta.persistence.*;'
+            ])
+        if '@Inject' in combined_code or '@ApplicationScoped' in combined_code:
+            imports.extend([
+                'import jakarta.inject.Inject;',
+                'import jakarta.enterprise.context.ApplicationScoped;'
+            ])
+
+        test_code_parts = []
+        if imports:
+            test_code_parts.append('\n'.join(imports))
+            test_code_parts.append('')
+
+        test_code_parts.append('\n\n'.join(stubs))
+
+        return '\n'.join(test_code_parts)
 
     def generate_from_ruleset(
         self,
@@ -909,9 +1077,13 @@ Respond with ONLY the fixed Java code, no explanations."""
         if self.auto_generate:
             code_snippet = self._generate_code_snippet(rule, message)
             expected_fix = self._generate_expected_fix(rule, code_snippet, message)
+
+            # Generate stub classes for compilation support
+            test_stubs = self._generate_test_stubs(code_snippet, expected_fix)
         else:
             code_snippet = self._create_code_snippet_placeholder(rule, include_when)
             expected_fix = 'TODO: Add expected fix code here'
+            test_stubs = ''
 
         # Create test case template
         test_case = {
@@ -921,6 +1093,10 @@ Respond with ONLY the fixed Java code, no explanations."""
             'code_snippet': code_snippet,
             'expected_fix': expected_fix,
         }
+
+        # Add test_code with stubs if any were generated
+        if test_stubs:
+            test_case['test_code'] = test_stubs
 
         # Add comments with guidance
         if message:
