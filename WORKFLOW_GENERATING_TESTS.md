@@ -1,18 +1,16 @@
 # Workflow: Generating and Evaluating Test Cases
 
-This document explains the complete workflow for generating test cases from Konveyor rulesets.
+Complete workflow for generating test cases from Konveyor rulesets and running evaluations.
 
 ---
 
-## Quick Command Reference
-
-The simplest workflow - just 3 steps:
+## Quick Start
 
 ```bash
 # 1. One-time setup (only needed once)
 cd evaluators/stubs && mvn clean package
 
-# 2. Generate tests
+# 2. Generate tests (with LLM auto-generation)
 python scripts/generate_tests.py --all-rulesets --target quarkus \
   --local-rulesets ~/projects/rulesets \
   --auto-generate --model gpt-4-turbo
@@ -23,23 +21,18 @@ python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
 
 **That's it!** No stub generation step needed.
 
+> 💡 **For detailed script options**, see [docs/generating_tests.md](docs/generating_tests.md)
+
 ---
 
-## The New Approach (Post-Migration)
+## Why Real JARs?
 
-We now use **real JAR dependencies** instead of auto-generated stubs. This eliminates the stub generation step entirely!
+We use **real JAR dependencies** from Maven Central instead of auto-generated stubs:
 
-**Benefits:**
-- ✅ No stub generation needed
-- ✅ Framework code always compiles correctly
-- ✅ Simpler workflow (2 steps instead of 3)
-- ✅ Scales to unlimited test cases
-
-**Why the change?**
-- ✅ Real JARs from Maven Central (Jakarta, Quarkus, MicroProfile)
-- ✅ No more guessing class vs annotation
-- ✅ Always accurate compilation
-- ✅ Scales to unlimited test cases
+✅ **Always accurate** - Real annotations, interfaces, classes
+✅ **Zero maintenance** - No guessing class vs annotation
+✅ **Scales infinitely** - Works for any test suite size
+✅ **Simple workflow** - 2 steps instead of 4
 
 ---
 
@@ -62,34 +55,27 @@ This downloads 78 JARs (~25MB) from Maven Central to `lib/` directory.
 
 ### Step 2: Generate Test Cases
 
-Use the test generator to create test cases:
+Clone Konveyor rulesets locally (recommended for speed):
 
 ```bash
-# Option A: Use local ruleset clone (MUCH FASTER - recommended!)
 git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
+```
 
+Generate test cases with LLM auto-generation:
+
+```bash
 python scripts/generate_tests.py --all-rulesets --target quarkus \
   --local-rulesets ~/projects/rulesets \
-  --auto-generate \
-  --model gpt-4-turbo \
-  --batch-size 20
-
-# This creates: benchmarks/test_cases/generated/quarkus.yaml
+  --auto-generate --model gpt-4-turbo
 ```
 
-**What this does:**
-- Scans Konveyor rulesets for all Quarkus-targeted rules
-- Uses GPT-4-Turbo to auto-generate code examples
-- Creates test cases with `code_snippet` and `expected_fix`
-- Saves incrementally (safe to interrupt and resume)
+**Output:** `benchmarks/test_cases/generated/quarkus.yaml`
 
-**Output:**
-```
-benchmarks/test_cases/generated/
-├── quarkus.yaml              # 337 rules, 2680 test cases
-├── java-ee-to-quarkus.yaml   # Filtered by source
-└── springboot-to-quarkus.yaml
-```
+> 💡 **See [docs/generating_tests.md](docs/generating_tests.md)** for:
+> - All script options and filters
+> - Manual test creation
+> - Migration-specific prompts
+> - Troubleshooting
 
 ---
 
@@ -107,31 +93,14 @@ All test cases compile correctly without any stub generation step.
 
 ---
 
-## What Changed?
+## Before & After
 
-### Before (Pure Stubs)
-```
-1. Generate tests
-2. python scripts/update_stubs_from_tests.py *.yaml  ← REMOVED!
-3. Fix @ConfigProperties class vs annotation errors   ← REMOVED!
-4. Run evaluation
-```
-
-### After (Real JARs)
-```
-1. mvn package  (one-time setup)
-2. Generate tests
-3. Run evaluation  ← Clean, simple!
-```
-
-**What got fixed:**
-
-| Issue | Before | After |
-|-------|--------|-------|
-| @ConfigProperties | ❌ Created as class | ✅ Real annotation from JAR |
-| Compilation errors | ❌ Manual stub fixes | ✅ Always correct |
-| Scalability | ❌ Manual work per import | ✅ Unlimited tests |
-| Workflow complexity | ❌ 4 steps | ✅ 2 steps |
+| Before (Pure Stubs) | After (Real JARs) |
+|---------------------|-------------------|
+| ❌ 4 steps | ✅ 2 steps |
+| ❌ Manual stub fixes | ✅ Always correct |
+| ❌ Class vs annotation errors | ✅ Real APIs |
+| ❌ Doesn't scale | ✅ Unlimited tests |
 
 ---
 
@@ -216,24 +185,18 @@ sudo apt-get install maven
 
 ---
 
-## CI/CD Integration
+## CI/CD
+
+In GitHub Actions or other CI systems:
 
 ```yaml
-# Example GitHub Actions workflow
-jobs:
-  evaluate:
-    steps:
-      - name: Setup dependencies (one-time)
-        run: cd evaluators/stubs && mvn clean package
-
-      - name: Generate tests
-        run: python scripts/generate_tests.py --all-rulesets --target quarkus
-
-      - name: Run evaluation
-        run: python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+steps:
+  - run: cd evaluators/stubs && mvn clean package
+  - run: python scripts/generate_tests.py --all-rulesets --target quarkus
+  - run: python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
 ```
 
-JARs are cached between builds for speed.
+JARs are cached between builds.
 
 ---
 
@@ -250,5 +213,6 @@ The migration to real JARs permanently solved the scalability problem!
 
 ## See Also
 
-- `evaluators/stubs/README.md` - Detailed stub architecture
-- `MIGRATION_TO_REAL_JARS.md` - Migration rationale and benefits
+- **[docs/generating_tests.md](docs/generating_tests.md)** - Complete script reference and options
+- **[evaluators/stubs/README.md](evaluators/stubs/README.md)** - Stub architecture details
+- **[MIGRATION_TO_REAL_JARS.md](MIGRATION_TO_REAL_JARS.md)** - Migration rationale
