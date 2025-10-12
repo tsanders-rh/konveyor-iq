@@ -30,7 +30,34 @@ from validate_expected_fixes import ExpectedFixValidator
 
 from benchmarks.schema import TestSuite
 from evaluators.functional import FunctionalCorrectnessEvaluator
-from models import get_model
+from models import OpenAIModel, AnthropicModel, GoogleModel
+
+
+def get_model(model_name: str, api_key: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
+    """
+    Get model instance by name.
+
+    Args:
+        model_name: Model name (e.g., "gpt-4-turbo", "claude-3-7-sonnet-latest")
+        api_key: Optional API key (will use env var if not provided)
+        config: Optional model configuration
+
+    Returns:
+        Model instance
+    """
+    if config is None:
+        config = {}
+
+    # Determine provider from model name
+    if model_name.startswith("gpt-") or model_name.startswith("o1-"):
+        return OpenAIModel(model_name, config)
+    elif model_name.startswith("claude-"):
+        return AnthropicModel(model_name, config)
+    elif model_name.startswith("gemini-"):
+        return GoogleModel(model_name, config)
+    else:
+        # Default to OpenAI
+        return OpenAIModel(model_name, config)
 
 
 class ExpectedFixFixer:
