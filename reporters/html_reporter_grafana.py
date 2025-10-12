@@ -1,0 +1,951 @@
+"""
+Grafana-style HTML report generator with dark theme and modern visualizations.
+"""
+from typing import List, Dict, Any
+from pathlib import Path
+from datetime import datetime
+import json
+
+
+class HTMLReporterGrafana:
+    """Generate Grafana-style dark-themed HTML evaluation reports."""
+
+    def __init__(self, output_dir: str = "results"):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def generate_report(
+        self,
+        results: List[Dict[str, Any]],
+        config: Dict[str, Any]
+    ) -> str:
+        """
+        Generate Grafana-style HTML report.
+
+        Args:
+            results: Evaluation results
+            config: Configuration
+
+        Returns:
+            Path to generated HTML file
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_file = self.output_dir / f"evaluation_report_{timestamp}.html"
+
+        html_content = self._build_html(results, config)
+
+        report_file.write_text(html_content)
+        return str(report_file)
+
+    def _build_html(
+        self,
+        results: List[Dict[str, Any]],
+        config: Dict[str, Any]
+    ) -> str:
+        """Build Grafana-style HTML report content."""
+
+        # Aggregate data
+        model_stats = self._aggregate_by_model(results)
+        rule_stats = self._aggregate_by_rule(results)
+
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konveyor AI Evaluation Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #111217;
+            color: #d8d9da;
+        }}
+
+        .header {{
+            background: #1e1e1e;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2d2d2d;
+        }}
+
+        .header h1 {{
+            font-size: 20px;
+            font-weight: 500;
+            color: #ffffff;
+        }}
+
+        .metadata {{
+            background: #1e1e1e;
+            padding: 10px 20px;
+            border-bottom: 1px solid #2d2d2d;
+            font-size: 13px;
+            color: #9fa1a4;
+        }}
+
+        .metadata span {{
+            margin-right: 25px;
+        }}
+
+        .dashboard {{
+            padding: 20px;
+        }}
+
+        .row {{
+            display: grid;
+            gap: 15px;
+            margin-bottom: 15px;
+        }}
+
+        .row-1 {{
+            grid-template-columns: 1fr 1fr;
+        }}
+
+        .row-2 {{
+            grid-template-columns: 1fr;
+        }}
+
+        .row-3 {{
+            grid-template-columns: 1fr 1fr 1fr;
+        }}
+
+        .row-4 {{
+            grid-template-columns: 1fr 1fr;
+        }}
+
+        .panel {{
+            background: #181b1f;
+            border: 1px solid #2d2d2d;
+            border-radius: 2px;
+            padding: 15px;
+        }}
+
+        .panel-title {{
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #d8d9da;
+        }}
+
+        .stat-value {{
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }}
+
+        .stat-label {{
+            font-size: 12px;
+            color: #9fa1a4;
+            text-align: center;
+        }}
+
+        .green {{ color: #73bf69; }}
+        .yellow {{ color: #f2cc0c; }}
+        .orange {{ color: #ff780a; }}
+        .red {{ color: #f2495c; }}
+
+        .stat-bg-green {{ background: rgba(115, 191, 105, 0.15); }}
+        .stat-bg-yellow {{ background: rgba(242, 204, 12, 0.15); }}
+        .stat-bg-orange {{ background: rgba(255, 120, 10, 0.15); }}
+        .stat-bg-red {{ background: rgba(242, 73, 92, 0.15); }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }}
+
+        th {{
+            background: #212124;
+            padding: 8px;
+            text-align: left;
+            font-weight: 500;
+            border-bottom: 1px solid #2d2d2d;
+            color: #d8d9da;
+        }}
+
+        td {{
+            padding: 8px;
+            border-bottom: 1px solid #2d2d2d;
+        }}
+
+        tr:hover {{
+            background: #212124;
+        }}
+
+        .badge {{
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+
+        .badge-green {{ background: rgba(115, 191, 105, 0.3); color: #73bf69; }}
+        .badge-yellow {{ background: rgba(242, 204, 12, 0.3); color: #f2cc0c; }}
+        .badge-orange {{ background: rgba(255, 120, 10, 0.3); color: #ff780a; }}
+        .badge-red {{ background: rgba(242, 73, 92, 0.3); color: #f2495c; }}
+
+        .chart-container {{
+            position: relative;
+            height: 250px;
+        }}
+
+        .chart-container-sm {{
+            position: relative;
+            height: 150px;
+        }}
+
+        .chart-container-lg {{
+            position: relative;
+            height: 350px;
+        }}
+
+        .test-details {{
+            background: #212124;
+            border: 1px solid #2d2d2d;
+            border-radius: 3px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+        }}
+
+        .test-details:hover {{
+            background: #282a2e;
+        }}
+
+        .test-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        .test-title {{
+            font-weight: 500;
+            font-size: 14px;
+        }}
+
+        .test-content {{
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #2d2d2d;
+        }}
+
+        .test-content.expanded {{
+            display: block;
+        }}
+
+        .code-block {{
+            background: #0d1117;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }}
+
+        .code-block pre {{
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #c9d1d9;
+            white-space: pre-wrap;
+        }}
+
+        .code-header {{
+            font-size: 12px;
+            color: #9fa1a4;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }}
+
+        .expand-icon {{
+            transition: transform 0.3s;
+            color: #9fa1a4;
+        }}
+
+        .expand-icon.expanded {{
+            transform: rotate(180deg);
+        }}
+
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }}
+
+        .metric-item {{
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #2d2d2d;
+        }}
+
+        .metric-item-label {{
+            font-size: 11px;
+            color: #9fa1a4;
+            margin-bottom: 5px;
+        }}
+
+        .metric-item-value {{
+            font-size: 16px;
+            font-weight: 500;
+        }}
+
+        .filter-btn {{
+            background: #212124;
+            border: 1px solid #2d2d2d;
+            color: #d8d9da;
+            padding: 6px 12px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+        }}
+
+        .filter-btn:hover {{
+            background: #282a2e;
+        }}
+
+        .filter-btn.active {{
+            background: #3d5afe;
+            border-color: #3d5afe;
+            color: white;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 Konveyor AI Evaluation Report</h1>
+    </div>
+
+    <div class="metadata">
+        <span><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</span>
+        <span><strong>Test Suite:</strong> {config.get('test_suite', 'Unknown')}</span>
+        <span><strong>Total Evaluations:</strong> {len(results)}</span>
+        <span><strong>Models:</strong> {len(model_stats)}</span>
+    </div>
+
+    <div class="dashboard">
+        <!-- Row 1: Summary Stats -->
+        <div class="row row-3">
+            {self._build_summary_stats(results, model_stats)}
+        </div>
+
+        <!-- Row 2: Model Performance Comparison -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Model Pass Rate Comparison</div>
+                <div class="chart-container">
+                    <canvas id="modelPassRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Performance by Rule -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Performance by Rule</div>
+                <div class="chart-container">
+                    <canvas id="rulePerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Cost and Response Time -->
+        <div class="row row-4">
+            <div class="panel">
+                <div class="panel-title">Response Time Distribution</div>
+                <div class="chart-container">
+                    <canvas id="responseTimeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Cost by Model</div>
+                <div class="chart-container">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 5: Detailed Results Table -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Model Summary</div>
+                {self._build_model_summary_table(model_stats)}
+            </div>
+        </div>
+
+        <!-- Row 6: All Test Results -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">Test Results</div>
+                <div style="margin-bottom: 15px;">
+                    <button class="filter-btn active" onclick="filterTests('all')">All ({len(results)})</button>
+                    <button class="filter-btn" onclick="filterTests('passed')">Passed ({sum(1 for r in results if r.get('passed', False))})</button>
+                    <button class="filter-btn" onclick="filterTests('failed')">Failed ({sum(1 for r in results if not r.get('passed', False))})</button>
+                </div>
+                <div id="test-results">
+                    {self._build_test_results(results)}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        {self._build_charts_script(results, model_stats, rule_stats)}
+        {self._build_interaction_script()}
+    </script>
+</body>
+</html>
+        """
+
+        return html
+
+    def _aggregate_by_model(
+        self,
+        results: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Aggregate results by model."""
+
+        model_stats = {}
+
+        for result in results:
+            model_name = result["model_name"]
+
+            if model_name not in model_stats:
+                model_stats[model_name] = {
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "response_times": [],
+                    "costs": []
+                }
+
+            stats = model_stats[model_name]
+            stats["total"] += 1
+
+            if result.get("passed", False):
+                stats["passed"] += 1
+            else:
+                stats["failed"] += 1
+
+            stats["response_times"].append(result.get("metrics", {}).get("response_time_ms", 0))
+            stats["costs"].append(result.get("estimated_cost", 0))
+
+        return model_stats
+
+    def _aggregate_by_rule(
+        self,
+        results: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Aggregate results by rule."""
+
+        rule_stats = {}
+
+        for result in results:
+            rule_id = result.get("rule_id", "Unknown")
+            model_name = result.get("model_name", "Unknown")
+
+            if rule_id not in rule_stats:
+                rule_stats[rule_id] = {}
+
+            if model_name not in rule_stats[rule_id]:
+                rule_stats[rule_id][model_name] = {"total": 0, "passed": 0}
+
+            rule_stats[rule_id][model_name]["total"] += 1
+            if result.get("passed", False):
+                rule_stats[rule_id][model_name]["passed"] += 1
+
+        return rule_stats
+
+    def _build_summary_stats(
+        self,
+        results: List[Dict[str, Any]],
+        model_stats: Dict[str, Dict[str, Any]]
+    ) -> str:
+        """Build summary stat panels."""
+
+        total_tests = len(results)
+        total_passed = sum(1 for r in results if r.get("passed", False))
+        total_cost = sum(r.get("estimated_cost", 0) for r in results)
+
+        pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
+
+        # Determine colors
+        pass_color = "green" if pass_rate >= 85 else "yellow" if pass_rate >= 70 else "orange" if pass_rate >= 50 else "red"
+        cost_color = "green" if total_cost < 1.0 else "yellow" if total_cost < 5.0 else "orange" if total_cost < 10.0 else "red"
+
+        return f"""
+        <div class="panel stat-bg-{pass_color}">
+            <div class="panel-title">Pass Rate</div>
+            <div class="stat-value {pass_color}">{pass_rate:.1f}%</div>
+            <div class="stat-label">{total_passed} of {total_tests} tests passed</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Total Tests</div>
+            <div class="stat-value">{total_tests}</div>
+            <div class="stat-label">{len(model_stats)} models evaluated</div>
+        </div>
+
+        <div class="panel stat-bg-{cost_color}">
+            <div class="panel-title">Total Cost</div>
+            <div class="stat-value {cost_color}">${total_cost:.3f}</div>
+            <div class="stat-label">API costs for all evaluations</div>
+        </div>
+        """
+
+    def _build_model_summary_table(
+        self,
+        model_stats: Dict[str, Dict[str, Any]]
+    ) -> str:
+        """Build model summary table."""
+
+        rows = []
+
+        for model_name, stats in model_stats.items():
+            pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            avg_response = sum(stats["response_times"]) / len(stats["response_times"]) if stats["response_times"] else 0
+            total_cost = sum(stats["costs"])
+
+            pass_color = "green" if pass_rate >= 85 else "yellow" if pass_rate >= 70 else "orange" if pass_rate >= 50 else "red"
+
+            rows.append(f"""
+                <tr>
+                    <td>{model_name}</td>
+                    <td>{stats["total"]}</td>
+                    <td><span class="badge badge-{pass_color}">{stats["passed"]}</span></td>
+                    <td><span class="badge badge-red">{stats["failed"]}</span></td>
+                    <td><span class="{pass_color}">{pass_rate:.1f}%</span></td>
+                    <td>{avg_response:.0f}ms</td>
+                    <td>${total_cost:.4f}</td>
+                </tr>
+            """)
+
+        return f"""
+        <table>
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Total</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Pass Rate</th>
+                    <th>Avg Response</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(rows)}
+            </tbody>
+        </table>
+        """
+
+    def _build_test_results(self, results: List[Dict[str, Any]]) -> str:
+        """Build collapsible test results."""
+
+        html = ""
+
+        for i, result in enumerate(results):
+            passed = result.get("passed", False)
+            status_class = "passed" if passed else "failed"
+            status_icon = "✓" if passed else "✗"
+            status_color = "green" if passed else "red"
+
+            failure_reason = result.get("failure_reason", "Test failed") if not passed else "Test passed"
+
+            html += f"""
+            <div class="test-details" data-status="{status_class}" onclick="toggleTest({i})">
+                <div class="test-header">
+                    <div class="test-title">
+                        <span class="{status_color}">{status_icon}</span>
+                        {result.get("model_name", "Unknown")} -
+                        {result.get("rule_id", "Unknown")} -
+                        {result.get("test_case_id", "Unknown")}
+                    </div>
+                    <div>
+                        <span class="badge badge-{status_color}">{status_class.upper()}</span>
+                        <span class="expand-icon" id="test-icon-{i}">▼</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 5px; font-size: 12px; color: #9fa1a4;">
+                    {failure_reason}
+                </div>
+
+                <div class="test-content" id="test-content-{i}">
+                    <div class="metrics-grid">
+                        {self._build_metrics_grid(result.get("metrics", {}))}
+                        <div class="metric-item">
+                            <div class="metric-item-label">Cost</div>
+                            <div class="metric-item-value">${result.get("estimated_cost", 0):.4f}</div>
+                        </div>
+                    </div>
+
+                    <div class="code-header">Generated Code</div>
+                    <div class="code-block">
+                        <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
+                    </div>
+
+                    {self._build_expected_code_section(result)}
+                    {self._build_explanation_section(result)}
+                </div>
+            </div>
+            """
+
+        return html
+
+    def _build_metrics_grid(self, metrics: Dict[str, Any]) -> str:
+        """Build metrics grid."""
+
+        html = ""
+
+        # Response time
+        response_time = metrics.get("response_time_ms", 0)
+        html += f"""
+        <div class="metric-item">
+            <div class="metric-item-label">Response Time</div>
+            <div class="metric-item-value">{response_time:.0f}ms</div>
+        </div>
+        """
+
+        # Compilation
+        if "compiles" in metrics:
+            compiles = metrics["compiles"]
+            color = "green" if compiles else "red"
+            value = "✓" if compiles else "✗"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Compiles</div>
+                <div class="metric-item-value {color}">{value}</div>
+            </div>
+            """
+
+        # Functional correctness
+        if "functional_correctness" in metrics:
+            correct = metrics["functional_correctness"]
+            color = "green" if correct else "red"
+            value = "✓" if correct else "✗"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Functional</div>
+                <div class="metric-item-value {color}">{value}</div>
+            </div>
+            """
+
+        # Security issues
+        if "security_issues" in metrics:
+            issues = metrics["security_issues"]
+            color = "green" if issues == 0 else "orange" if issues < 3 else "red"
+            html += f"""
+            <div class="metric-item">
+                <div class="metric-item-label">Security Issues</div>
+                <div class="metric-item-value {color}">{issues}</div>
+            </div>
+            """
+
+        return html
+
+    def _build_expected_code_section(self, result: Dict[str, Any]) -> str:
+        """Build expected code section if available."""
+
+        expected = result.get("expected_code")
+        if not expected:
+            return ""
+
+        return f"""
+        <div class="code-header">Expected Code</div>
+        <div class="code-block">
+            <pre>{self._escape_html(expected)}</pre>
+        </div>
+        """
+
+    def _build_explanation_section(self, result: Dict[str, Any]) -> str:
+        """Build explanation section if available."""
+
+        explanation = result.get("generated_explanation")
+        if not explanation:
+            return ""
+
+        return f"""
+        <div class="code-header">Explanation</div>
+        <div class="code-block">
+            <pre>{self._escape_html(explanation)}</pre>
+        </div>
+        """
+
+    def _build_charts_script(
+        self,
+        results: List[Dict[str, Any]],
+        model_stats: Dict[str, Dict[str, Any]],
+        rule_stats: Dict[str, Dict[str, Any]]
+    ) -> str:
+        """Build JavaScript for charts."""
+
+        # Model pass rate data
+        models = list(model_stats.keys())
+        pass_rates = [
+            (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            for stats in model_stats.values()
+        ]
+
+        # Rule performance data
+        rules = sorted(rule_stats.keys())
+        rule_pass_rates = {}
+        for model in models:
+            rule_pass_rates[model] = []
+            for rule in rules:
+                if model in rule_stats.get(rule, {}):
+                    stats = rule_stats[rule][model]
+                    rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+                    rule_pass_rates[model].append(rate)
+                else:
+                    rule_pass_rates[model].append(0)
+
+        # Response time data
+        response_times = {model: stats["response_times"] for model, stats in model_stats.items()}
+
+        # Cost data
+        costs = [sum(stats["costs"]) for stats in model_stats.values()]
+
+        return f"""
+        // Model pass rate chart
+        const modelPassRateCtx = document.getElementById('modelPassRateChart').getContext('2d');
+        new Chart(modelPassRateCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(models)},
+                datasets: [{{
+                    label: 'Pass Rate',
+                    data: {json.dumps(pass_rates)},
+                    backgroundColor: 'rgba(115, 191, 105, 0.6)',
+                    borderColor: 'rgba(115, 191, 105, 1)',
+                    borderWidth: 1
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: false }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                return context.parsed.y.toFixed(1) + '%';
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
+
+        // Rule performance chart
+        const rulePerformanceCtx = document.getElementById('rulePerformanceChart').getContext('2d');
+        new Chart(rulePerformanceCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(rules)},
+                datasets: {json.dumps([
+                    {
+                        "label": model,
+                        "data": rule_pass_rates[model],
+                        "backgroundColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 0.6)",
+                        "borderColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 1)",
+                        "borderWidth": 1
+                    }
+                    for i, model in enumerate(models)
+                ])}
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        position: 'top',
+                        labels: {{ color: '#d8d9da', padding: 15 }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
+
+        // Response time chart
+        const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+        new Chart(responseTimeCtx, {{
+            type: 'line',
+            data: {{
+                labels: Array.from({{ length: Math.max(...{json.dumps([len(times) for times in response_times.values()])}) }}, (_, i) => i + 1),
+                datasets: {json.dumps([
+                    {
+                        "label": model,
+                        "data": times,
+                        "borderColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 1)",
+                        "backgroundColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 0.1)",
+                        "tension": 0.4,
+                        "fill": True
+                    }
+                    for i, (model, times) in enumerate(response_times.items())
+                ])}
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        position: 'top',
+                        labels: {{ color: '#d8d9da', padding: 15 }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + 'ms';
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
+
+        // Cost chart
+        const costCtx = document.getElementById('costChart').getContext('2d');
+        new Chart(costCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(models)},
+                datasets: [{{
+                    label: 'Total Cost',
+                    data: {json.dumps(costs)},
+                    backgroundColor: 'rgba(255, 120, 10, 0.6)',
+                    borderColor: 'rgba(255, 120, 10, 1)',
+                    borderWidth: 1
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: false }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                return '$' + context.parsed.y.toFixed(4);
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        ticks: {{
+                            callback: function(value) {{
+                                return '$' + value.toFixed(3);
+                            }},
+                            color: '#9fa1a4'
+                        }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }},
+                    x: {{
+                        ticks: {{ color: '#9fa1a4' }},
+                        grid: {{ color: '#2d2d2d' }}
+                    }}
+                }}
+            }}
+        }});
+        """
+
+    def _build_interaction_script(self) -> str:
+        """Build JavaScript for interactions."""
+
+        return """
+        // Toggle test details
+        function toggleTest(index) {
+            const content = document.getElementById('test-content-' + index);
+            const icon = document.getElementById('test-icon-' + index);
+
+            content.classList.toggle('expanded');
+            icon.classList.toggle('expanded');
+        }
+
+        // Filter tests
+        function filterTests(status) {
+            const tests = document.querySelectorAll('.test-details');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter tests
+            tests.forEach(test => {
+                if (status === 'all' || test.dataset.status === status) {
+                    test.style.display = 'block';
+                } else {
+                    test.style.display = 'none';
+                }
+            });
+        }
+        """
+
+    def _escape_html(self, text: str) -> str:
+        """Escape HTML special characters."""
+        if not text:
+            return ""
+        return (text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#39;"))
