@@ -462,8 +462,15 @@ class HTMLReporterGrafana:
                     "total": 0,
                     "passed": 0,
                     "failed": 0,
+                    "compiled": 0,
                     "response_times": [],
-                    "costs": []
+                    "costs": [],
+                    "complexities": [],
+                    "pylint_scores": [],
+                    "maintainability_scores": [],
+                    "security_issues": [],
+                    "explanation_scores": [],
+                    "comment_densities": []
                 }
 
             stats = model_stats[model_name]
@@ -474,8 +481,31 @@ class HTMLReporterGrafana:
             else:
                 stats["failed"] += 1
 
+            # Track compilation success
+            if result.get("metrics", {}).get("compiles", False):
+                stats["compiled"] += 1
+
             stats["response_times"].append(result.get("metrics", {}).get("response_time_ms", 0))
             stats["costs"].append(result.get("estimated_cost", 0))
+
+            # Collect quality metrics
+            metrics = result.get("metrics", {})
+            if metrics.get("cyclomatic_complexity") is not None:
+                stats["complexities"].append(metrics["cyclomatic_complexity"])
+            if metrics.get("pylint_score") is not None:
+                stats["pylint_scores"].append(metrics["pylint_score"])
+            if metrics.get("maintainability_index") is not None:
+                stats["maintainability_scores"].append(metrics["maintainability_index"])
+
+            # Collect security metrics
+            if metrics.get("security_issues") is not None:
+                stats["security_issues"].append(metrics["security_issues"])
+
+            # Collect explainability metrics
+            if metrics.get("explanation_quality_score") is not None:
+                stats["explanation_scores"].append(metrics["explanation_quality_score"])
+            if metrics.get("comment_density") is not None:
+                stats["comment_densities"].append(metrics["comment_density"])
 
         return model_stats
 
@@ -515,32 +545,99 @@ class HTMLReporterGrafana:
         for model_name, stats in model_stats.items():
             # Calculate metrics
             pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            compile_rate = (stats["compiled"] / stats["total"] * 100) if stats["total"] > 0 else 0
             avg_response_time = sum(stats["response_times"]) / len(stats["response_times"]) if stats["response_times"] else 0
             total_cost = sum(stats["costs"])
+            avg_complexity = sum(stats["complexities"]) / len(stats["complexities"]) if stats["complexities"] else None
+            avg_maintainability = sum(stats["maintainability_scores"]) / len(stats["maintainability_scores"]) if stats["maintainability_scores"] else None
+            avg_security_issues = sum(stats["security_issues"]) / len(stats["security_issues"]) if stats["security_issues"] else None
+            avg_explanation_score = sum(stats["explanation_scores"]) / len(stats["explanation_scores"]) if stats["explanation_scores"] else None
+            avg_comment_density = sum(stats["comment_densities"]) / len(stats["comment_densities"]) if stats["comment_densities"] else None
 
             # Calculate composite score (0-100)
-            # Weighted scoring: pass_rate (70%), speed (15%), cost (15%)
+            # Weighted scoring: pass_rate (40%), compile_rate (15%), quality (15%), security (15%), explainability (10%), speed (2.5%), cost (2.5%)
             score = 0
 
             # Pass rate (most important)
-            score += pass_rate * 0.7
+            score += pass_rate * 0.4
+
+            # Compilation rate
+            score += compile_rate * 0.15
+
+            # Quality metrics (average of available metrics)
+            quality_score = 0
+            quality_count = 0
+
+            if avg_complexity is not None:
+                # Lower is better, normalize to 0-100 (complexity 1-30 range)
+                complexity_score = max(0, 100 - (avg_complexity - 1) * 3.33)
+                quality_score += complexity_score
+                quality_count += 1
+
+            if avg_maintainability is not None:
+                # Higher is better, already 0-100
+                quality_score += avg_maintainability
+                quality_count += 1
+
+            if quality_count > 0:
+                score += (quality_score / quality_count) * 0.15
+
+            # Security metrics (lower issues is better)
+            if avg_security_issues is not None:
+                # Assume 0 issues = 100 score, 5+ issues = 0 score
+                security_score = max(0, 100 - (avg_security_issues * 20))
+                score += security_score * 0.15
+
+            # Explainability metrics (average of available metrics)
+            explainability_score = 0
+            explainability_count = 0
+
+            if avg_explanation_score is not None:
+                # Higher is better, scale 0-10 to 0-100
+                explainability_score += avg_explanation_score * 10
+                explainability_count += 1
+
+            if avg_comment_density is not None:
+                # Ideal range 10-30%, convert to 0-100 score
+                percentage = avg_comment_density * 100
+                if 10 <= percentage <= 30:
+                    density_score = 100
+                elif percentage > 30:
+                    # Penalize over-commenting: 30% = 100, 60% = 0
+                    density_score = max(0, 100 - (percentage - 30) * 3.33)
+                elif percentage > 0:
+                    # Penalize under-commenting: 10% = 100, 0% = 0
+                    density_score = percentage * 10
+                else:
+                    density_score = 0
+                explainability_score += density_score
+                explainability_count += 1
+
+            if explainability_count > 0:
+                score += (explainability_score / explainability_count) * 0.1
 
             # Response time (lower is better, normalize to 0-100)
             # Assume 10000ms is max acceptable response time
             time_score = max(0, 100 - (avg_response_time / 100))
-            score += time_score * 0.15
+            score += time_score * 0.025
 
             # Cost (lower is better, normalize to 0-100)
             # Assume $1.00 total is max acceptable cost
             cost_score = max(0, 100 - (total_cost * 100)) if total_cost > 0 else 100
-            score += cost_score * 0.15
+            score += cost_score * 0.025
 
             rankings.append({
                 "model_name": model_name,
                 "score": score,
                 "pass_rate": pass_rate,
+                "compile_rate": compile_rate,
                 "avg_response_time": avg_response_time,
                 "total_cost": total_cost,
+                "avg_complexity": avg_complexity,
+                "avg_maintainability": avg_maintainability,
+                "avg_security_issues": avg_security_issues,
+                "avg_explanation_score": avg_explanation_score,
+                "avg_comment_density": avg_comment_density,
                 "tests_passed": stats["passed"],
                 "tests_total": stats["total"]
             })
@@ -584,6 +681,10 @@ class HTMLReporterGrafana:
                         <div style="font-size: 11px; color: #6e7074;">{ranking["tests_passed"]}/{ranking["tests_total"]} passed</div>
                     </div>
                     <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Compilation Rate</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #73bf69;">{ranking["compile_rate"]:.1f}%</div>
+                    </div>
+                    <div>
                         <div style="font-size: 12px; color: #9fa1a4;">Avg Response Time</div>
                         <div style="font-size: 20px; font-weight: bold; color: #729fcf;">{ranking["avg_response_time"]:.0f}ms</div>
                     </div>
@@ -591,6 +692,56 @@ class HTMLReporterGrafana:
                         <div style="font-size: 12px; color: #9fa1a4;">Total Cost</div>
                         <div style="font-size: 20px; font-weight: bold; color: #ff780a;">${ranking["total_cost"]:.4f}</div>
                     </div>
+            '''
+
+            # Add quality metrics if available
+            if ranking["avg_complexity"] is not None:
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Complexity</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #b09bf5;">{ranking["avg_complexity"]:.1f}</div>
+                    </div>
+                '''
+
+            if ranking["avg_maintainability"] is not None:
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Maintainability</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #56d9fe;">{ranking["avg_maintainability"]:.1f}/100</div>
+                    </div>
+                '''
+
+            # Add security metrics if available
+            if ranking["avg_security_issues"] is not None:
+                security_color = "#73bf69" if ranking["avg_security_issues"] == 0 else "#ff780a" if ranking["avg_security_issues"] < 2 else "#f2495c"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Avg Security Issues</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {security_color};">{ranking["avg_security_issues"]:.1f}</div>
+                    </div>
+                '''
+
+            # Add explainability metrics if available
+            if ranking["avg_explanation_score"] is not None:
+                expl_color = "#73bf69" if ranking["avg_explanation_score"] >= 7.0 else "#ff780a" if ranking["avg_explanation_score"] >= 5.0 else "#f2495c"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Explanation Quality</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {expl_color};">{ranking["avg_explanation_score"]:.1f}/10</div>
+                    </div>
+                '''
+
+            if ranking["avg_comment_density"] is not None:
+                percentage = ranking["avg_comment_density"] * 100
+                comment_color = "#73bf69" if 10 <= percentage <= 30 else "#ff780a"
+                html += f'''
+                    <div>
+                        <div style="font-size: 12px; color: #9fa1a4;">Comment Density</div>
+                        <div style="font-size: 20px; font-weight: bold; color: {comment_color};">{percentage:.1f}%</div>
+                    </div>
+                '''
+
+            html += '''
                 </div>
             </div>
             '''
@@ -606,6 +757,7 @@ class HTMLReporterGrafana:
                     <th style="padding: 10px; text-align: left; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Model</th>
                     <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Score</th>
                     <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Pass Rate</th>
+                    <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Compile Rate</th>
                     <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Avg Response</th>
                     <th style="padding: 10px; text-align: right; color: #d8d9da; border-bottom: 1px solid #2d2d2d;">Cost</th>
                 </tr>
@@ -620,6 +772,7 @@ class HTMLReporterGrafana:
                     <td style="padding: 10px; font-weight: 500; color: #d8d9da;">{ranking["model_name"]}</td>
                     <td style="padding: 10px; text-align: right; font-weight: bold; color: #d8d9da;">{ranking["score"]:.1f}</td>
                     <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["pass_rate"]:.1f}%</td>
+                    <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["compile_rate"]:.1f}%</td>
                     <td style="padding: 10px; text-align: right; color: #d8d9da;">{ranking["avg_response_time"]:.0f}ms</td>
                     <td style="padding: 10px; text-align: right; color: #d8d9da;">${ranking["total_cost"]:.4f}</td>
                 </tr>
