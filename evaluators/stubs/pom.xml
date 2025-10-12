@@ -39,6 +39,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- MicroProfile Reactive Messaging (for @Incoming, @Outgoing, Emitter, etc.) -->
+        <dependency>
+            <groupId>org.eclipse.microprofile.reactive.messaging</groupId>
+            <artifactId>microprofile-reactive-messaging-api</artifactId>
+            <version>3.0</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Quarkus Arc (CDI implementation, io.quarkus.arc.*) -->
         <dependency>
             <groupId>io.quarkus</groupId>
