@@ -325,7 +325,7 @@ class HTMLReporterGrafana:
 </head>
 <body>
     <div class="header">
-        <div style="display: flex; align-items: center; gap: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
             <svg width="120" height="46" viewBox="0 0 575.19 221.79" xmlns="http://www.w3.org/2000/svg">
                 <g transform="translate(-9.3672,-9.1211)">
                     <path d="m174.6 82.258h38.348v14.941h-38.348z"/>
