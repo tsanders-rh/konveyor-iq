@@ -23,27 +23,43 @@ konveyor-iq/
 ├── benchmarks/              # Test datasets
 │   ├── rules/              # Rule definitions
 │   └── test_cases/         # Violation test cases
+│       ├── generated/      # Auto-generated from Konveyor rules
+│       └── *.yaml          # Manual test suites
+├── config/                  # Configuration files
+│   └── migration_guidance.yaml  # Migration-specific prompts
+├── docs/                    # Documentation
+│   ├── generating_tests.md # Test generation guide
+│   ├── validating_expected_fixes.md
+│   ├── automating_test_case_fixes.md
+│   └── KONVEYOR_ISSUE_*.md # Issue reports for Konveyor team
 ├── evaluators/             # Metric implementations
 │   ├── functional.py       # Functional correctness checks
 │   ├── quality.py          # Code quality metrics
 │   ├── security.py         # Security analysis
 │   ├── efficiency.py       # Performance metrics
 │   ├── explainability.py   # Explanation quality
-│   └── stubs/             # Java stubs for compilation
-│       ├── src/           # Stub source files
-│       ├── stubs.jar      # Compiled stub classes
-│       └── build.sh       # Rebuild script
+│   └── stubs/             # Java compilation dependencies
+│       ├── pom.xml        # Maven dependencies (real JARs)
+│       ├── lib/           # Downloaded JARs (200+)
+│       ├── src/           # Custom stub source files
+│       ├── stubs.jar      # Compiled custom stubs
+│       └── build.sh       # Rebuild custom stubs
 ├── models/                 # LLM adapters
 │   ├── base.py            # Base model interface
 │   ├── openai_adapter.py  # OpenAI models
 │   ├── anthropic_adapter.py # Claude models
-│   └── local_adapter.py    # Local/HF models
+│   └── google_adapter.py  # Google Gemini models
 ├── reporters/              # Report generation
-│   ├── html_reporter.py   # HTML dashboard
+│   ├── html_reporter.py   # HTML dashboard (Grafana-style)
 │   ├── markdown_reporter.py # Markdown reports
 │   └── templates/         # Report templates
+├── scripts/                # Utility scripts
+│   ├── generate_tests.py  # Generate test cases from Konveyor rules
+│   ├── validate_expected_fixes.py  # Validate test case code compiles
+│   └── fix_expected_fixes.py      # Auto-fix compilation errors with LLM
 ├── results/                # Evaluation outputs (gitignored)
-├── config.yaml             # Configuration
+├── config.yaml             # Main configuration
+├── config.example.yaml     # Example configuration
 ├── evaluate.py             # Main evaluation script
 └── requirements.txt        # Python dependencies
 ```
@@ -135,6 +151,59 @@ python evaluate.py --benchmark benchmarks/test_cases/generated/java-ee-to-quarku
 
 See [docs/generating_tests.md](docs/generating_tests.md) for full documentation.
 
+## Validating and Fixing Test Cases
+
+Ensure your test cases are high-quality with automated validation and fixing:
+
+### Validate Expected Fixes
+
+Check that all `expected_fix` code in test cases compiles successfully:
+
+```bash
+# Validate all test cases (fast, no API key needed)
+python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
+
+# Show detailed output for all tests
+python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --verbose
+```
+
+### Automatically Fix Compilation Errors
+
+Use an LLM to automatically fix compilation errors in `expected_fix` code:
+
+```bash
+# Preview what would be fixed (no modifications)
+python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --dry-run
+
+# Apply fixes (validates first, then fixes failures)
+python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
+
+# Fix specific rule only
+python scripts/fix_expected_fixes.py \
+  --file benchmarks/test_cases/generated/quarkus.yaml \
+  --rule-id jms-to-reactive-quarkus-00010
+
+# Use different model for fixing
+python scripts/fix_expected_fixes.py \
+  --file benchmarks/test_cases/generated/quarkus.yaml \
+  --model claude-3-7-sonnet-latest
+```
+
+The fix script:
+- ✅ Automatically validates before fixing
+- ✅ Skips if everything compiles
+- ✅ Uses LLM to intelligently fix compilation errors
+- ✅ Validates each fix before applying
+- ✅ Updates YAML files in place
+
+**Common fixes:**
+- Ambiguous imports (javax.jms.Message vs reactive.messaging.Message)
+- Incorrect interface implementations
+- Type mismatches
+- Missing imports
+
+See [docs/validating_expected_fixes.md](docs/validating_expected_fixes.md) and [docs/automating_test_case_fixes.md](docs/automating_test_case_fixes.md) for details.
+
 ## Adding Test Cases Manually
 
 Alternatively, create YAML files manually in `benchmarks/test_cases/`:
@@ -178,6 +247,12 @@ This ensures the LLM receives authoritative migration guidance directly from Kon
 
 And includes it in the prompt sent to the LLM, improving migration accuracy.
 
+### Konveyor Rule Issues
+
+If you discover issues with Konveyor rule guidance (e.g., contradictory examples, incorrect migration patterns), document them in `docs/` for the Konveyor team.
+
+**Example:** See `docs/KONVEYOR_ISSUE_JMS_REACTIVE_MESSAGING.md` for documentation of incorrect guidance in `jms-to-reactive-quarkus-00020`.
+
 ## Configuration
 
 Edit `config.yaml` to specify:
@@ -211,6 +286,49 @@ patterns = {
 - Message-driven beans → Reactive messaging
 - Persistence API migrations
 
+### Migration Guidance System
+
+**Centralized, technology-specific migration guidance** ensures LLMs receive accurate migration patterns:
+
+**How it works:**
+1. Test suites specify `migration_source` and `migration_target` labels (e.g., `java-ee` → `quarkus`)
+2. Framework loads matching guidance from `config/migration_guidance.yaml`
+3. Guidance is injected into prompts via `{migration_guidance}` placeholder
+4. LLMs receive both base prompts AND specific migration patterns
+
+**Supported migration paths:**
+- Java EE → Quarkus (with messaging, singleton, startup patterns)
+- Spring Boot → Quarkus (config, DI, data access patterns)
+- EAP7 → EAP8
+- And more...
+
+**Example guidance** (Java EE → Quarkus messaging):
+```
+MESSAGING MIGRATIONS:
+- @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming)
+- REMOVE "implements MessageListener" interface entirely
+- Use org.eclipse.microprofile.reactive.messaging.Message NOT jakarta.jms.Message
+```
+
+See `config/migration_guidance.yaml` for all patterns.
+
+### Enhanced Error Reporting
+
+**Human-readable compilation error explanations** help developers understand and fix issues:
+
+**In HTML/Markdown reports:**
+- ⚠️ **Compilation Error** section with plain-English explanation
+- **Error Details** with full compiler output
+- Examples:
+  - "Interface Implementation Error: The class implements an interface but doesn't provide all required methods..."
+  - "Type Mismatch: The code is calling a method with the wrong parameter types..."
+  - "Missing Dependency: The code uses a package that isn't available in the classpath..."
+
+**Failure reasons include:**
+- Compilation error count and details
+- New violations introduced (with count)
+- Security issues (with severity count)
+
 ### Auto-Import Stripping
 
 The framework automatically strips import statements that cause compilation failures due to missing stubs:
@@ -222,25 +340,46 @@ The framework automatically strips import statements that cause compilation fail
 
 This prevents false failures when LLMs add extra (harmless) imports.
 
-### Java Stub Management
+### Java Compilation Dependencies
 
-Stub classes enable compilation validation without full dependencies:
+**Real JARs from Maven Central** provide complete API coverage for compilation validation:
 
-```bash
-# Add new stub classes
-cd evaluators/stubs/src
-# Create new .java stub files
+The framework uses `evaluators/stubs/pom.xml` to download real dependency JARs:
 
-# Rebuild JAR
-./build.sh
+```xml
+<!-- Jakarta EE 10 API -->
+<dependency>
+  <groupId>jakarta.platform</groupId>
+  <artifactId>jakarta.jakartaee-api</artifactId>
+  <version>10.0.0</version>
+</dependency>
+
+<!-- Quarkus Platform BOM -->
+<dependency>
+  <groupId>io.quarkus.platform</groupId>
+  <artifactId>quarkus-bom</artifactId>
+  <version>3.6.0</version>
+</dependency>
+
+<!-- MicroProfile APIs -->
+<!-- Quarkus Extensions (REST, messaging, Panache, Spring compatibility) -->
+<!-- Legacy javax.* APIs for backward compatibility -->
 ```
 
-**Current stubs include:**
-- Jakarta EE annotations (@ApplicationScoped, @SessionScoped, @RequestScoped, etc.)
-- Java EE annotations (@Stateless, @Stateful, @Singleton, etc.)
-- JMS classes (Message, MessageListener, TextMessage, JMSException)
-- MicroProfile Reactive Messaging (@Incoming)
-- Common domain objects (User, Order, Payment, Database)
+**Download dependencies:**
+```bash
+cd evaluators/stubs
+mvn clean package
+```
+
+This downloads 200+ JARs covering:
+- ✅ Jakarta EE 10 (jakarta.*)
+- ✅ Java EE (javax.* for legacy code)
+- ✅ Quarkus extensions (REST, messaging, Panache, Spring APIs)
+- ✅ MicroProfile APIs (Config, Reactive Messaging, Health, Metrics)
+- ✅ Hibernate, Kafka, and more
+
+**Custom domain stubs** (User, Order, Database, etc.) remain in `stubs.jar` for test-specific classes.
 
 ### Security Analysis
 
