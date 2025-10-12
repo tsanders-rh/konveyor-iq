@@ -10,29 +10,13 @@ metadata:
   migration_source: "java-ee"
   migration_target: "quarkus"
 
-# Optional: Custom prompt override (if not specified, uses config/migration_guidance.yaml)
-# Remove this field to use dynamic guidance from config
+# Optional: Custom prompt template
+# Migration guidance is injected via {migration_guidance} based on migration_source/migration_target labels
+# If you omit this field entirely, uses default from config.yaml
 prompt: |
   You are helping migrate Java EE code to Quarkus based on static analysis rules.
 
-  MIGRATION TARGET: Quarkus with Jakarta EE APIs
-  - Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
-  - Use CDI annotations: @ApplicationScoped, @Inject, @SessionScoped
-  - Use Jakarta Persistence and Jakarta Transactions
-  - DO NOT use Spring Framework (@Service, @Component, @Autowired, etc.)
-
-  MESSAGING MIGRATIONS:
-  - @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming annotation)
-  - DO NOT convert messaging to JAX-RS REST endpoints (@Path, @POST, etc.)
-  - DO NOT use JMSContext or Queue injection for messaging
-  - Use org.eclipse.microprofile.reactive.messaging.Incoming for message consumers
-
-  SINGLETON AND STARTUP MIGRATIONS:
-  - @Singleton (javax.ejb) → @ApplicationScoped (jakarta.enterprise.context)
-  - @Startup → Use @Observes StartupEvent pattern
-  - For startup logic: Add parameter "@Observes StartupEvent event" to init method
-  - Import: io.quarkus.runtime.StartupEvent and jakarta.enterprise.event.Observes
-  - DO NOT use @PostConstruct as a replacement for @Startup
+  {migration_guidance}
 
   Rule Violation:
   {rule_description}

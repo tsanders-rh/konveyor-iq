@@ -95,7 +95,9 @@ static_analysis:
 # See benchmarks/test_cases/java-ee-quarkus-migration.yaml for examples.
 prompts:
   default: |
-    You are helping migrate code based on static analysis rules.
+    You are helping with code migration based on static analysis rules.
+
+    {migration_guidance}
 
     Rule Violation:
     {rule_description}
@@ -114,7 +116,9 @@ prompts:
     1. The COMPLETE corrected code that resolves the violation (include ALL original code - classes, fields, methods, everything)
     2. A brief explanation of the changes made
 
-    IMPORTANT: Provide the ENTIRE class with ALL fields and methods, not just the parts you changed.
+    IMPORTANT:
+    - Provide the ENTIRE class with ALL fields and methods, not just the parts you changed
+    - Follow the migration target's best practices
 
     Format your response as:
     FIXED CODE:

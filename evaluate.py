@@ -92,21 +92,9 @@ class EvaluationEngine:
 
         return None
 
-    def _build_prompt_from_guidance(self, guidance: Dict[str, Any]) -> str:
-        """Build prompt template from guidance entry."""
-        source = guidance.get('source', 'code')
-        target = guidance.get('target', 'target framework')
-
-        # Build intro based on source/target
-        if source and target:
-            intro = f"You are helping migrate {source.upper()} code to {target.title()} based on static analysis rules."
-        elif target:
-            intro = f"You are helping migrate code to {target.title()} based on static analysis rules."
-        else:
-            intro = "You are helping with code migration based on static analysis rules."
-
-        # Start building the prompt
-        parts = [intro, ""]
+    def _build_guidance_string(self, guidance: Dict[str, Any]) -> str:
+        """Build migration guidance string from guidance entry (for {migration_guidance} placeholder)."""
+        parts = []
 
         # Add base guidance
         base_guidance = guidance.get('base_guidance', '').strip()
@@ -124,50 +112,11 @@ class EvaluationEngine:
                 parts.append(pattern_guidance)
                 parts.append("")
 
-        # Add standard template structure
-        parts.extend([
-            "Rule Violation:",
-            "{rule_description}",
-            "",
-            "Konveyor Migration Guidance:",
-            "{konveyor_message}",
-            "",
-            "Original Code:",
-            "```{language}",
-            "{code_snippet}",
-            "```",
-            "",
-            "Context: {context}",
-            "",
-            "Please provide:",
-            "1. The COMPLETE corrected code that resolves the violation (include ALL original code)",
-            "2. A brief explanation of the changes made",
-            "",
-            "IMPORTANT:",
-            "- Provide the ENTIRE class with ALL fields and methods, not just the parts you changed",
-        ])
+        # Remove trailing empty line
+        while parts and parts[-1] == "":
+            parts.pop()
 
-        # Add target-specific important notes
-        if target and 'quarkus' in target.lower():
-            parts.append("- Use Jakarta EE (jakarta.*) packages, not Spring Framework")
-            parts.append("- Follow Quarkus best practices")
-        elif source and 'spring' in source.lower():
-            parts.append("- DO NOT use any Spring Framework annotations")
-            parts.append("- Use Quarkus and Jakarta EE APIs only")
-
-        parts.extend([
-            "",
-            "Format your response as:",
-            "FIXED CODE:",
-            "```{language}",
-            "[your complete fixed code here]",
-            "```",
-            "",
-            "EXPLANATION:",
-            "[your explanation here]"
-        ])
-
-        return "\n".join(parts)
+        return "\n".join(parts) if parts else ""
 
     def _initialize_models(self) -> List[Any]:
         """Initialize LLM models from config."""
@@ -417,43 +366,42 @@ class EvaluationEngine:
     def _build_prompt(self, rule: Any, test_case: Any, test_suite: TestSuite) -> tuple[str, str]:
         """Build prompt for model.
 
-        Priority order:
-        1. Custom prompt from test_suite (if specified) - OVERRIDE
-        2. Migration guidance from config based on migration_source/migration_target
-        3. Default prompt from config.yaml
+        Uses additive approach:
+        1. Base template: test_suite.prompt (custom) OR config.yaml default
+        2. Migration guidance: Injected via {migration_guidance} placeholder if labels present
+        3. Other placeholders: Filled with actual values (code, rule_description, etc.)
 
         Returns:
-            tuple: (prompt_template, prompt_source) where prompt_source is for tracking
+            tuple: (prompt, prompt_source) where prompt_source is for tracking
         """
         prompt_source = "default"
 
-        # Priority 1: Use test suite custom prompt if available (explicit override)
+        # Step 1: Select base template
         if test_suite.prompt:
             template = test_suite.prompt
             prompt_source = "custom"
         else:
-            # Priority 2: Try to load migration-specific guidance from config
-            migration_source = test_suite.metadata.get('migration_source')
-            migration_target = test_suite.metadata.get('migration_target')
+            template = self.config.get("prompts", {}).get("default", "")
+            prompt_source = "default"
 
-            if migration_source or migration_target:
-                guidance = self._find_guidance(migration_source, migration_target)
-                if guidance:
-                    template = self._build_prompt_from_guidance(guidance)
-                    # Build source identifier
-                    source_part = migration_source or "any"
-                    target_part = migration_target or "any"
-                    prompt_source = f"config:{source_part}-to-{target_part}"
+        # Step 2: Build migration guidance string (if labels present)
+        migration_guidance = ""
+        migration_source = test_suite.metadata.get('migration_source')
+        migration_target = test_suite.metadata.get('migration_target')
+
+        if migration_source or migration_target:
+            guidance = self._find_guidance(migration_source, migration_target)
+            if guidance:
+                migration_guidance = self._build_guidance_string(guidance)
+                # Update prompt_source to indicate guidance was added
+                source_part = migration_source or "any"
+                target_part = migration_target or "any"
+                if prompt_source == "custom":
+                    prompt_source = f"custom+config:{source_part}-to-{target_part}"
                 else:
-                    # Fallback to config default if guidance not found
-                    template = self.config.get("prompts", {}).get("default", "")
-                    prompt_source = "default"
-            else:
-                # Priority 3: Use config default
-                template = self.config.get("prompts", {}).get("default", "")
-                prompt_source = "default"
+                    prompt_source = f"default+config:{source_part}-to-{target_part}"
 
-        # Fetch Konveyor rule message if source is available
+        # Step 3: Fetch Konveyor rule message if source is available
         konveyor_message = ""
         if hasattr(rule, 'source') and rule.source:
             fetcher = get_rule_fetcher()
@@ -461,7 +409,9 @@ class EvaluationEngine:
             if konveyor_rule and konveyor_rule.get("message"):
                 konveyor_message = konveyor_rule["message"]
 
+        # Step 4: Fill all placeholders
         prompt = template.format(
+            migration_guidance=migration_guidance,
             rule_id=rule.rule_id,
             rule_description=rule.description,
             konveyor_message=konveyor_message,
