@@ -123,6 +123,12 @@ class EvaluationResult(BaseModel):
     # Cost tracking
     estimated_cost: Optional[float] = Field(None, description="Cost in USD")
 
+    # Prompt tracking (for reproducibility)
+    prompt_source: Optional[str] = Field(
+        None,
+        description="Source of prompt: 'custom' (test file override), 'config:<source>-to-<target>' (migration guidance), or 'default' (config.yaml)"
+    )
+
 
 class AggregatedResults(BaseModel):
     """Aggregated results across multiple evaluations."""

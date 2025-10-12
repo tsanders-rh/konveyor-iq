@@ -51,6 +51,124 @@ class EvaluationEngine:
         # Initialize evaluators
         self.evaluators = self._initialize_evaluators()
 
+        # Load migration guidance from config
+        self.migration_guidance = self._load_migration_guidance()
+
+    def _load_migration_guidance(self) -> List[Dict[str, Any]]:
+        """Load migration guidance from config file."""
+        config_path = Path(__file__).parent / "config" / "migration_guidance.yaml"
+
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                return config.get('migrations', [])
+        except FileNotFoundError:
+            print(f"Warning: Migration guidance config not found at {config_path}")
+            return []
+        except Exception as e:
+            print(f"Warning: Failed to load migration guidance: {e}")
+            return []
+
+    def _find_guidance(self, source: str, target: str) -> Dict[str, Any]:
+        """Find matching guidance entry for source/target pair."""
+        if not source and not target:
+            return None
+
+        # Try exact match first
+        for entry in self.migration_guidance:
+            if entry.get('source') == source and entry.get('target') == target:
+                return entry
+
+        # Try target-only match if no source specified
+        if target and not source:
+            for entry in self.migration_guidance:
+                if entry.get('target') == target and entry.get('source') is None:
+                    return entry
+
+        # Try fallback (null source and target)
+        for entry in self.migration_guidance:
+            if entry.get('source') is None and entry.get('target') is None:
+                return entry
+
+        return None
+
+    def _build_prompt_from_guidance(self, guidance: Dict[str, Any]) -> str:
+        """Build prompt template from guidance entry."""
+        source = guidance.get('source', 'code')
+        target = guidance.get('target', 'target framework')
+
+        # Build intro based on source/target
+        if source and target:
+            intro = f"You are helping migrate {source.upper()} code to {target.title()} based on static analysis rules."
+        elif target:
+            intro = f"You are helping migrate code to {target.title()} based on static analysis rules."
+        else:
+            intro = "You are helping with code migration based on static analysis rules."
+
+        # Start building the prompt
+        parts = [intro, ""]
+
+        # Add base guidance
+        base_guidance = guidance.get('base_guidance', '').strip()
+        if base_guidance:
+            parts.append(base_guidance)
+            parts.append("")
+
+        # Add specific patterns
+        specific_patterns = guidance.get('specific_patterns', [])
+        for pattern in specific_patterns:
+            pattern_name = pattern.get('name', '')
+            pattern_guidance = pattern.get('guidance', '').strip()
+            if pattern_name and pattern_guidance:
+                parts.append(f"{pattern_name}:")
+                parts.append(pattern_guidance)
+                parts.append("")
+
+        # Add standard template structure
+        parts.extend([
+            "Rule Violation:",
+            "{rule_description}",
+            "",
+            "Konveyor Migration Guidance:",
+            "{konveyor_message}",
+            "",
+            "Original Code:",
+            "```{language}",
+            "{code_snippet}",
+            "```",
+            "",
+            "Context: {context}",
+            "",
+            "Please provide:",
+            "1. The COMPLETE corrected code that resolves the violation (include ALL original code)",
+            "2. A brief explanation of the changes made",
+            "",
+            "IMPORTANT:",
+            "- Provide the ENTIRE class with ALL fields and methods, not just the parts you changed",
+        ])
+
+        # Add target-specific important notes
+        if target and 'quarkus' in target.lower():
+            parts.append("- Use Jakarta EE (jakarta.*) packages, not Spring Framework")
+            parts.append("- Follow Quarkus best practices")
+        elif source and 'spring' in source.lower():
+            parts.append("- DO NOT use any Spring Framework annotations")
+            parts.append("- Use Quarkus and Jakarta EE APIs only")
+
+        parts.extend([
+            "",
+            "Format your response as:",
+            "FIXED CODE:",
+            "```{language}",
+            "[your complete fixed code here]",
+            "```",
+            "",
+            "EXPLANATION:",
+            "[your explanation here]"
+        ])
+
+        return "\n".join(parts)
+
     def _initialize_models(self) -> List[Any]:
         """Initialize LLM models from config."""
         models = []
@@ -231,7 +349,7 @@ class EvaluationEngine:
             Evaluation result dictionary
         """
         # Build prompt
-        prompt = self._build_prompt(rule, test_case, test_suite)
+        prompt, prompt_source = self._build_prompt(rule, test_case, test_suite)
 
         # Generate fix
         try:
@@ -284,7 +402,8 @@ class EvaluationEngine:
                 "metrics": metrics,
                 "passed": passed,
                 "failure_reason": failure_reason,
-                "estimated_cost": generation_result.get("cost", 0.0)
+                "estimated_cost": generation_result.get("cost", 0.0),
+                "prompt_source": prompt_source
             }
 
         except Exception as e:
@@ -295,16 +414,44 @@ class EvaluationEngine:
                 str(e)
             )
 
-    def _build_prompt(self, rule: Any, test_case: Any, test_suite: TestSuite) -> str:
+    def _build_prompt(self, rule: Any, test_case: Any, test_suite: TestSuite) -> tuple[str, str]:
         """Build prompt for model.
 
-        Uses custom prompt from test_suite if available, otherwise falls back to config.yaml.
+        Priority order:
+        1. Custom prompt from test_suite (if specified) - OVERRIDE
+        2. Migration guidance from config based on migration_source/migration_target
+        3. Default prompt from config.yaml
+
+        Returns:
+            tuple: (prompt_template, prompt_source) where prompt_source is for tracking
         """
-        # Use test suite custom prompt if available, otherwise use config default
+        prompt_source = "default"
+
+        # Priority 1: Use test suite custom prompt if available (explicit override)
         if test_suite.prompt:
             template = test_suite.prompt
+            prompt_source = "custom"
         else:
-            template = self.config.get("prompts", {}).get("default", "")
+            # Priority 2: Try to load migration-specific guidance from config
+            migration_source = test_suite.metadata.get('migration_source')
+            migration_target = test_suite.metadata.get('migration_target')
+
+            if migration_source or migration_target:
+                guidance = self._find_guidance(migration_source, migration_target)
+                if guidance:
+                    template = self._build_prompt_from_guidance(guidance)
+                    # Build source identifier
+                    source_part = migration_source or "any"
+                    target_part = migration_target or "any"
+                    prompt_source = f"config:{source_part}-to-{target_part}"
+                else:
+                    # Fallback to config default if guidance not found
+                    template = self.config.get("prompts", {}).get("default", "")
+                    prompt_source = "default"
+            else:
+                # Priority 3: Use config default
+                template = self.config.get("prompts", {}).get("default", "")
+                prompt_source = "default"
 
         # Fetch Konveyor rule message if source is available
         konveyor_message = ""
@@ -314,7 +461,7 @@ class EvaluationEngine:
             if konveyor_rule and konveyor_rule.get("message"):
                 konveyor_message = konveyor_rule["message"]
 
-        return template.format(
+        prompt = template.format(
             rule_id=rule.rule_id,
             rule_description=rule.description,
             konveyor_message=konveyor_message,
@@ -322,6 +469,8 @@ class EvaluationEngine:
             code_snippet=test_case.code_snippet,
             context=test_case.context
         )
+
+        return prompt, prompt_source
 
     def _run_evaluators(
         self,

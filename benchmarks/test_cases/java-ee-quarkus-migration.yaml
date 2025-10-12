@@ -7,7 +7,11 @@ metadata:
   language: "java"
   framework_from: "Java EE"
   framework_to: "Quarkus"
+  migration_source: "java-ee"
+  migration_target: "quarkus"
 
+# Optional: Custom prompt override (if not specified, uses config/migration_guidance.yaml)
+# Remove this field to use dynamic guidance from config
 prompt: |
   You are helping migrate Java EE code to Quarkus based on static analysis rules.
 
