@@ -363,6 +363,12 @@ class HTMLReporterGrafana:
         <div class="row row-2">
             <div class="panel">
                 <div class="panel-title">Performance by Rule</div>
+                <div style="margin-bottom: 15px;">
+                    <label for="rule-selector" style="font-weight: 500; margin-right: 10px; color: #d8d9da;">Select Rule:</label>
+                    <select id="rule-selector" style="padding: 8px 12px; font-size: 14px; border: 1px solid #2d2d2d; border-radius: 4px; min-width: 300px; background: #212124; color: #d8d9da;">
+                        <option value="all">All Rules - Summary</option>
+                    </select>
+                </div>
                 <div class="chart-container">
                     <canvas id="rulePerformanceChart"></canvas>
                 </div>
@@ -950,51 +956,8 @@ class HTMLReporterGrafana:
             }}
         }});
 
-        // Rule performance chart
-        const rulePerformanceCtx = document.getElementById('rulePerformanceChart').getContext('2d');
-        new Chart(rulePerformanceCtx, {{
-            type: 'bar',
-            data: {{
-                labels: {json.dumps(rules)},
-                datasets: {json.dumps([
-                    {
-                        "label": model,
-                        "data": rule_pass_rates[model],
-                        "backgroundColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 0.6)",
-                        "borderColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 1)",
-                        "borderWidth": 1
-                    }
-                    for i, model in enumerate(models)
-                ])}
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{
-                    legend: {{
-                        position: 'top',
-                        labels: {{ color: '#d8d9da', padding: 15 }}
-                    }}
-                }},
-                scales: {{
-                    y: {{
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {{
-                            callback: function(value) {{
-                                return value + '%';
-                            }},
-                            color: '#9fa1a4'
-                        }},
-                        grid: {{ color: '#2d2d2d' }}
-                    }},
-                    x: {{
-                        ticks: {{ color: '#9fa1a4' }},
-                        grid: {{ color: '#2d2d2d' }}
-                    }}
-                }}
-            }}
-        }});
+        // Rule performance chart with dropdown selector
+        {self._build_per_rule_chart_data(results, models)}
 
         // Response time chart
         const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
@@ -1087,6 +1050,242 @@ class HTMLReporterGrafana:
                 }}
             }}
         }});
+        """
+
+    def _build_per_rule_chart_data(self, results: List[Dict[str, Any]], models: List[str]) -> str:
+        """Build JavaScript data for per-rule performance chart with rule selector."""
+
+        # Aggregate results by rule
+        rule_stats = {}
+        for result in results:
+            rule_id = result.get("rule_id", "Unknown")
+            model_name = result.get("model_name", "Unknown")
+
+            if rule_id not in rule_stats:
+                rule_stats[rule_id] = {}
+
+            if model_name not in rule_stats[rule_id]:
+                rule_stats[rule_id][model_name] = {"total": 0, "passed": 0}
+
+            rule_stats[rule_id][model_name]["total"] += 1
+            if result.get("passed", False):
+                rule_stats[rule_id][model_name]["passed"] += 1
+
+        # Build data structure: map of rule_id -> traces for that rule
+        rule_data_map = {}
+        sorted_rules = sorted(rule_stats.keys())
+
+        # Calculate average pass rate per rule (across all models)
+        rule_avg_pass_rates = {}
+        for rule_id in sorted_rules:
+            total_tests = 0
+            total_passed = 0
+            for model in models:
+                if model in rule_stats[rule_id]:
+                    total_tests += rule_stats[rule_id][model]["total"]
+                    total_passed += rule_stats[rule_id][model]["passed"]
+            avg_pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
+            rule_avg_pass_rates[rule_id] = avg_pass_rate
+
+        # Sort rules by pass rate (ascending) to identify worst performers
+        sorted_by_performance = sorted(rule_avg_pass_rates.items(), key=lambda x: x[1])
+
+        # For "all rules" view, show top 10 worst performing rules
+        worst_10_rules = [rule_id for rule_id, _ in sorted_by_performance[:10]]
+
+        # Build "all" view with worst 10 rules
+        all_traces = []
+        for model in models:
+            rule_ids = []
+            pass_rates = []
+
+            for rule_id in worst_10_rules:
+                rule_ids.append(rule_id)
+                stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
+                pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+                pass_rates.append(pass_rate)
+
+            all_traces.append({
+                "x": rule_ids,
+                "y": pass_rates,
+                "type": "bar",
+                "name": model
+            })
+
+        rule_data_map["all"] = all_traces
+
+        # For individual rules, show model performance
+        for rule_id in sorted_rules:
+            rule_traces = []
+            for model in models:
+                stats = rule_stats[rule_id].get(model, {"total": 0, "passed": 0})
+                pass_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+
+                rule_traces.append({
+                    "x": [model],
+                    "y": [pass_rate],
+                    "type": "bar",
+                    "name": model,
+                    "showlegend": False
+                })
+
+            rule_data_map[rule_id] = rule_traces
+
+        return f"""
+        // Store all rule performance data
+        var allRuleData = {json.dumps(rule_data_map)};
+        var ruleIds = {json.dumps(sorted_rules)};
+        var ruleAvgPassRates = {json.dumps(rule_avg_pass_rates)};
+
+        // Populate dropdown
+        var selector = document.getElementById('rule-selector');
+        ruleIds.forEach(function(ruleId) {{
+            var option = document.createElement('option');
+            option.value = ruleId;
+            var avgRate = ruleAvgPassRates[ruleId].toFixed(1);
+            option.textContent = ruleId + ' (' + avgRate + '% avg pass rate)';
+            selector.appendChild(option);
+        }});
+
+        // Initial chart layout
+        var rulePerformanceLayout = {{
+            title: {{
+                text: 'Pass Rate by Rule (Top 10 Worst Performing)',
+                font: {{ color: '#d8d9da' }}
+            }},
+            xaxis: {{
+                title: {{ text: 'Rule ID', font: {{ color: '#d8d9da' }} }},
+                tickangle: -45,
+                tickfont: {{ color: '#9fa1a4' }},
+                gridcolor: '#2d2d2d'
+            }},
+            yaxis: {{
+                title: {{ text: 'Pass Rate (%)', font: {{ color: '#d8d9da' }} }},
+                range: [0, 100],
+                tickfont: {{ color: '#9fa1a4' }},
+                gridcolor: '#2d2d2d'
+            }},
+            barmode: 'group',
+            plot_bgcolor: '#181b1f',
+            paper_bgcolor: '#181b1f',
+            legend: {{
+                font: {{ color: '#d8d9da' }}
+            }}
+        }};
+
+        // Chart.js colors for models
+        const modelColors = [
+            {{ bg: 'rgba(115, 191, 105, 0.6)', border: 'rgba(115, 191, 105, 1)' }},  // Green
+            {{ bg: 'rgba(242, 204, 12, 0.6)', border: 'rgba(242, 204, 12, 1)' }},    // Yellow
+            {{ bg: 'rgba(114, 159, 207, 0.6)', border: 'rgba(114, 159, 207, 1)' }}   // Blue
+        ];
+
+        // Function to update chart based on selection
+        function updateRuleChart(selectedRule) {{
+            var data = allRuleData[selectedRule];
+
+            if (selectedRule === 'all') {{
+                rulePerformanceLayout.title.text = 'Pass Rate by Rule (Top 10 Worst Performing)';
+                rulePerformanceLayout.xaxis.title.text = 'Rule ID';
+                rulePerformanceLayout.barmode = 'group';
+                rulePerformanceLayout.showlegend = true;
+            }} else {{
+                var avgRate = ruleAvgPassRates[selectedRule].toFixed(1);
+                rulePerformanceLayout.title.text = selectedRule + ' - Pass Rate by Model (Avg: ' + avgRate + '%)';
+                rulePerformanceLayout.xaxis.title.text = 'Model';
+                rulePerformanceLayout.barmode = 'group';
+                rulePerformanceLayout.showlegend = false;
+            }}
+
+            // Convert to Chart.js format
+            const ctx = document.getElementById('rulePerformanceChart').getContext('2d');
+
+            // Destroy existing chart if it exists
+            if (window.ruleChart) {{
+                window.ruleChart.destroy();
+            }}
+
+            // Extract labels and datasets
+            let labels = [];
+            let datasets = [];
+
+            if (selectedRule === 'all') {{
+                // Multiple models, multiple rules
+                labels = data[0].x;
+                datasets = data.map((trace, idx) => ({{
+                    label: trace.name,
+                    data: trace.y,
+                    backgroundColor: modelColors[idx % modelColors.length].bg,
+                    borderColor: modelColors[idx % modelColors.length].border,
+                    borderWidth: 1
+                }}));
+            }} else {{
+                // Multiple models, single rule
+                labels = data.map(trace => trace.x[0]);
+                datasets = [{{
+                    label: 'Pass Rate',
+                    data: data.map(trace => trace.y[0]),
+                    backgroundColor: modelColors.map(c => c.bg),
+                    borderColor: modelColors.map(c => c.border),
+                    borderWidth: 1
+                }}];
+            }}
+
+            window.ruleChart = new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: labels,
+                    datasets: datasets
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{
+                            display: selectedRule === 'all',
+                            position: 'top',
+                            labels: {{ color: '#d8d9da', padding: 15 }}
+                        }},
+                        tooltip: {{
+                            callbacks: {{
+                                label: function(context) {{
+                                    return (context.dataset.label || '') + ': ' + context.parsed.y.toFixed(1) + '%';
+                                }}
+                            }}
+                        }}
+                    }},
+                    scales: {{
+                        y: {{
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {{
+                                callback: function(value) {{
+                                    return value + '%';
+                                }},
+                                color: '#9fa1a4'
+                            }},
+                            grid: {{ color: '#2d2d2d' }}
+                        }},
+                        x: {{
+                            ticks: {{
+                                color: '#9fa1a4',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }},
+                            grid: {{ color: '#2d2d2d' }}
+                        }}
+                    }}
+                }}
+            }});
+        }}
+
+        // Add change event listener
+        selector.addEventListener('change', function() {{
+            updateRuleChart(this.value);
+        }});
+
+        // Initial render with worst 10 rules
+        updateRuleChart('all');
         """
 
     def _build_interaction_script(self) -> str:
