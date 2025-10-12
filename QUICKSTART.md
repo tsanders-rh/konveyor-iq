@@ -31,6 +31,7 @@ cp config.example.yaml config.yaml
 # Method 1: Environment variables (recommended)
 export OPENAI_API_KEY="sk-your-key-here"
 export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+export GOOGLE_API_KEY="AIza-your-key-here"  # Optional: for Google Gemini
 
 # Method 2: Edit config.yaml directly
 # Replace ${OPENAI_API_KEY} with your actual key
@@ -69,14 +70,34 @@ Edit `config.yaml` to test additional models:
 
 ```yaml
 models:
+  # OpenAI models
   - name: "gpt-4-turbo"
     provider: "openai"
     api_key: "${OPENAI_API_KEY}"
 
-  - name: "claude-3-5-sonnet"  # Add this
+  - name: "gpt-4o"  # Recommended: best cost/performance
+    provider: "openai"
+    api_key: "${OPENAI_API_KEY}"
+
+  # Anthropic models
+  - name: "claude-3-5-sonnet-20241022"  # Recommended: best quality
     provider: "anthropic"
     api_key: "${ANTHROPIC_API_KEY}"
+
+  # Google Gemini models (requires GOOGLE_API_KEY)
+  - name: "gemini-1.5-pro"  # Large context window (2M tokens)
+    provider: "google"
+    api_key: "${GOOGLE_API_KEY}"
+    temperature: 0.7
+    max_tokens: 8192
 ```
+
+**Recommended Starting Lineup:**
+- **gpt-4o** - Best cost/performance balance (~$0.15/100 tests)
+- **claude-3-5-sonnet-20241022** - Best overall quality (~$0.27/100 tests)
+- **gemini-1.5-pro** - Best for large context (~$0.15/100 tests)
+
+See [docs/model_recommendations.md](docs/model_recommendations.md) for detailed model comparison.
 
 ### Create Custom Test Cases
 
