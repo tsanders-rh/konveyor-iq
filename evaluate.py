@@ -307,7 +307,7 @@ class EvaluationEngine:
             if "error" in generation_result:
                 return self._build_error_result(
                     model.name,
-                    rule.rule_id,
+                    rule,
                     test_case.id,
                     generation_result["error"]
                 )
@@ -360,13 +360,14 @@ class EvaluationEngine:
                 "estimated_cost": generation_result.get("cost", 0.0),
                 "prompt_source": prompt_source,
                 "compilable": test_case.compilable if test_case.compilable is not None else True,
-                "non_compilable_reason": test_case.reason if test_case.compilable is False else None
+                "non_compilable_reason": test_case.reason if test_case.compilable is False else None,
+                "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
             }
 
         except Exception as e:
             return self._build_error_result(
                 model.name,
-                rule.rule_id,
+                rule,
                 test_case.id,
                 str(e)
             )
@@ -547,14 +548,14 @@ class EvaluationEngine:
     def _build_error_result(
         self,
         model_name: str,
-        rule_id: str,
+        rule: Any,
         test_case_id: str,
         error: str
     ) -> Dict[str, Any]:
         """Build error result."""
         return {
             "test_case_id": test_case_id,
-            "rule_id": rule_id,
+            "rule_id": rule.rule_id,
             "model_name": model_name,
             "timestamp": datetime.now().isoformat(),
             "generated_code": "",
@@ -565,7 +566,8 @@ class EvaluationEngine:
             "metrics": {"response_time_ms": 0},
             "passed": False,
             "failure_reason": f"Error: {error}",
-            "estimated_cost": 0.0
+            "estimated_cost": 0.0,
+            "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
         }
 
 

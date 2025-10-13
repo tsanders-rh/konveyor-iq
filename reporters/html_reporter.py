@@ -380,6 +380,14 @@ class HTMLReporter:
             </div>
         </div>
 
+        <!-- Row 2.5: Performance by Migration Complexity -->
+        <div class="row row-2">
+            <div class="panel">
+                <div class="panel-title">📊 Performance by Migration Complexity</div>
+                {self._build_complexity_breakdown_section(model_stats)}
+            </div>
+        </div>
+
         <!-- Row 3: Performance by Rule -->
         <div class="row row-2">
             <div class="panel">
@@ -471,7 +479,15 @@ class HTMLReporter:
                     "maintainability_scores": [],
                     "security_issues": [],
                     "explanation_scores": [],
-                    "comment_densities": []
+                    "comment_densities": [],
+                    "by_complexity": {
+                        "trivial": {"total": 0, "passed": 0, "failed": 0},
+                        "low": {"total": 0, "passed": 0, "failed": 0},
+                        "medium": {"total": 0, "passed": 0, "failed": 0},
+                        "high": {"total": 0, "passed": 0, "failed": 0},
+                        "expert": {"total": 0, "passed": 0, "failed": 0},
+                        "unknown": {"total": 0, "passed": 0, "failed": 0}
+                    }
                 }
 
             stats = model_stats[model_name]
@@ -507,6 +523,21 @@ class HTMLReporter:
                 stats["explanation_scores"].append(metrics["explanation_quality_score"])
             if metrics.get("comment_density") is not None:
                 stats["comment_densities"].append(metrics["comment_density"])
+
+            # Track by migration complexity
+            complexity = result.get("migration_complexity", "unknown")
+            if complexity and complexity in stats["by_complexity"]:
+                stats["by_complexity"][complexity]["total"] += 1
+                if result.get("passed", False):
+                    stats["by_complexity"][complexity]["passed"] += 1
+                else:
+                    stats["by_complexity"][complexity]["failed"] += 1
+            else:
+                stats["by_complexity"]["unknown"]["total"] += 1
+                if result.get("passed", False):
+                    stats["by_complexity"]["unknown"]["passed"] += 1
+                else:
+                    stats["by_complexity"]["unknown"]["failed"] += 1
 
         return model_stats
 
@@ -646,6 +677,81 @@ class HTMLReporter:
         # Sort by score descending
         rankings.sort(key=lambda x: x["score"], reverse=True)
         return rankings
+
+    def _build_complexity_breakdown_section(self, model_stats: Dict[str, Dict[str, Any]]) -> str:
+        """Build migration complexity breakdown table."""
+        complexity_levels = ["trivial", "low", "medium", "high", "expert"]
+        complexity_labels = {
+            "trivial": "TRIVIAL",
+            "low": "LOW",
+            "medium": "MEDIUM",
+            "high": "HIGH",
+            "expert": "EXPERT"
+        }
+        complexity_colors = {
+            "trivial": "#73bf69",
+            "low": "#96d98d",
+            "medium": "#f2cc0c",
+            "high": "#ff780a",
+            "expert": "#e02f44"
+        }
+
+        html = '<div style="overflow-x: auto;">'
+        html += '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">'
+
+        # Header
+        html += '<thead><tr style="border-bottom: 2px solid #2d2d2d;">'
+        html += '<th style="padding: 12px 8px; text-align: left; color: #d8d9da; font-weight: 500;">Model</th>'
+        for level in complexity_levels:
+            label = complexity_labels[level]
+            html += f'<th style="padding: 12px 8px; text-align: center; color: {complexity_colors[level]}; font-weight: 500;">{label}</th>'
+        html += '<th style="padding: 12px 8px; text-align: center; color: #d8d9da; font-weight: 500;">Overall</th>'
+        html += '</tr></thead>'
+
+        # Body
+        html += '<tbody>'
+        for model_name, stats in model_stats.items():
+            html += '<tr style="border-bottom: 1px solid #2d2d2d;">'
+            html += f'<td style="padding: 12px 8px; color: #d8d9da; font-weight: 500;">{model_name}</td>'
+
+            for level in complexity_levels:
+                comp_stats = stats["by_complexity"].get(level, {"total": 0, "passed": 0})
+                total = comp_stats["total"]
+                passed = comp_stats["passed"]
+
+                if total > 0:
+                    pass_rate = (passed / total) * 100
+                    color = complexity_colors[level]
+                    html += f'<td style="padding: 12px 8px; text-align: center;">'
+                    html += f'<div style="color: {color}; font-weight: 500; font-size: 16px;">{pass_rate:.1f}%</div>'
+                    html += f'<div style="color: #6e7074; font-size: 11px;">{passed}/{total}</div>'
+                    html += f'</td>'
+                else:
+                    html += f'<td style="padding: 12px 8px; text-align: center; color: #6e7074;">-</td>'
+
+            # Overall pass rate
+            overall_rate = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            html += f'<td style="padding: 12px 8px; text-align: center;">'
+            html += f'<div style="color: #73bf69; font-weight: 500; font-size: 16px;">{overall_rate:.1f}%</div>'
+            html += f'<div style="color: #6e7074; font-size: 11px;">{stats["passed"]}/{stats["total"]}</div>'
+            html += f'</td>'
+
+            html += '</tr>'
+
+        html += '</tbody></table></div>'
+
+        # Add legend
+        html += '<div style="margin-top: 15px; padding: 15px; background: #1e1e1e; border-radius: 4px;">'
+        html += '<div style="font-size: 12px; color: #9fa1a4; margin-bottom: 10px;"><strong>Expected AI Success Rates:</strong></div>'
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 11px;">'
+        html += '<div><span style="color: #73bf69;">●</span> TRIVIAL: 95%+ (mechanical changes)</div>'
+        html += '<div><span style="color: #96d98d;">●</span> LOW: 80%+ (straightforward API equivalents)</div>'
+        html += '<div><span style="color: #f2cc0c;">●</span> MEDIUM: 60%+ (context understanding required)</div>'
+        html += '<div><span style="color: #ff780a;">●</span> HIGH: 30-50% (architectural changes)</div>'
+        html += '<div><span style="color: #e02f44;">●</span> EXPERT: <30% (likely needs human review)</div>'
+        html += '</div></div>'
+
+        return html
 
     def _build_top_performers_section(self, model_stats: Dict[str, Dict[str, Any]]) -> str:
         """Build top performing models section with Grafana dark theme."""
@@ -880,6 +986,10 @@ class HTMLReporter:
 
             failure_reason = result.get("failure_reason", "Test failed") if not passed else "Test passed"
 
+            # Get complexity info
+            complexity = result.get("migration_complexity", None)
+            complexity_badge = self._build_complexity_badge(complexity) if complexity else ""
+
             html += f'''<div class="test-details" data-status="{status_class}" onclick="toggleTest({i})">
     <div class="test-header">
         <div class="test-title">
@@ -887,6 +997,7 @@ class HTMLReporter:
             {result.get("model_name", "Unknown")} -
             {result.get("rule_id", "Unknown")} -
             {result.get("test_case_id", "Unknown")}
+            {complexity_badge}
         </div>
         <div>
             <span class="badge badge-{status_color}">{status_class.upper()}</span>
@@ -1580,6 +1691,21 @@ class HTMLReporter:
             });
         }
         """
+
+    def _build_complexity_badge(self, complexity: str) -> str:
+        """Build complexity badge HTML."""
+        complexity_colors = {
+            "trivial": "#73bf69",
+            "low": "#96d98d",
+            "medium": "#f2cc0c",
+            "high": "#ff780a",
+            "expert": "#e02f44"
+        }
+
+        color = complexity_colors.get(complexity, "#9fa1a4")
+        label = complexity.upper() if complexity else "UNKNOWN"
+
+        return f'<span class="badge" style="background: {color}; color: #111217; font-size: 10px; padding: 3px 8px; border-radius: 3px; margin-left: 8px; font-weight: 600;">{label}</span>'
 
     def _escape_html(self, text: str) -> str:
         """Escape HTML special characters."""
