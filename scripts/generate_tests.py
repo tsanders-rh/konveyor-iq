@@ -36,6 +36,10 @@ Usage:
     python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
         --auto-generate --model gpt-4-turbo
 
+    # Auto-generate WITH validation (agentic workflow - compiles and fixes errors)
+    python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+        --auto-generate --validate --model gpt-4-turbo
+
     # Use local rulesets repo (MUCH FASTER, no rate limits!)
     git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
     python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
@@ -74,6 +78,7 @@ import time
 # Add parent directory to path to import models
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from models import OpenAIModel, AnthropicModel
+from evaluators.functional import FunctionalCorrectnessEvaluator
 
 
 class TestCaseGenerator:
@@ -141,7 +146,8 @@ public class {class_name} {{
                  api_key: Optional[str] = None,
                  github_token: Optional[str] = None,
                  local_rulesets_path: Optional[str] = None,
-                 batch_size: int = 10):
+                 batch_size: int = 10,
+                 validate: bool = False):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.source_filter = source_filter
@@ -150,6 +156,8 @@ public class {class_name} {{
         self.model = None
         self.local_rulesets_path = Path(local_rulesets_path) if local_rulesets_path else None
         self.batch_size = batch_size
+        self.validate = validate
+        self.evaluator = None
 
         # Setup GitHub token for higher API rate limits (only if not using local)
         if not self.local_rulesets_path:
@@ -182,6 +190,19 @@ public class {class_name} {{
             else:
                 print("Warning: Failed to initialize model. Auto-generation disabled.")
                 self.auto_generate = False
+
+        # Initialize evaluator for validation if requested
+        if validate:
+            if not auto_generate:
+                print("Warning: --validate requires --auto-generate. Validation disabled.")
+                self.validate = False
+            else:
+                self._initialize_evaluator()
+                if self.evaluator:
+                    print("Validation enabled: Generated code will be compiled and auto-fixed")
+                else:
+                    print("Warning: Failed to initialize evaluator. Validation disabled.")
+                    self.validate = False
 
     def _initialize_model(self, model_name: str, api_key: Optional[str]):
         """Initialize LLM model for code generation."""
@@ -221,6 +242,14 @@ public class {class_name} {{
         except Exception as e:
             print(f"Error initializing model: {e}")
             return None
+
+    def _initialize_evaluator(self):
+        """Initialize evaluator for compilation validation."""
+        try:
+            self.evaluator = FunctionalCorrectnessEvaluator()
+        except Exception as e:
+            print(f"Error initializing evaluator: {e}")
+            self.evaluator = None
 
     def _generate_code_snippet(self, rule: Dict[str, Any], konveyor_message: str) -> str:
         """Generate violating code snippet using LLM with retry logic."""
@@ -283,7 +312,7 @@ Respond with ONLY the Java code, no explanations."""
         return self._create_code_snippet_placeholder(rule, include_when=True)
 
     def _generate_expected_fix(self, rule: Dict[str, Any], code_snippet: str, konveyor_message: str) -> str:
-        """Generate expected fix using LLM with retry logic."""
+        """Generate expected fix using LLM with optional validation and retry logic."""
         if not self.auto_generate or not self.model:
             return "TODO: Add expected fix code here"
 
@@ -291,9 +320,54 @@ Respond with ONLY the Java code, no explanations."""
             return "TODO: Add expected fix code here"
 
         rule_id = rule.get('ruleID', 'unknown')
+
+        # Generate initial fix
+        generated_fix = self._generate_fix_attempt(rule, code_snippet, konveyor_message, None)
+
+        if generated_fix == "TODO: Add expected fix code here":
+            return generated_fix
+
+        # If validation enabled, validate and fix compilation errors
+        if self.validate and self.evaluator:
+            generated_fix = self._validate_and_fix(rule, code_snippet, konveyor_message, generated_fix)
+
+        return generated_fix
+
+    def _generate_fix_attempt(self, rule: Dict[str, Any], code_snippet: str, konveyor_message: str,
+                              compilation_error: Optional[str]) -> str:
+        """Generate a single fix attempt, optionally with compilation error feedback."""
+        rule_id = rule.get('ruleID', 'unknown')
         description = rule.get('description', 'No description')
 
-        prompt = f"""Fix the following Java code to resolve the migration violation.
+        # Build prompt with optional error feedback
+        if compilation_error:
+            prompt = f"""Fix the following Java code to resolve the migration violation.
+
+Rule ID: {rule_id}
+Description: {description}
+Konveyor Guidance: {konveyor_message}
+
+Original Code (violating):
+```java
+{code_snippet}
+```
+
+Previous fix attempt had this COMPILATION ERROR:
+```
+{compilation_error}
+```
+
+Requirements:
+- Fix the compilation error in addition to the migration violation
+- Provide the COMPLETE fixed code
+- Include all necessary imports with correct namespaces (use jakarta.* NOT javax.*)
+- Follow the migration guidance exactly
+- Keep the same structure and logic
+- Use only dependencies available in the stubs
+
+Respond with ONLY the fixed Java code, no explanations."""
+        else:
+            prompt = f"""Fix the following Java code to resolve the migration violation.
 
 Rule ID: {rule_id}
 Description: {description}
@@ -306,7 +380,7 @@ Original Code (violating):
 
 Requirements:
 - Provide the COMPLETE fixed code
-- Include all necessary imports
+- Include all necessary imports with correct namespaces (use jakarta.* NOT javax.*)
 - Follow the migration guidance exactly
 - Keep the same structure and logic, only fix the violation
 - Maintain the same external class references (don't add new dependencies)
@@ -314,7 +388,8 @@ Requirements:
 
 Respond with ONLY the fixed Java code, no explanations."""
 
-        print(f"    Generating expected fix for {rule_id}...", end=" ", flush=True)
+        if not compilation_error:
+            print(f"    Generating expected fix for {rule_id}...", end=" ", flush=True)
 
         # Retry logic with exponential backoff
         max_retries = 3
@@ -331,7 +406,10 @@ Respond with ONLY the fixed Java code, no explanations."""
                     response_text = str(result)
 
                 code = self._extract_code_from_response(response_text)
-                print(f"✓ ({elapsed:.1f}s)")
+
+                if not compilation_error:
+                    print(f"✓ ({elapsed:.1f}s)", end="")
+
                 return code
 
             except Exception as e:
@@ -344,6 +422,43 @@ Respond with ONLY the fixed Java code, no explanations."""
                     return "TODO: Add expected fix code here"
 
         return "TODO: Add expected fix code here"
+
+    def _validate_and_fix(self, rule: Dict[str, Any], code_snippet: str, konveyor_message: str,
+                         generated_fix: str) -> str:
+        """Validate generated fix compiles and auto-fix if needed."""
+        rule_id = rule.get('ruleID', 'unknown')
+        max_fix_attempts = 3
+
+        current_fix = generated_fix
+
+        for fix_attempt in range(max_fix_attempts):
+            # Validate compilation
+            compiles, error_msg = self.evaluator._compile_java(current_fix)
+
+            if compiles:
+                if fix_attempt == 0:
+                    print(" → ✓ compiles")
+                else:
+                    print(f" → ✓ fixed (attempt {fix_attempt + 1})")
+                return current_fix
+
+            # Compilation failed
+            if fix_attempt == 0:
+                print(f" → ✗ compilation error", end="")
+
+            if fix_attempt < max_fix_attempts - 1:
+                # Attempt to fix
+                print(f" → fixing (attempt {fix_attempt + 2})...", end=" ", flush=True)
+                current_fix = self._generate_fix_attempt(rule, code_snippet, konveyor_message, error_msg)
+
+                if current_fix == "TODO: Add expected fix code here":
+                    print(f"✗ fix generation failed")
+                    return generated_fix  # Return original attempt
+            else:
+                print(f" → ✗ failed after {max_fix_attempts} attempts")
+
+        # Return last attempt even if it doesn't compile
+        return current_fix
 
     def _extract_code_from_response(self, response: str) -> str:
         """Extract code block from LLM response."""
@@ -1589,6 +1704,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--validate',
+        action='store_true',
+        help='Validate generated code compiles and auto-fix compilation errors (requires --auto-generate, uses agentic workflow)'
+    )
+
+    parser.add_argument(
         '--model',
         type=str,
         help='LLM model to use for auto-generation (e.g., gpt-4-turbo, claude-3-5-sonnet)'
@@ -1640,7 +1761,8 @@ Examples:
         api_key=args.api_key,
         github_token=args.github_token,
         local_rulesets_path=args.local_rulesets,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        validate=args.validate
     )
 
     # Generate test cases
