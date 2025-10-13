@@ -358,7 +358,9 @@ class EvaluationEngine:
                 "passed": passed,
                 "failure_reason": failure_reason,
                 "estimated_cost": generation_result.get("cost", 0.0),
-                "prompt_source": prompt_source
+                "prompt_source": prompt_source,
+                "compilable": test_case.compilable if test_case.compilable is not None else True,
+                "non_compilable_reason": test_case.reason if test_case.compilable is False else None
             }
 
         except Exception as e:

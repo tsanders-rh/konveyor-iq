@@ -150,6 +150,7 @@ class HTMLReporter:
         .yellow {{ color: #f2cc0c; }}
         .orange {{ color: #ff780a; }}
         .red {{ color: #f2495c; }}
+        .blue {{ color: #729fcf; }}
 
         .stat-bg-green {{ background: rgba(115, 191, 105, 0.15); }}
         .stat-bg-yellow {{ background: rgba(242, 204, 12, 0.15); }}
@@ -879,128 +880,141 @@ class HTMLReporter:
 
             failure_reason = result.get("failure_reason", "Test failed") if not passed else "Test passed"
 
-            html += f"""
-            <div class="test-details" data-status="{status_class}" onclick="toggleTest({i})">
-                <div class="test-header">
-                    <div class="test-title">
-                        <span class="{status_color}">{status_icon}</span>
-                        {result.get("model_name", "Unknown")} -
-                        {result.get("rule_id", "Unknown")} -
-                        {result.get("test_case_id", "Unknown")}
-                    </div>
-                    <div>
-                        <span class="badge badge-{status_color}">{status_class.upper()}</span>
-                        <span class="expand-icon" id="test-icon-{i}">▼</span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 5px; font-size: 12px; color: #9fa1a4;">
-                    {failure_reason}
-                </div>
-
-                <div class="test-content" id="test-content-{i}">
-                    <div class="metrics-grid">
-                        {self._build_metrics_grid(result.get("metrics", {}))}
-                        <div class="metric-item">
-                            <div class="metric-item-label">Cost</div>
-                            <div class="metric-item-value">${result.get("estimated_cost", 0):.4f}</div>
-                        </div>
-                    </div>
-
-                    <div class="code-header">Generated Code</div>
-                    <div class="code-block">
-                        <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
-                    </div>
-
-                    {self._build_compilation_error_section(result.get("metrics", {}))}
-                    {self._build_expected_code_section(result)}
-                    {self._build_explanation_section(result)}
-                    {self._build_security_issues_section(result.get("metrics", {}))}
-                </div>
+            html += f'''<div class="test-details" data-status="{status_class}" onclick="toggleTest({i})">
+    <div class="test-header">
+        <div class="test-title">
+            <span class="{status_color}">{status_icon}</span>
+            {result.get("model_name", "Unknown")} -
+            {result.get("rule_id", "Unknown")} -
+            {result.get("test_case_id", "Unknown")}
+        </div>
+        <div>
+            <span class="badge badge-{status_color}">{status_class.upper()}</span>
+            <span class="expand-icon" id="test-icon-{i}">▼</span>
+        </div>
+    </div>
+    <div style="margin-top: 5px; font-size: 12px; color: #9fa1a4;">
+        {self._escape_html(failure_reason)}
+    </div>
+    <div class="test-content" id="test-content-{i}">
+        <div class="metrics-grid">
+            {self._build_metrics_grid(result)}
+            <div class="metric-item">
+                <div class="metric-item-label">Cost</div>
+                <div class="metric-item-value">${result.get("estimated_cost", 0):.4f}</div>
             </div>
-            """
+        </div>
+        <div class="code-header">Generated Code</div>
+        <div class="code-block">
+            <pre>{self._escape_html(result.get("generated_code", "N/A"))}</pre>
+        </div>
+        {self._build_compilation_error_section(result)}
+        {self._build_expected_code_section(result)}
+        {self._build_explanation_section(result)}
+        {self._build_security_issues_section(result.get("metrics", {}))}
+    </div>
+</div>'''
 
         return html
 
-    def _build_metrics_grid(self, metrics: Dict[str, Any]) -> str:
+    def _build_metrics_grid(self, result: Dict[str, Any]) -> str:
         """Build metrics grid."""
-
+        metrics = result.get("metrics", {})
         html = ""
 
         # Response time
         response_time = metrics.get("response_time_ms", 0)
-        html += f"""
-        <div class="metric-item">
-            <div class="metric-item-label">Response Time</div>
-            <div class="metric-item-value">{response_time:.0f}ms</div>
-        </div>
-        """
+        html += f'''<div class="metric-item">
+    <div class="metric-item-label">Response Time</div>
+    <div class="metric-item-value">{response_time:.0f}ms</div>
+</div>'''
 
-        # Compilation
+        # Compilation - check if test case is marked as non-compilable
         if "compiles" in metrics:
             compiles = metrics["compiles"]
-            color = "green" if compiles else "red"
-            value = "✓" if compiles else "✗"
-            html += f"""
-            <div class="metric-item">
-                <div class="metric-item-label">Compiles</div>
-                <div class="metric-item-value {color}">{value}</div>
-            </div>
-            """
+            is_non_compilable = result.get("compilable", True) is False
+
+            if is_non_compilable:
+                # Show as info/neutral for non-compilable tests
+                color = "blue"
+                value = "N/A"
+                label = "Compiles (N/A)"
+            else:
+                color = "green" if compiles else "red"
+                value = "✓" if compiles else "✗"
+                label = "Compiles"
+
+            html += f'''<div class="metric-item">
+    <div class="metric-item-label">{label}</div>
+    <div class="metric-item-value {color}">{value}</div>
+</div>'''
 
         # Functional correctness
         if "functional_correctness" in metrics:
             correct = metrics["functional_correctness"]
             color = "green" if correct else "red"
             value = "✓" if correct else "✗"
-            html += f"""
-            <div class="metric-item">
-                <div class="metric-item-label">Functional</div>
-                <div class="metric-item-value {color}">{value}</div>
-            </div>
-            """
+            html += f'''<div class="metric-item">
+    <div class="metric-item-label">Functional</div>
+    <div class="metric-item-value {color}">{value}</div>
+</div>'''
 
         # Security issues
         if "security_issues" in metrics:
             issues = metrics["security_issues"]
             color = "green" if issues == 0 else "orange" if issues < 3 else "red"
-            html += f"""
-            <div class="metric-item">
-                <div class="metric-item-label">Security Issues</div>
-                <div class="metric-item-value {color}">{issues}</div>
-            </div>
-            """
+            html += f'''<div class="metric-item">
+    <div class="metric-item-label">Security Issues</div>
+    <div class="metric-item-value {color}">{issues}</div>
+</div>'''
 
         return html
 
-    def _build_compilation_error_section(self, metrics: Dict[str, Any]) -> str:
+    def _build_compilation_error_section(self, result: Dict[str, Any]) -> str:
         """Build compilation error display section (Grafana dark theme)."""
+        metrics = result.get("metrics", {})
         compiles = metrics.get("compiles", True)
+
+        # Check if test case is marked as non-compilable (expected not to compile)
+        is_non_compilable = result.get("compilable", True) is False
+        non_compilable_reason = result.get("non_compilable_reason", "")
 
         if compiles:
             return ""
 
+        # If test case is marked as non-compilable, show info box instead of error box
+        if is_non_compilable:
+            return f'''<div style="margin-top: 15px; padding: 15px; background: rgba(114, 159, 207, 0.1); border-left: 4px solid #729fcf; border-radius: 4px; border: 1px solid #2d2d2d;">
+    <div class="code-header" style="color: #729fcf; font-weight: 600;">ℹ️ Non-Compilable Test Case</div>
+    <div style="margin: 15px 0; padding: 12px; background: rgba(114, 159, 207, 0.05); border-radius: 4px; border: 1px solid rgba(114, 159, 207, 0.3);">
+        <div style="color: #d8d9da; font-size: 13px; line-height: 1.6;">{self._escape_html(non_compilable_reason)}</div>
+    </div>
+    <div style="margin-top: 10px; padding: 12px; background: #1e1e1e; border-radius: 4px; border: 1px solid #2d2d2d;">
+        <div style="color: #9fa1a4; font-size: 11px; margin-bottom: 8px;">
+            This test case contains internal API references not meant for application developers.
+            Compilation errors are expected and do not indicate model failure.
+        </div>
+    </div>
+</div>'''
+
+        # Regular compilation error for tests that should compile
         compilation_error = metrics.get("compilation_error", "No error details available")
         error_explanation = metrics.get("compilation_error_explanation", "")
 
         explanation_html = ""
         if error_explanation:
-            explanation_html = f'''
-            <div style="margin: 15px 0; padding: 12px; background: rgba(242, 73, 92, 0.05); border-radius: 4px; border: 1px solid rgba(242, 73, 92, 0.3);">
-                <div style="color: #d8d9da; font-size: 13px; line-height: 1.6;">{error_explanation}</div>
-            </div>
-            '''
+            explanation_html = f'''<div style="margin: 15px 0; padding: 12px; background: rgba(242, 73, 92, 0.05); border-radius: 4px; border: 1px solid rgba(242, 73, 92, 0.3);">
+    <div style="color: #d8d9da; font-size: 13px; line-height: 1.6;">{error_explanation}</div>
+</div>'''
 
-        return f'''
-        <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
-            <div class="code-header" style="color: #f2495c; font-weight: 600;">⚠️ Compilation Error</div>
-            {explanation_html}
-            <div style="margin-top: 10px; padding: 12px; background: #1e1e1e; border-radius: 4px; border: 1px solid #2d2d2d;">
-                <div style="color: #9fa1a4; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Error Details:</div>
-                <pre style="color: #f2495c; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; margin: 0;">{self._escape_html(compilation_error)}</pre>
-            </div>
-        </div>
-        '''
+        return f'''<div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
+    <div class="code-header" style="color: #f2495c; font-weight: 600;">⚠️ Compilation Error</div>
+    {explanation_html}
+    <div style="margin-top: 10px; padding: 12px; background: #1e1e1e; border-radius: 4px; border: 1px solid #2d2d2d;">
+        <div style="color: #9fa1a4; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Error Details:</div>
+        <pre style="color: #f2495c; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; margin: 0;">{self._escape_html(compilation_error)}</pre>
+    </div>
+</div>'''
 
     def _build_expected_code_section(self, result: Dict[str, Any]) -> str:
         """Build expected code section if available."""
@@ -1009,12 +1023,10 @@ class HTMLReporter:
         if not expected:
             return ""
 
-        return f"""
-        <div class="code-header">Expected Code</div>
-        <div class="code-block">
-            <pre>{self._escape_html(expected)}</pre>
-        </div>
-        """
+        return f'''<div class="code-header">Expected Code</div>
+<div class="code-block">
+    <pre>{self._escape_html(expected)}</pre>
+</div>'''
 
     def _build_explanation_section(self, result: Dict[str, Any]) -> str:
         """Build explanation section if available."""
@@ -1023,12 +1035,10 @@ class HTMLReporter:
         if not explanation:
             return ""
 
-        return f"""
-        <div class="code-header">Explanation</div>
-        <div class="code-block">
-            <pre>{self._escape_html(explanation)}</pre>
-        </div>
-        """
+        return f'''<div class="code-header">Explanation</div>
+<div class="code-block">
+    <pre>{self._escape_html(explanation)}</pre>
+</div>'''
 
     def _build_security_issues_section(self, metrics: Dict[str, Any]) -> str:
         """Build security issues display section (Grafana dark theme)."""
@@ -1059,23 +1069,19 @@ class HTMLReporter:
 
             line_info = f" (Line {line})" if line else ""
 
-            issues_html.append(f'''
-            <div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px; border: 1px solid #2d2d2d;">
-                <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <span style="background: {severity_color}; color: #0d1117; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
-                    <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
-                    <span style="color: #9fa1a4; font-size: 12px; margin-left: auto;">{line_info}</span>
-                </div>
-                <div style="color: #d8d9da; font-size: 13px;">{self._escape_html(description)}</div>
-            </div>
-            ''')
+            issues_html.append(f'''<div style="margin: 10px 0; padding: 12px; background: {severity_bg}; border-left: 3px solid {severity_color}; border-radius: 4px; border: 1px solid #2d2d2d;">
+    <div style="display: flex; align-items: center; margin-bottom: 5px;">
+        <span style="background: {severity_color}; color: #0d1117; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 10px;">{severity}</span>
+        <span style="font-weight: bold; color: {severity_color};">{issue_type}</span>
+        <span style="color: #9fa1a4; font-size: 12px; margin-left: auto;">{line_info}</span>
+    </div>
+    <div style="color: #d8d9da; font-size: 13px;">{self._escape_html(description)}</div>
+</div>''')
 
-        return f'''
-        <div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
-            <div class="code-header" style="color: #f2495c; font-weight: 600;">🔒 Security Issues Found ({security_issues})</div>
-            {''.join(issues_html)}
-        </div>
-        '''
+        return f'''<div style="margin-top: 15px; padding: 15px; background: rgba(242, 73, 92, 0.1); border-left: 4px solid #f2495c; border-radius: 4px; border: 1px solid #2d2d2d;">
+    <div class="code-header" style="color: #f2495c; font-weight: 600;">🔒 Security Issues Found ({security_issues})</div>
+    {''.join(issues_html)}
+</div>'''
 
     def _build_charts_script(
         self,
@@ -1084,6 +1090,27 @@ class HTMLReporter:
         rule_stats: Dict[str, Dict[str, Any]]
     ) -> str:
         """Build JavaScript for charts."""
+
+        # Define distinct color palette for models
+        COLOR_PALETTE = [
+            (115, 191, 105),   # Green
+            (242, 204, 12),    # Yellow
+            (114, 159, 207),   # Blue
+            (242, 73, 92),     # Red
+            (255, 120, 10),    # Orange
+            (176, 155, 245),   # Purple
+            (86, 217, 254),    # Cyan
+            (255, 170, 204),   # Pink
+            (153, 204, 153),   # Light Green
+            (255, 204, 153),   # Peach
+            (204, 153, 255),   # Lavender
+            (102, 178, 255),   # Sky Blue
+        ]
+
+        def get_color(index, alpha=1.0):
+            """Get color from palette, cycling if needed."""
+            rgb = COLOR_PALETTE[index % len(COLOR_PALETTE)]
+            return f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {alpha})"
 
         # Model pass rate data
         models = list(model_stats.keys())
@@ -1172,8 +1199,8 @@ class HTMLReporter:
                     {
                         "label": model,
                         "data": times,
-                        "borderColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 1)",
-                        "backgroundColor": f"rgba({115 if i == 0 else 242 if i == 1 else 114}, {191 if i == 0 else 204 if i == 1 else 159}, {105 if i == 0 else 12 if i == 1 else 207}, 0.1)",
+                        "borderColor": get_color(i, 1.0),
+                        "backgroundColor": get_color(i, 0.1),
                         "tension": 0.4,
                         "fill": True
                     }
@@ -1258,6 +1285,25 @@ class HTMLReporter:
     def _build_per_rule_chart_data(self, results: List[Dict[str, Any]], models: List[str]) -> str:
         """Build JavaScript data for per-rule performance chart with rule selector."""
 
+        # Color palette for models (same as in charts)
+        COLOR_PALETTE = [
+            'rgb(115, 191, 105)',   # Green
+            'rgb(242, 204, 12)',    # Yellow
+            'rgb(114, 159, 207)',   # Blue
+            'rgb(242, 73, 92)',     # Red
+            'rgb(255, 120, 10)',    # Orange
+            'rgb(176, 155, 245)',   # Purple
+            'rgb(86, 217, 254)',    # Cyan
+            'rgb(255, 170, 204)',   # Pink
+            'rgb(153, 204, 153)',   # Light Green
+            'rgb(255, 204, 153)',   # Peach
+            'rgb(204, 153, 255)',   # Lavender
+            'rgb(102, 178, 255)',   # Sky Blue
+        ]
+
+        # Create model to color mapping
+        model_colors = {model: COLOR_PALETTE[i % len(COLOR_PALETTE)] for i, model in enumerate(models)}
+
         # Aggregate results by rule
         rule_stats = {}
         for result in results:
@@ -1312,7 +1358,8 @@ class HTMLReporter:
                 "x": rule_ids,
                 "y": pass_rates,
                 "type": "bar",
-                "name": model
+                "name": model,
+                "marker": {"color": model_colors[model]}
             })
 
         rule_data_map["all"] = all_traces
@@ -1329,6 +1376,7 @@ class HTMLReporter:
                     "y": [pass_rate],
                     "type": "bar",
                     "name": model,
+                    "marker": {"color": model_colors[model]},
                     "showlegend": False
                 })
 
@@ -1376,11 +1424,20 @@ class HTMLReporter:
             }}
         }};
 
-        // Chart.js colors for models
+        // Chart.js colors for models (matching Response Time Distribution chart)
         const modelColors = [
-            {{ bg: 'rgba(115, 191, 105, 0.6)', border: 'rgba(115, 191, 105, 1)' }},  // Green
-            {{ bg: 'rgba(242, 204, 12, 0.6)', border: 'rgba(242, 204, 12, 1)' }},    // Yellow
-            {{ bg: 'rgba(114, 159, 207, 0.6)', border: 'rgba(114, 159, 207, 1)' }}   // Blue
+            {{ bg: 'rgba(115, 191, 105, 0.6)', border: 'rgba(115, 191, 105, 1)' }},     // Green
+            {{ bg: 'rgba(242, 204, 12, 0.6)', border: 'rgba(242, 204, 12, 1)' }},       // Yellow
+            {{ bg: 'rgba(114, 159, 207, 0.6)', border: 'rgba(114, 159, 207, 1)' }},     // Blue
+            {{ bg: 'rgba(242, 73, 92, 0.6)', border: 'rgba(242, 73, 92, 1)' }},         // Red
+            {{ bg: 'rgba(255, 120, 10, 0.6)', border: 'rgba(255, 120, 10, 1)' }},       // Orange
+            {{ bg: 'rgba(176, 155, 245, 0.6)', border: 'rgba(176, 155, 245, 1)' }},     // Purple
+            {{ bg: 'rgba(86, 217, 254, 0.6)', border: 'rgba(86, 217, 254, 1)' }},       // Cyan
+            {{ bg: 'rgba(255, 170, 204, 0.6)', border: 'rgba(255, 170, 204, 1)' }},     // Pink
+            {{ bg: 'rgba(153, 204, 153, 0.6)', border: 'rgba(153, 204, 153, 1)' }},     // Light Green
+            {{ bg: 'rgba(255, 204, 153, 0.6)', border: 'rgba(255, 204, 153, 1)' }},     // Peach
+            {{ bg: 'rgba(204, 153, 255, 0.6)', border: 'rgba(204, 153, 255, 1)' }},     // Lavender
+            {{ bg: 'rgba(102, 178, 255, 0.6)', border: 'rgba(102, 178, 255, 1)' }}      // Sky Blue
         ];
 
         // Function to update chart based on selection
@@ -1428,8 +1485,8 @@ class HTMLReporter:
                 datasets = [{{
                     label: 'Pass Rate',
                     data: data.map(trace => trace.y[0]),
-                    backgroundColor: modelColors.map(c => c.bg),
-                    borderColor: modelColors.map(c => c.border),
+                    backgroundColor: data.map((trace, idx) => modelColors[idx % modelColors.length].bg),
+                    borderColor: data.map((trace, idx) => modelColors[idx % modelColors.length].border),
                     borderWidth: 1
                 }}];
             }}

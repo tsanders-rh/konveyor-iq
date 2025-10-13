@@ -182,7 +182,38 @@ The generator extracts:
   - effort 4-5 → high
   - effort 6+ → critical
 
-### 2. Migration Pattern Detection
+### 2. Automatic Language Detection
+
+The generator **automatically infers the language** from the rule's `when` condition:
+
+- `builtin.xml` → `language: xml`
+- `builtin.yaml` or `builtin.yml` → `language: yaml`
+- `builtin.properties` → `language: properties`
+- `builtin.json` → `language: json`
+- `java.referenced`, `java.dependency`, `java.typeusage` → `language: java`
+- Default → `language: java`
+
+**Example:**
+```yaml
+# Konveyor rule with XML condition
+when:
+  builtin.xml:
+    filepaths:
+      - pom.xml
+```
+
+**Generated test case:**
+```yaml
+test_cases:
+  - id: tc001
+    language: xml  # ✅ Automatically detected!
+    code_snippet: |
+      <!-- pom.xml content -->
+```
+
+This ensures XML, YAML, and other non-Java rules are correctly labeled, preventing false compilation failures during validation.
+
+### 3. Migration Pattern Detection
 
 Automatically extracts migration patterns from rule messages:
 

@@ -21,6 +21,18 @@ class Language(str, Enum):
     JAVASCRIPT = "javascript"
     TYPESCRIPT = "typescript"
     GO = "go"
+    XML = "xml"
+    YAML = "yaml"
+    PROPERTIES = "properties"
+
+
+class MigrationComplexity(str, Enum):
+    """Migration complexity levels for AI generation."""
+    TRIVIAL = "trivial"      # Mechanical changes (namespace, simple renames)
+    LOW = "low"              # Straightforward API equivalents
+    MEDIUM = "medium"        # Requires context understanding
+    HIGH = "high"            # Architectural changes
+    EXPERT = "expert"        # Likely needs human review
 
 
 class TestCase(BaseModel):
@@ -30,6 +42,8 @@ class TestCase(BaseModel):
     expected_fix: Optional[str] = Field(None, description="Expected corrected code")
     context: str = Field(..., description="Migration or fix context")
     language: Language = Field(default=Language.JAVA)
+    compilable: Optional[bool] = Field(default=True, description="Whether this code is expected to compile")
+    reason: Optional[str] = Field(None, description="Reason if not compilable (e.g., 'Internal SPI - for framework developers only')")
     setup_code: Optional[str] = Field(None, description="Additional setup/import code")
     test_code: Optional[str] = Field(None, description="Unit test to verify correctness")
     expected_metrics: Optional[Dict[str, Any]] = Field(
@@ -48,6 +62,10 @@ class Rule(BaseModel):
     migration_pattern: Optional[str] = Field(
         None,
         description="Expected transformation pattern"
+    )
+    migration_complexity: Optional[MigrationComplexity] = Field(
+        default=None,
+        description="Complexity of AI-assisted migration for this rule"
     )
     source: Optional[str] = Field(
         None,

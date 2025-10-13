@@ -1,0 +1,214 @@
+name: "Compilation Reporting Test Suite"
+description: "Test suite to verify compilation reporting with both compilable and non-compilable test cases"
+version: "1.0"
+rules:
+  - rule_id: test-compilable-001
+    description: "Simple Java class migration - should compile"
+    severity: medium
+    category: migration
+    test_cases:
+      - id: tc001
+        language: java
+        compilable: true
+        context: "Migrate Java EE @Stateless to CDI @ApplicationScoped"
+        code_snippet: |
+          import javax.ejb.Stateless;
+
+          @Stateless
+          public class UserService {
+              public String getUser() {
+                  return "John Doe";
+              }
+          }
+        expected_fix: |
+          import jakarta.enterprise.context.ApplicationScoped;
+
+          @ApplicationScoped
+          public class UserService {
+              public String getUser() {
+                  return "John Doe";
+              }
+          }
+
+  - rule_id: test-compilable-002
+    description: "JPA Entity annotation migration - should compile"
+    severity: low
+    category: migration
+    test_cases:
+      - id: tc001
+        language: java
+        compilable: true
+        context: "Migrate javax.persistence to jakarta.persistence"
+        code_snippet: |
+          import javax.persistence.Entity;
+          import javax.persistence.Id;
+
+          @Entity
+          public class Product {
+              @Id
+              private Long id;
+              private String name;
+
+              public Long getId() { return id; }
+              public void setId(Long id) { this.id = id; }
+              public String getName() { return name; }
+              public void setName(String name) { this.name = name; }
+          }
+        expected_fix: |
+          import jakarta.persistence.Entity;
+          import jakarta.persistence.Id;
+
+          @Entity
+          public class Product {
+              @Id
+              private Long id;
+              private String name;
+
+              public Long getId() { return id; }
+              public void setId(Long id) { this.id = id; }
+              public String getName() { return name; }
+              public void setName(String name) { this.name = name; }
+          }
+
+  - rule_id: test-non-compilable-001
+    description: "Hibernate internal EntityPersister API - NOT for app developers"
+    severity: low
+    category: mandatory
+    test_cases:
+      - id: tc001
+        language: java
+        compilable: false
+        reason: "Internal SPI - for framework developers only"
+        context: "EntityPersister#multiload method has changed"
+        code_snippet: |
+          import org.hibernate.engine.spi.SharedSessionContractImplementor;
+          import org.hibernate.loader.entity.EntityPersister;
+          import org.hibernate.loader.entity.MultiIdLoadOptions;
+
+          public class HibernateMultiLoadExample {
+              public void loadEntities(SharedSessionContractImplementor session, EntityPersister persister) {
+                  Object[] ids = new Object[] {1, 2, 3};
+                  MultiIdLoadOptions options = new MultiIdLoadOptions();
+                  persister.multiload(ids, session, options);
+              }
+          }
+        expected_fix: |
+          import org.hibernate.engine.spi.SharedSessionContractImplementor;
+          import org.hibernate.event.spi.EventSource;
+          import org.hibernate.loader.entity.EntityPersister;
+          import org.hibernate.loader.entity.MultiIdLoadOptions;
+
+          public class HibernateMultiLoadExample {
+              public void loadEntities(SharedSessionContractImplementor session, EntityPersister persister) {
+                  Object[] ids = new Object[] {1, 2, 3};
+                  MultiIdLoadOptions options = new MultiIdLoadOptions();
+
+                  if (session.isEventSource()) {
+                      EventSource eventSourceSession = session.asEventSource();
+                      persister.lock(ids, eventSourceSession, options);
+                  }
+              }
+          }
+
+  - rule_id: test-non-compilable-002
+    description: "Hibernate internal Executable SPI - NOT for app developers"
+    severity: low
+    category: mandatory
+    test_cases:
+      - id: tc001
+        language: java
+        compilable: false
+        reason: "Internal SPI - for framework developers only"
+        context: "Executable#afterDeserialize method signature changed"
+        code_snippet: |
+          import org.hibernate.engine.spi.Executable;
+          import org.hibernate.engine.spi.SharedSessionContractImplementor;
+          import java.io.Serializable;
+
+          public class MyExecutable implements Executable {
+              @Override
+              public void afterDeserialize(SharedSessionContractImplementor session) {
+                  System.out.println("Deserialized");
+              }
+
+              @Override
+              public void execute() throws Exception {}
+
+              @Override
+              public boolean hasAfterTransactionCompletion() {
+                  return false;
+              }
+
+              @Override
+              public Serializable[] getPropertySpaces() {
+                  return new Serializable[0];
+              }
+          }
+        expected_fix: |
+          import org.hibernate.engine.spi.Executable;
+          import org.hibernate.event.spi.EventSource;
+          import java.io.Serializable;
+
+          public class MyExecutable implements Executable {
+              @Override
+              public void afterDeserialize(EventSource eventSource) {
+                  System.out.println("Deserialized");
+              }
+
+              @Override
+              public void execute() throws Exception {}
+
+              @Override
+              public boolean hasAfterTransactionCompletion() {
+                  return false;
+              }
+
+              @Override
+              public Serializable[] getPropertySpaces() {
+                  return new Serializable[0];
+              }
+          }
+
+  - rule_id: test-compilable-003
+    description: "Simple string replacement - should compile"
+    severity: low
+    category: migration
+    test_cases:
+      - id: tc001
+        language: java
+        compilable: true
+        context: "Update deprecated method call"
+        code_snippet: |
+          public class DateExample {
+              public void printDate() {
+                  java.util.Date date = new java.util.Date();
+                  System.out.println(date.toGMTString());
+              }
+          }
+        expected_fix: |
+          import java.time.ZonedDateTime;
+          import java.time.format.DateTimeFormatter;
+
+          public class DateExample {
+              public void printDate() {
+                  ZonedDateTime date = ZonedDateTime.now();
+                  System.out.println(date.format(DateTimeFormatter.RFC_1123_DATE_TIME));
+              }
+          }
+
+  - rule_id: test-xml-001
+    description: "XML configuration test - should be skipped (non-Java)"
+    severity: medium
+    category: migration
+    test_cases:
+      - id: tc001
+        language: xml
+        context: "Migrate XML configuration"
+        code_snippet: |
+          <persistence-unit name="myapp">
+              <provider>org.hibernate.ejb.HibernatePersistence</provider>
+          </persistence-unit>
+        expected_fix: |
+          <persistence-unit name="myapp">
+              <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+          </persistence-unit>

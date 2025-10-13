@@ -52,6 +52,7 @@ class ExpectedFixValidator:
         total_tests = 0
         passed = 0
         failed = 0
+        skipped = 0
         failures = []
 
         # Iterate through all rules and test cases
@@ -60,8 +61,24 @@ class ExpectedFixValidator:
                 total_tests += 1
 
                 if not test_case.expected_fix:
+                    skipped += 1
                     if self.verbose:
                         print(f"⊘ {rule.rule_id} - {test_case.id}: No expected_fix defined (skipped)")
+                    continue
+
+                # Skip non-Java test cases
+                if test_case.language.value != "java":
+                    skipped += 1
+                    if self.verbose:
+                        print(f"⊘ {rule.rule_id} - {test_case.id}: Non-Java test case (language: {test_case.language.value}, skipped)")
+                    continue
+
+                # Skip test cases marked as non-compilable
+                if test_case.compilable is False:
+                    skipped += 1
+                    reason = test_case.reason or "Marked as non-compilable"
+                    if self.verbose:
+                        print(f"⊘ {rule.rule_id} - {test_case.id}: {reason} (skipped)")
                     continue
 
                 # Compile expected_fix
@@ -95,6 +112,7 @@ class ExpectedFixValidator:
         print(f"  Total: {total_tests}")
         print(f"  Passed: {passed} ({passed/total_tests*100:.1f}%)" if total_tests > 0 else "  Passed: 0")
         print(f"  Failed: {failed} ({failed/total_tests*100:.1f}%)" if total_tests > 0 else "  Failed: 0")
+        print(f"  Skipped: {skipped} ({skipped/total_tests*100:.1f}%)" if total_tests > 0 else "  Skipped: 0")
         print(f"{'-'*80}\n")
 
         return {
@@ -102,6 +120,7 @@ class ExpectedFixValidator:
             "total": total_tests,
             "passed": passed,
             "failed": failed,
+            "skipped": skipped,
             "failures": failures
         }
 
@@ -139,11 +158,13 @@ class ExpectedFixValidator:
         total_tests = sum(r["total"] for r in results)
         total_passed = sum(r["passed"] for r in results)
         total_failed = sum(r["failed"] for r in results)
+        total_skipped = sum(r["skipped"] for r in results)
 
         print(f"Files Validated: {total_files}")
         print(f"Total Test Cases: {total_tests}")
         print(f"Passed: {total_passed} ({total_passed/total_tests*100:.1f}%)" if total_tests > 0 else "Passed: 0")
         print(f"Failed: {total_failed} ({total_failed/total_tests*100:.1f}%)" if total_tests > 0 else "Failed: 0")
+        print(f"Skipped: {total_skipped} ({total_skipped/total_tests*100:.1f}%)" if total_tests > 0 else "Skipped: 0")
 
         # Print detailed failures
         all_failures = []

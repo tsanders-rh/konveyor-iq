@@ -70,17 +70,82 @@ class ExpectedFixFixer:
         # Use shared validator for compilation checks
         self.validator = ExpectedFixValidator(verbose=False)
         self.evaluator = self.validator.evaluator
+        # Load migration guidance
+        self.migration_guidance = self._load_migration_guidance()
+
+    def _load_migration_guidance(self) -> List[Dict[str, Any]]:
+        """Load migration guidance from config file."""
+        config_path = Path(__file__).parent.parent / "config" / "migration_guidance.yaml"
+        if not config_path.exists():
+            return []
+
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+            return data.get('migrations', [])
+
+    def _find_guidance(self, source: str, target: str) -> Dict[str, Any]:
+        """Find matching guidance entry for source/target pair."""
+        if not source and not target:
+            return None
+
+        # Try exact match first
+        for entry in self.migration_guidance:
+            if entry.get('source') == source and entry.get('target') == target:
+                return entry
+
+        # Try target-only match if no source specified
+        if target and not source:
+            for entry in self.migration_guidance:
+                if entry.get('target') == target and entry.get('source') is None:
+                    return entry
+
+        # Try fallback (null source and target)
+        for entry in self.migration_guidance:
+            if entry.get('source') is None and entry.get('target') is None:
+                return entry
+
+        return None
+
+    def _build_guidance_string(self, guidance: Dict[str, Any]) -> str:
+        """Build migration guidance string from guidance entry."""
+        parts = []
+
+        # Add base guidance
+        base_guidance = guidance.get('base_guidance', '').strip()
+        if base_guidance:
+            parts.append(base_guidance)
+
+        # Add specific patterns
+        specific_patterns = guidance.get('specific_patterns', [])
+        if specific_patterns:
+            for pattern in specific_patterns:
+                name = pattern.get('name', '')
+                pattern_guidance = pattern.get('guidance', '').strip()
+                if pattern_guidance:
+                    if name:
+                        parts.append(f"\n{name}:")
+                    parts.append(pattern_guidance)
+
+        return '\n'.join(parts)
 
     def build_fix_prompt(
         self,
         original_code: str,
         expected_fix: str,
         compilation_error: str,
-        context: str
+        context: str,
+        migration_guidance: str = ""
     ) -> str:
         """Build prompt for LLM to fix compilation error."""
-        return f"""You are fixing a compilation error in a code migration example.
+        guidance_section = ""
+        if migration_guidance:
+            guidance_section = f"""
+MIGRATION GUIDANCE:
+{migration_guidance}
+"""
 
+        return f"""You are fixing a compilation error in a code migration example.
+{guidance_section}
 CONTEXT:
 {context}
 
@@ -143,6 +208,8 @@ FIXED CODE:
         expected_fix: str,
         compilation_error: str,
         context: str,
+        migration_source: str = None,
+        migration_target: str = None,
         max_attempts: int = 3
     ) -> Optional[str]:
         """Attempt to fix a failing test case."""
@@ -150,6 +217,15 @@ FIXED CODE:
         print(f"\n{'─'*80}")
         print(f"Fixing: {rule_id} - {test_case_id}")
         print(f"{'─'*80}")
+
+        # Get migration guidance if available
+        migration_guidance = ""
+        if migration_source or migration_target:
+            guidance = self._find_guidance(migration_source, migration_target)
+            if guidance:
+                migration_guidance = self._build_guidance_string(guidance)
+                if self.verbose:
+                    print(f"\nUsing migration guidance for {migration_source or 'any'} → {migration_target or 'any'}")
 
         current_fix = expected_fix
 
@@ -161,7 +237,8 @@ FIXED CODE:
                 original_code,
                 current_fix,
                 compilation_error,
-                context
+                context,
+                migration_guidance
             )
 
             # Get fix from LLM
@@ -200,12 +277,15 @@ FIXED CODE:
     def fix_yaml_file(
         self,
         file_path: Path,
-        rule_id_filter: Optional[str] = None
+        rule_id_filter: Optional[str] = None,
+        complexity_filter: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Fix all compilation errors in a YAML file."""
 
         print(f"\n{'='*80}")
         print(f"Processing: {file_path}")
+        if complexity_filter:
+            print(f"Complexity filter: {', '.join(complexity_filter)}")
         print(f"{'='*80}")
 
         # Load original YAML (preserve formatting)
@@ -217,6 +297,10 @@ FIXED CODE:
             data = yaml.safe_load(f)
 
         test_suite = TestSuite(**data)
+
+        # Extract migration metadata
+        migration_source = test_suite.metadata.get('migration_source')
+        migration_target = test_suite.metadata.get('migration_target')
 
         fixes_applied = 0
         fixes_failed = 0
@@ -231,8 +315,32 @@ FIXED CODE:
             if rule_id_filter and rule.rule_id != rule_id_filter:
                 continue
 
+            # Skip if filtering by complexity
+            if complexity_filter:
+                if not rule.migration_complexity:
+                    if self.verbose:
+                        print(f"⊘ {rule.rule_id}: No complexity assigned (skipped)")
+                    continue
+                if rule.migration_complexity.value not in complexity_filter:
+                    if self.verbose:
+                        print(f"⊘ {rule.rule_id}: Complexity {rule.migration_complexity.value} not in filter (skipped)")
+                    continue
+
             for test_case in rule.test_cases:
                 if not test_case.expected_fix:
+                    continue
+
+                # Skip non-Java test cases
+                if test_case.language.value != "java":
+                    if self.verbose:
+                        print(f"⊘ {rule.rule_id} - {test_case.id}: Non-Java test case (language: {test_case.language.value}, skipped)")
+                    continue
+
+                # Skip test cases marked as non-compilable
+                if test_case.compilable is False:
+                    if self.verbose:
+                        reason = test_case.reason or "Marked as non-compilable"
+                        print(f"⊘ {rule.rule_id} - {test_case.id}: {reason} (skipped)")
                     continue
 
                 # Check if expected_fix compiles
@@ -252,7 +360,9 @@ FIXED CODE:
                     test_case.code_snippet,
                     test_case.expected_fix,
                     error_msg,
-                    test_case.context
+                    test_case.context,
+                    migration_source,
+                    migration_target
                 )
 
                 if fixed_code:
@@ -333,6 +443,11 @@ def main():
         help="Only fix test cases for this specific rule_id"
     )
     parser.add_argument(
+        "--complexity",
+        type=str,
+        help="Only fix rules with specified complexity levels (comma-separated: trivial,low,medium,high,expert)"
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be fixed without modifying files"
@@ -377,6 +492,13 @@ def main():
     print(f"\nFound {validation_result['failed']} compilation failure(s).")
     print("Proceeding with automated fixes...\n")
 
+    # Parse complexity filter if provided
+    complexity_filter = None
+    if args.complexity:
+        from benchmarks.schema import MigrationComplexity
+        complexity_filter = [c.strip() for c in args.complexity.split(',')]
+        print(f"Filtering to complexity levels: {', '.join(complexity_filter)}\n")
+
     # Create fixer and attempt fixes
     fixer = ExpectedFixFixer(
         model_name=args.model,
@@ -384,7 +506,11 @@ def main():
         verbose=args.verbose
     )
 
-    result = fixer.fix_yaml_file(args.file, rule_id_filter=args.rule_id)
+    result = fixer.fix_yaml_file(
+        args.file,
+        rule_id_filter=args.rule_id,
+        complexity_filter=complexity_filter
+    )
 
     # Return exit code based on results
     if result["fixes_failed"] > 0:

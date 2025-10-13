@@ -574,7 +574,7 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/230-springboot-parent-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: xml
+    language: java
     context: Replace the Spring Parent POM with Quarkus BOM
     code_snippet: "xml\n<!-- pom.xml -->\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\
       \n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n       \
@@ -930,7 +930,7 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: xml
+    language: java
     context: The expected project artifact's extension is `jar`
     code_snippet: "xml\n<!-- pom.xml -->\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\
       \n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n       \
@@ -996,7 +996,7 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: xml
+    language: java
     context: Adopt Quarkus BOM
     code_snippet: "xml\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n   \
       \      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n         xsi:schemaLocation=\"\
@@ -1181,7 +1181,7 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: xml
+    language: java
     context: Adopt Maven Compiler plugin
     code_snippet: "xml\n<!-- pom.xml -->\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\
       \n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n       \
@@ -1357,7 +1357,7 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: xml
+    language: java
     context: Adopt Maven Failsafe plugin
     code_snippet: "xml\n<!-- pom.xml -->\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\
       \n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n       \
@@ -2763,8 +2763,6 @@ rules:
   test_cases:
   - id: tc001
     language: java
-    compilable: false
-    reason: Internal SPI - for framework developers only
     context: EntityPersister#multiload method has changed
     code_snippet: "import org.hibernate.engine.spi.SharedSessionContractImplementor;\n\
       import org.hibernate.loader.entity.EntityPersister;\nimport org.hibernate.loader.entity.MultiIdLoadOptions;\n\
@@ -2798,8 +2796,6 @@ rules:
   test_cases:
   - id: tc001
     language: java
-    compilable: false
-    reason: Internal SPI - for framework developers only
     context: Executable#afterDeserialize method has changed
     code_snippet: "import org.hibernate.engine.spi.Executable;\nimport org.hibernate.engine.spi.SharedSessionContractImplementor;\n\
       \npublic class MyExecutable implements Executable {\n    @Override\n    public\
@@ -2846,8 +2842,6 @@ rules:
   test_cases:
   - id: tc001
     language: java
-    compilable: false
-    reason: Internal SPI - for framework developers only
     context: JdbcType#getJdbcRecommendedJavaTypeMapping() method has changed
     code_snippet: "import org.hibernate.type.descriptor.jdbc.JdbcType;\nimport org.hibernate.type.descriptor.java.BasicJavaType;\n\
       \npublic class JdbcTypeExample {\n\n    public static void main(String[] args)\

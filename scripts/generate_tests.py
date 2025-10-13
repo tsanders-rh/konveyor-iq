@@ -121,6 +121,18 @@ public class {class_name} {{
 }}''',
     }
 
+    # Internal API patterns that indicate framework/SPI code not meant for app developers
+    INTERNAL_API_PATTERNS = [
+        'org.hibernate.persister.*',
+        'org.hibernate.loader.*',
+        'org.hibernate.action.spi.*',
+        'org.hibernate.engine.spi.*',
+        'org.hibernate.event.spi.*',
+        '*.spi.*',           # Generic Service Provider Interface packages
+        '*.impl.*',          # Implementation packages
+        '*.internal.*',      # Explicitly internal packages
+    ]
+
     def __init__(self, output_dir: str = "benchmarks/test_cases/generated",
                  source_filter: Optional[str] = None,
                  target_filter: Optional[str] = None,
@@ -1076,6 +1088,12 @@ Respond with ONLY the fixed Java code, no explanations."""
             if migration_pattern:
                 rule_entry['migration_pattern'] = migration_pattern
 
+        # Infer language from rule's 'when' condition
+        language = self._infer_language_from_rule(rule)
+
+        # Check if this rule references internal APIs
+        is_internal_api = self._is_internal_api_rule(rule)
+
         # Generate or create placeholder for code snippet
         if self.auto_generate:
             code_snippet = self._generate_code_snippet(rule, message)
@@ -1091,11 +1109,16 @@ Respond with ONLY the fixed Java code, no explanations."""
         # Create test case template
         test_case = {
             'id': 'tc001',
-            'language': 'java',
+            'language': language,  # Use inferred language from rule
             'context': description,  # Use rule description as context
             'code_snippet': code_snippet,
             'expected_fix': expected_fix,
         }
+
+        # Mark internal API rules as non-compilable for Java code
+        if is_internal_api and language == 'java':
+            test_case['compilable'] = False
+            test_case['reason'] = 'Internal SPI - for framework developers only'
 
         # Add test_code with stubs if any were generated
         if test_stubs:
@@ -1108,6 +1131,95 @@ Respond with ONLY the fixed Java code, no explanations."""
         rule_entry['test_cases'] = [test_case]
 
         return rule_entry
+
+    def _infer_language_from_rule(self, rule: Dict[str, Any]) -> str:
+        """Infer the programming language from the rule's 'when' condition.
+
+        Args:
+            rule: Konveyor rule dictionary
+
+        Returns:
+            Language string ('java', 'xml', 'yaml', 'properties', etc.)
+        """
+        when_condition = rule.get('when', {})
+
+        def check_condition(condition) -> Optional[str]:
+            """Recursively check condition for language hints."""
+            if isinstance(condition, dict):
+                # Check for builtin language analyzers
+                if 'builtin.xml' in condition:
+                    return 'xml'
+                if 'builtin.yaml' in condition or 'builtin.yml' in condition:
+                    return 'yaml'
+                if 'builtin.properties' in condition:
+                    return 'properties'
+                if 'builtin.json' in condition:
+                    return 'json'
+
+                # Check for Java-specific conditions (default language)
+                if any(key in condition for key in ['java.referenced', 'java.dependency', 'java.typeusage']):
+                    return 'java'
+
+                # Recurse into nested conditions (or, and, from, etc.)
+                for key in ['or', 'and', 'from']:
+                    if key in condition:
+                        items = condition[key]
+                        if isinstance(items, list):
+                            for item in items:
+                                lang = check_condition(item)
+                                if lang:
+                                    return lang
+                        else:
+                            lang = check_condition(items)
+                            if lang:
+                                return lang
+
+            return None
+
+        inferred_lang = check_condition(when_condition)
+        return inferred_lang if inferred_lang else 'java'  # Default to Java
+
+    def _is_internal_api_rule(self, rule: Dict[str, Any]) -> bool:
+        """Check if rule references internal implementation APIs.
+
+        Args:
+            rule: Konveyor rule dictionary
+
+        Returns:
+            True if rule references internal/SPI APIs, False otherwise
+        """
+        import fnmatch
+
+        when_condition = rule.get('when', {})
+
+        def check_patterns(condition) -> bool:
+            """Recursively check condition for internal API patterns."""
+            if isinstance(condition, dict):
+                # Check java.referenced patterns
+                if 'java.referenced' in condition:
+                    ref = condition['java.referenced']
+                    if isinstance(ref, dict):
+                        pattern = ref.get('pattern', '')
+                        if pattern:
+                            # Check against internal API patterns using fnmatch
+                            for internal_pattern in self.INTERNAL_API_PATTERNS:
+                                if fnmatch.fnmatch(pattern, internal_pattern):
+                                    return True
+
+                # Recurse into nested conditions
+                for key in ['or', 'and', 'from']:
+                    if key in condition:
+                        items = condition[key]
+                        if isinstance(items, list):
+                            for item in items:
+                                if check_patterns(item):
+                                    return True
+                        elif check_patterns(items):
+                            return True
+
+            return False
+
+        return check_patterns(when_condition)
 
     def _create_code_snippet_placeholder(self, rule: Dict[str, Any], include_when: bool) -> str:
         """Create a code snippet placeholder with hints from the rule's 'when' condition."""

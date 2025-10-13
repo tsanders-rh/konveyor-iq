@@ -28,6 +28,8 @@ konveyor-iq/
 ├── config/                  # Configuration files
 │   └── migration_guidance.yaml  # Migration-specific prompts
 ├── docs/                    # Documentation
+│   ├── SETUP.md            # Installation and quick start guide
+│   ├── COMPLEXITY_CLASSIFICATION.md  # Migration complexity system
 │   ├── generating_tests.md # Test generation guide
 │   ├── validating_expected_fixes.md
 │   ├── automating_test_case_fixes.md
@@ -81,6 +83,7 @@ python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml
 python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml --parallel 4
 ```
 
+For the complete workflow from test generation to evaluation, see [WORKFLOW.md](WORKFLOW.md).
 For detailed usage including parallel execution options, see [USAGE.md](USAGE.md).
 
 ## Generating Test Cases Automatically ⚡
@@ -134,6 +137,7 @@ When using filters, all matching rules across all scanned rulesets are **aggrega
 
 This creates test case templates with:
 - ✅ Rule metadata (ID, description, severity) pre-filled
+- ✅ **Automatic language detection** (Java, XML, YAML, properties) from rule conditions
 - ✅ Source URL for automatic Konveyor guidance integration
 - ✅ Code hints extracted from rule conditions
 - ✅ TODO placeholders for code examples (or auto-generated with `--auto-generate`)
@@ -167,6 +171,30 @@ python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated
 python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --verbose
 ```
 
+### Classify Migration Complexity
+
+**NEW:** Automatically classify rules by migration difficulty to set appropriate AI expectations:
+
+```bash
+# Preview classifications (no modifications)
+python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml --dry-run
+
+# Apply classifications to YAML
+python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml
+
+# Show detailed scoring
+python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml --verbose
+```
+
+**Complexity levels:**
+- **TRIVIAL** (95%+ AI success): Namespace changes, mechanical find/replace
+- **LOW** (80%+ success): Simple API equivalents (@Stateless → @ApplicationScoped)
+- **MEDIUM** (60%+ success): Context understanding (JMS → Reactive Messaging)
+- **HIGH** (30-50% success): Architectural changes (Spring Security → Quarkus Security)
+- **EXPERT** (<30% success): Human review needed (custom realms, performance-critical)
+
+See [docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md) for complete workflow.
+
 ### Automatically Fix Compilation Errors
 
 Use an LLM to automatically fix compilation errors in `expected_fix` code:
@@ -177,6 +205,11 @@ python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quar
 
 # Apply fixes (validates first, then fixes failures)
 python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
+
+# Fix by complexity level (recommended: start with TRIVIAL/LOW)
+python scripts/fix_expected_fixes.py \
+  --file benchmarks/test_cases/generated/quarkus.yaml \
+  --complexity trivial,low
 
 # Fix specific rule only
 python scripts/fix_expected_fixes.py \

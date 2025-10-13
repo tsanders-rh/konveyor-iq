@@ -132,6 +132,19 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Quarkus Security (for security migrations) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-security</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-elytron-security-properties-file</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Legacy javax.enterprise (for backward compatibility) -->
         <dependency>
             <groupId>javax.enterprise</groupId>
