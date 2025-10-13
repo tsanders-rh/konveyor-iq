@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import yaml
+import signal
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -63,6 +64,9 @@ def get_model(model_name: str, api_key: Optional[str] = None, config: Optional[D
 class ExpectedFixFixer:
     """Automatically fix compilation errors in expected_fix code."""
 
+    # Class variable to track interrupt signal
+    _interrupted = False
+
     def __init__(self, model_name: str = "gpt-4-turbo", dry_run: bool = False, verbose: bool = False):
         self.model = get_model(model_name, api_key=None, config={})
         self.dry_run = dry_run
@@ -72,6 +76,10 @@ class ExpectedFixFixer:
         self.evaluator = self.validator.evaluator
         # Load migration guidance
         self.migration_guidance = self._load_migration_guidance()
+
+        # Register signal handler for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
 
     def _load_migration_guidance(self) -> List[Dict[str, Any]]:
         """Load migration guidance from config file."""
@@ -127,6 +135,17 @@ class ExpectedFixFixer:
                     parts.append(pattern_guidance)
 
         return '\n'.join(parts)
+
+    @classmethod
+    def _signal_handler(cls, signum, frame):
+        """Handle interrupt signals gracefully."""
+        signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+        print(f"\n\n⚠️  Received {signal_name} (Ctrl+C). Finishing current fix and saving progress...")
+        print("⚠️  Press Ctrl+C again to force quit (progress will be lost)\n")
+        cls._interrupted = True
+        # Set handler to default for second interrupt
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
     def build_fix_prompt(
         self,
@@ -274,6 +293,39 @@ FIXED CODE:
         print(f"\n  ✗ Failed to fix after {max_attempts} attempts")
         return None
 
+    def _save_modifications(self, file_path: Path, data: Dict, modifications: List[Dict]):
+        """Save modifications to YAML file."""
+        if not modifications or self.dry_run:
+            return
+
+        print(f"Applying {len(modifications)} fix(es) to {file_path}")
+
+        # Update YAML data structure
+        for mod in modifications:
+            # Find and update the test case in the data dict
+            for rule_idx, rule in enumerate(data['rules']):
+                if rule['rule_id'] == mod['rule_id']:
+                    for tc_idx, tc in enumerate(rule['test_cases']):
+                        if tc['id'] == mod['test_case_id']:
+                            data['rules'][rule_idx]['test_cases'][tc_idx]['expected_fix'] = mod['new_code']
+
+        # Write updated YAML
+        with open(file_path, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+        print(f"✓ Updated {file_path}")
+
+    def _print_interrupt_summary(self, total_failures: int, fixes_applied: int, fixes_failed: int):
+        """Print summary after interrupt."""
+        print(f"\n{'='*80}")
+        print("INTERRUPT SUMMARY")
+        print(f"{'='*80}")
+        print(f"Total compilation failures found: {total_failures}")
+        print(f"Fixes applied (saved): {fixes_applied}")
+        print(f"Fixes failed: {fixes_failed}")
+        print(f"\n✓ Progress saved. Re-run the same command to continue fixing remaining test cases.")
+        print(f"{'='*80}\n")
+
     def fix_yaml_file(
         self,
         file_path: Path,
@@ -327,6 +379,19 @@ FIXED CODE:
                     continue
 
             for test_case in rule.test_cases:
+                # Check for interrupt before processing each test case
+                if self._interrupted:
+                    print(f"\n⚠️  Interrupt detected. Saving progress...")
+                    self._save_modifications(file_path, data, modifications)
+                    self._print_interrupt_summary(total_failures, fixes_applied, fixes_failed)
+                    return {
+                        "total_failures": total_failures,
+                        "fixes_applied": fixes_applied,
+                        "fixes_failed": fixes_failed,
+                        "modifications": modifications,
+                        "interrupted": True
+                    }
+
                 if not test_case.expected_fix:
                     continue
 
