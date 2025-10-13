@@ -74,6 +74,7 @@ from typing import List, Dict, Any, Optional
 import re
 import os
 import time
+import signal
 
 # Add parent directory to path to import models
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -83,6 +84,9 @@ from evaluators.functional import FunctionalCorrectnessEvaluator
 
 class TestCaseGenerator:
     """Generate test cases from Konveyor rulesets."""
+
+    # Class variable to track interrupt signal
+    _interrupted = False
 
     # Stub templates for common Java/Jakarta EE patterns
     STUB_TEMPLATES = {
@@ -178,6 +182,10 @@ public class {class_name} {{
         # Load migration guidance from config
         self.migration_guidance = self._load_migration_guidance()
 
+        # Register signal handler for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
         # Initialize model for auto-generation if requested
         if auto_generate:
             if not model_name:
@@ -250,6 +258,17 @@ public class {class_name} {{
         except Exception as e:
             print(f"Error initializing evaluator: {e}")
             self.evaluator = None
+
+    @classmethod
+    def _signal_handler(cls, signum, frame):
+        """Handle interrupt signals gracefully."""
+        signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+        print(f"\n\n⚠️  Received {signal_name} (Ctrl+C). Finishing current test case and saving progress...")
+        print("⚠️  Press Ctrl+C again to force quit (progress will be lost)\n")
+        cls._interrupted = True
+        # Set handler to default for second interrupt
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
     def _generate_code_snippet(self, rule: Dict[str, Any], konveyor_message: str) -> str:
         """Generate violating code snippet using LLM with retry logic."""
@@ -1031,6 +1050,15 @@ Respond with ONLY the fixed Java code, no explanations."""
 
                 # Process this batch
                 for i, rule in enumerate(batch_rules, start=batch_start+1):
+                    # Check for interrupt before processing each rule
+                    if self._interrupted:
+                        print(f"\n⚠️  Interrupt detected. Saving progress...")
+                        yaml_content = yaml.dump(test_suite, sort_keys=False, default_flow_style=False, width=120)
+                        output_file.write_text(yaml_content)
+                        print(f"✓ Saved {len(test_suite['rules'])} rules to {output_file}")
+                        print(f"✓ Progress saved. Re-run the same command to continue from rule {i}/{total_rules}")
+                        return [str(output_file)]
+
                     source_url = rule.pop('_source_ruleset', 'unknown')
                     rule_id = rule.get('ruleID', 'unknown')
                     print(f"  [{i}/{total_rules}] {rule_id}")
