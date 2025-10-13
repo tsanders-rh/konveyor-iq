@@ -43,6 +43,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-devtools-to-quarkus-0000
   description: Remove spring-boot-devtools dependency
   severity: low
@@ -68,6 +69,7 @@ rules:
       );\n        return 0;\n    }\n}"
     '# konveyor_guidance': "Remove the spring-boot-devtools dependency.\n Quarkus\
       \ has its own set of development tools integrated by default."
+  migration_complexity: low
 - rule_id: jms-to-reactive-quarkus-00000
   description: JMS is not supported in Quarkus
   severity: high
@@ -117,6 +119,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: jms-to-reactive-quarkus-00010
   description: '@MessageDriven - EJBs are not supported in Quarkus'
   severity: medium
@@ -151,6 +154,7 @@ rules:
       \    public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: high
 - rule_id: jms-to-reactive-quarkus-00020
   description: Configure message listener method with @Incoming
   severity: medium
@@ -182,6 +186,7 @@ rules:
       \ ```\n public class MessageListenerImpl implements MessageListener {{\n @Incoming(\"\
       HELLOWORLDMDBQueue\")\n public void onMessage(String message) {{\n // ...handler\
       \ code\n }}\n }}\n ```"
+  migration_complexity: medium
 - rule_id: jms-to-reactive-quarkus-00030
   description: JMS' Queue must be replaced with an Emitter
   severity: medium
@@ -207,6 +212,7 @@ rules:
       \ Emitter:\n \n Before:\n ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\"\
       )\n private Queue queue;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"HELLOWORLDMDBQueue\"\
       )\n Emitter<String> queueEmitter;\n ```"
+  migration_complexity: medium
 - rule_id: jms-to-reactive-quarkus-00040
   description: JMS' Topic must be replaced with an Emitter
   severity: medium
@@ -234,6 +240,7 @@ rules:
       \ Emitter:\n \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
       )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"HELLOWORLDMDBTopic\"\
       )\n Emitter<String> topicEmitter;\n ```"
+  migration_complexity: medium
 - rule_id: jms-to-reactive-quarkus-00050
   description: JMS is not supported in Quarkus
   severity: high
@@ -277,6 +284,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: springboot-webmvc-to-quarkus-00000
   description: Spring MVC is not supported by Quarkus
   severity: critical
@@ -298,6 +306,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': "Spring MVC is not supported by Quarkus\n\n Use the following\
       \ link to figure out the supported Spring Web functionalities."
+  migration_complexity: low
 - rule_id: springboot-webmvc-to-quarkus-01000
   description: Spring WebFlux is not supported by Quarkus
   severity: critical
@@ -321,6 +330,7 @@ rules:
     '# konveyor_guidance': "Spring WebFlux is not supported by Quarkus\n\n If the\
       \ application needs a reactive stack, please refer to the following links to\
       \ get more information."
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00000
   description: Replace the SpringBoot artifact with Quarkus 'spring-boot-properties'
     extension
@@ -349,6 +359,7 @@ rules:
       \ extension\n\n Spring Configuration Properties is in spring-boot artifact brought\
       \ transitively by any `org.springframework.boot:spring-boot-*` dependency\n\
       \ Add Quarkus dependency `io.quarkus:quarkus-spring-boot-properties`"
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00001
   description: Spring property profiles in separate files must be refactored into
     Quarkus properties file
@@ -374,6 +385,7 @@ rules:
     '# konveyor_guidance': "Spring property profile in separate file 'application-{{profile}}.{{extension}}'\
       \ must have\n their individual properties refactored to use Quarkus profile\
       \ naming conventions within a single properties file,\n\n ie in the format %{{profile}}.config.key=value"
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00002
   description: Replace Spring datasource property key/value pairs with Quarkus properties
   severity: low
@@ -409,6 +421,7 @@ rules:
     '# konveyor_guidance': "Spring datasource property key/value pairs have been detected\
       \ in the application property file.\n\n View advice in the Quarkus datasource\
       \ guide to convert these to Quarkus datasource properties."
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00003
   description: Replace Spring log level property with Quarkus property
   severity: low
@@ -428,6 +441,7 @@ rules:
     '# konveyor_guidance': "Spring log level property configuration have been detected\
       \ in the application property file.\n\n View advice in the Quarkus datasource\
       \ guide to convert these to Quarkus log level properties."
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00004
   description: Replace Spring JPA Hiberate property with Quarkus property
   severity: low
@@ -462,6 +476,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': Replace `spring.jpa.hibernate.ddl-auto=create-drop` with
       `quarkus.hibernate-orm.database.generation=drop-and-create`
+  migration_complexity: low
 - rule_id: springboot-properties-to-quarkus-00005
   description: Replace Spring Swagger endpoint mapping
   severity: low
@@ -502,6 +517,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: springboot-properties-to-quarkus-00006
   description: Replace Spring OpenAPI endpoint mapping
   severity: low
@@ -522,6 +538,7 @@ rules:
       )\n    private String apiDocsPath;\n\n    public void printApiDocsPath() {\n\
       \        System.out.println(\"API Docs Path: \" + apiDocsPath);\n    }\n}"
     '# konveyor_guidance': Replace `springdoc.api-docs.path` with `quarkus.smallrye-openapi.path`
+  migration_complexity: low
 - rule_id: springboot-web-to-quarkus-00000
   description: Replace the Spring Web artifact with Quarkus 'spring-web' extension
   severity: low
@@ -544,6 +561,7 @@ rules:
       \ `io.quarkus:quarkus-spring-web` \n \n Starting with Quarkus version 2.5, the\
       \ underlying JAX-RS engine must be chosen. For performance reasons,\n the `quarkus-resteasy-reactive-jackson`\
       \ dependency should be used."
+  migration_complexity: low
 - rule_id: springboot-web-to-quarkus-00010
   description: Add the Quarkus 'quarkus-resteasy-reactive-jackson' dependency
   severity: low
@@ -567,6 +585,7 @@ rules:
       \n Starting with Quarkus version 2.5, the underlying JAX-RS engine must be chosen.\
       \ For performance reasons,\n the `quarkus-resteasy-reactive-jackson` dependency\
       \ should be used.\""
+  migration_complexity: low
 - rule_id: springboot-parent-pom-to-quarkus-00000
   description: Replace the Spring Parent POM with Quarkus BOM
   severity: low
@@ -644,6 +663,7 @@ rules:
       \    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: jaxrs-to-quarkus-00000
   description: Replace JAX-RS dependency
   severity: low
@@ -662,6 +682,7 @@ rules:
       \    public String hello() {\n        return \"Hello, JAX-RS!\";\n    }\n}"
     '# konveyor_guidance': Dependency `org.jboss.spec.javax.ws.rs:jboss-jaxrs-api_2.1_spec`
       has to be replaced with `io.quarkus:quarkus-resteasy-reactive` artifact.
+  migration_complexity: low
 - rule_id: jaxrs-to-quarkus-00010
   description: Replace JAX-RS dependency
   severity: low
@@ -680,6 +701,7 @@ rules:
       \    public String hello() {\n        return \"Hello, JAX-RS!\";\n    }\n}"
     '# konveyor_guidance': Dependency `javax.ws.rs:javax.ws.rs-api` has to be replaced
       with `io.quarkus:quarkus-resteasy-reactive` artifact.
+  migration_complexity: low
 - rule_id: jaxrs-to-quarkus-00020
   description: JAX-RS activation is no longer necessary
   severity: low
@@ -696,6 +718,7 @@ rules:
       \ No additional configuration needed for JAX-RS activation\n}"
     '# konveyor_guidance': JAX-RS activation is no longer necessary. You can set a
       root path like this but you don't have to.
+  migration_complexity: low
 - rule_id: springboot-jpa-to-quarkus-00000
   description: Replace the SpringBoot Data JPA artifact with Quarkus 'spring-data-jpa'
     extension
@@ -728,6 +751,7 @@ rules:
       \ extension\n\n Spring Data JPA is in spring-data-jpa artifact brought transitively\
       \ by any `org.springframework.data:spring-data-*` dependency \n Add Quarkus\
       \ dependency `io.quarkus:quarkus-spring-data-jpa`"
+  migration_complexity: low
 - rule_id: springboot-security-to-quarkus-00000
   description: Replace the SpringBoot Security artifact with Quarkus 'spring-security'
     extension
@@ -796,6 +820,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: expert
 - rule_id: springboot-cache-to-quarkus-00000
   description: Replace the SpringBoot cache artifact with Quarkus 'spring-cache' extension
   severity: low
@@ -819,20 +844,20 @@ rules:
       \ setIsbn(String isbn) {\n        this.isbn = isbn;\n    }\n\n    public String\
       \ getTitle() {\n        return title;\n    }\n\n    public void setTitle(String\
       \ title) {\n        this.title = title;\n    }\n}"
-    expected_fix: "import io.quarkus.cache.CacheResult;\nimport javax.enterprise.context.ApplicationScoped;\n\
-      \n@ApplicationScoped\npublic class BookService {\n\n    @CacheResult(cacheName\
-      \ = \"books\")\n    public Book findBook(String isbn) {\n        simulateSlowService();\n\
-      \        return new Book(isbn, \"Some Book Title\");\n    }\n\n    private void\
-      \ simulateSlowService() {\n        try {\n            long time = 3000L;\n \
-      \           Thread.sleep(time);\n        } catch (InterruptedException e) {\n\
-      \            throw new IllegalStateException(e);\n        }\n    }\n}\n\nclass\
-      \ Book {\n    private String isbn;\n    private String title;\n\n    public\
-      \ Book(String isbn, String title) {\n        this.isbn = isbn;\n        this.title\
-      \ = title;\n    }\n\n    public String getIsbn() {\n        return isbn;\n \
-      \   }\n\n    public void setIsbn(String isbn) {\n        this.isbn = isbn;\n\
-      \    }\n\n    public String getTitle() {\n        return title;\n    }\n\n \
-      \   public void setTitle(String title) {\n        this.title = title;\n    }\n\
-      }"
+    expected_fix: "import org.springframework.cache.annotation.Cacheable;\nimport\
+      \ jakarta.enterprise.context.ApplicationScoped;\n\n@ApplicationScoped\npublic\
+      \ class BookService {\n\n    @Cacheable(\"books\")\n    public Book findBook(String\
+      \ isbn) {\n        simulateSlowService();\n        return new Book(isbn, \"\
+      Some Book Title\");\n    }\n\n    private void simulateSlowService() {\n   \
+      \     try {\n            long time = 3000L;\n            Thread.sleep(time);\n\
+      \        } catch (InterruptedException e) {\n            throw new IllegalStateException(e);\n\
+      \        }\n    }\n}\n\nclass Book {\n    private String isbn;\n    private\
+      \ String title;\n\n    public Book(String isbn, String title) {\n        this.isbn\
+      \ = isbn;\n        this.title = title;\n    }\n\n    public String getIsbn()\
+      \ {\n        return isbn;\n    }\n\n    public void setIsbn(String isbn) {\n\
+      \        this.isbn = isbn;\n    }\n\n    public String getTitle() {\n      \
+      \  return title;\n    }\n\n    public void setTitle(String title) {\n      \
+      \  this.title = title;\n    }\n}"
     '# konveyor_guidance': "Replace the SpringBoot Cache module artifact with Quarkus\
       \ `spring-cache` extension\n\n Add Quarkus dependency `io.quarkus:quarkus-spring-cache`"
     test_code: "import jakarta.inject.Inject;\nimport jakarta.enterprise.context.ApplicationScoped;\n\
@@ -841,6 +866,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: dependency-removal-for-quarkus-00000
   description: Remove non-quarkus dependencies
   severity: low
@@ -882,6 +908,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: remote-ejb-to-quarkus-00000
   description: Remote EJBs are not supported in Quarkus
   severity: low
@@ -923,6 +950,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00000
   description: The expected project artifact's extension is `jar`
   severity: low
@@ -989,6 +1017,7 @@ rules:
       \    public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00010
   description: Adopt Quarkus BOM
   severity: low
@@ -1081,6 +1110,7 @@ rules:
       \ public scope() {}\n\n    public Long getId() { return id; }\n    public void\
       \ setId(Long id) { this.id = id; }\n    public String getName() { return name;\
       \ }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00020
   description: Adopt Quarkus Maven plugin
   severity: low
@@ -1088,28 +1118,21 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: java
+    language: xml
+    compilable: false
+    reason: XML configuration file - pom.xml modification
     context: Adopt Quarkus Maven plugin
-    code_snippet: "package com.example.legacyapp;\n\nimport javax.enterprise.context.ApplicationScoped;\n\
-      import javax.inject.Inject;\nimport javax.persistence.EntityManager;\nimport\
-      \ javax.transaction.Transactional;\n\n@ApplicationScoped\npublic class ProductService\
-      \ {\n\n    @Inject\n    private EntityManager entityManager;\n\n    @Transactional\n\
-      \    public void addProduct(Product product) {\n        entityManager.persist(product);\n\
-      \    }\n}\n\nclass Product {\n    private Long id;\n    private String name;\n\
-      \n    // Getters and Setters\n    public Long getId() {\n        return id;\n\
-      \    }\n\n    public void setId(Long id) {\n        this.id = id;\n    }\n\n\
-      \    public String getName() {\n        return name;\n    }\n\n    public void\
-      \ setName(String name) {\n        this.name = name;\n    }\n}"
-    expected_fix: "package com.example.legacyapp;\n\nimport jakarta.enterprise.context.ApplicationScoped;\n\
-      import jakarta.inject.Inject;\nimport jakarta.persistence.EntityManager;\nimport\
-      \ jakarta.transaction.Transactional;\n\n@ApplicationScoped\npublic class ProductService\
-      \ {\n\n    @Inject\n    private EntityManager entityManager;\n\n    @Transactional\n\
-      \    public void addProduct(Product product) {\n        entityManager.persist(product);\n\
-      \    }\n}\n\nclass Product {\n    private Long id;\n    private String name;\n\
-      \n    // Getters and Setters\n    public Long getId() {\n        return id;\n\
-      \    }\n\n    public void setId(Long id) {\n        this.id = id;\n    }\n\n\
-      \    public String getName() {\n        return name;\n    }\n\n    public void\
-      \ setName(String name) {\n        this.name = name;\n    }\n}"
+    code_snippet: <!-- pom.xml without quarkus-maven-plugin -->
+    expected_fix: "<properties>\n    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\n\
+      \    <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n</properties>\n\
+      <build>\n    <plugins>\n        <plugin>\n            <groupId>${quarkus.platform.group-id}</groupId>\n\
+      \            <artifactId>quarkus-maven-plugin</artifactId>\n            <version>${quarkus.platform.version}</version>\n\
+      \            <extensions>true</extensions>\n            <executions>\n     \
+      \           <execution>\n                    <goals>\n                     \
+      \   <goal>build</goal>\n                        <goal>generate-code</goal>\n\
+      \                        <goal>generate-code-tests</goal>\n                \
+      \    </goals>\n                </execution>\n            </executions>\n   \
+      \     </plugin>\n    </plugins>\n</build>"
     '# konveyor_guidance': "Use the Quarkus Maven plugin adding the following sections\
       \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\
       \ \n <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n </properties>\
@@ -1174,6 +1197,7 @@ rules:
       \    public executions() {}\n\n    public Long getId() { return id; }\n    public\
       \ void setId(Long id) { this.id = id; }\n    public String getName() { return\
       \ name; }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00030
   description: Adopt Maven Compiler plugin
   severity: low
@@ -1276,6 +1300,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00040
   description: Adopt Maven Surefire plugin
   severity: low
@@ -1283,15 +1308,13 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: java
+    language: xml
+    compilable: false
+    reason: XML configuration file - pom.xml modification
     context: Adopt Maven Surefire plugin
-    code_snippet: "package com.example.demo;\n\nimport jakarta.enterprise.context.ApplicationScoped;\n\
-      import jakarta.inject.Inject;\nimport jakarta.persistence.EntityManager;\n\n\
-      @ApplicationScoped\npublic class ProductService {\n\n    @Inject\n    private\
-      \ EntityManager entityManager;\n\n    public void addProduct(Product product)\
-      \ {\n        entityManager.persist(product);\n    }\n}"
-    expected_fix: "xml\n<properties> \n    <surefire-plugin.version>3.0.0</surefire-plugin.version>\n\
-      </properties> \n<build>\n    <plugins>\n        <plugin>\n            <groupId>org.apache.maven.plugins</groupId>\n\
+    code_snippet: <!-- pom.xml without maven-surefire-plugin configuration -->
+    expected_fix: "<properties>\n    <surefire-plugin.version>3.0.0</surefire-plugin.version>\n\
+      </properties>\n<build>\n    <plugins>\n        <plugin>\n            <groupId>org.apache.maven.plugins</groupId>\n\
       \            <artifactId>maven-surefire-plugin</artifactId>\n            <version>${surefire-plugin.version}</version>\n\
       \            <configuration>\n                <systemPropertyVariables>\n  \
       \                  <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n\
@@ -1350,6 +1373,7 @@ rules:
       \    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00050
   description: Adopt Maven Failsafe plugin
   severity: low
@@ -1469,6 +1493,7 @@ rules:
       \    public executions() {}\n\n    public Long getId() { return id; }\n    public\
       \ void setId(Long id) { this.id = id; }\n    public String getName() { return\
       \ name; }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00060
   description: Add Maven profile to run the Quarkus native build
   severity: low
@@ -1476,18 +1501,16 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: java
+    language: xml
+    compilable: false
+    reason: XML configuration file - not Java code
     context: Add Maven profile to run the Quarkus native build
-    code_snippet: "package com.example;\n\nimport javax.enterprise.context.ApplicationScoped;\n\
-      import javax.inject.Inject;\nimport javax.persistence.EntityManager;\n\n@ApplicationScoped\n\
-      public class ProductService {\n\n    @Inject\n    private EntityManager entityManager;\n\
-      \n    public void addProduct(Product product) {\n        entityManager.persist(product);\n\
-      \    }\n}"
-    expected_fix: "xml\n<profiles>\n    <profile>\n        <id>native</id>\n     \
-      \   <activation>\n            <property>\n                <name>native</name>\n\
-      \            </property>\n        </activation>\n        <properties>\n    \
-      \        <skipITs>false</skipITs>\n            <quarkus.package.type>native</quarkus.package.type>\n\
-      \        </properties>\n    </profile>\n</profiles>"
+    code_snippet: <!-- No specific code snippet - this is a pom.xml addition -->
+    expected_fix: "<profiles>\n    <profile>\n        <id>native</id>\n        <activation>\n\
+      \            <property>\n                <name>native</name>\n            </property>\n\
+      \        </activation>\n        <properties>\n            <skipITs>false</skipITs>\n\
+      \            <quarkus.package.type>native</quarkus.package.type>\n        </properties>\n\
+      \    </profile>\n</profiles>"
     '# konveyor_guidance': "Leverage a Maven profile to run the Quarkus native build\
       \ adding the following section to the `pom.xml` file: \n\n ```xml\n <profiles>\n\
       \ <profile>\n <id>native</id>\n <activation>\n <property>\n <name>native</name>\n\
@@ -1533,6 +1556,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00070
   description: Configure Quarkus hibernate-orm
   severity: low
@@ -1540,20 +1564,16 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: java
+    language: xml
+    compilable: false
+    reason: XML configuration file - pom.xml modification
     context: Configure Quarkus hibernate-orm
-    code_snippet: "import javax.persistence.EntityManager;\nimport javax.persistence.PersistenceContext;\n\
-      import javax.enterprise.context.ApplicationScoped;\n\n@ApplicationScoped\npublic\
-      \ class ProductService {\n\n    @PersistenceContext\n    private EntityManager\
-      \ entityManager;\n\n    public void saveProduct(Product product) {\n       \
-      \ entityManager.persist(product);\n    }\n}"
-    expected_fix: "import jakarta.persistence.EntityManager;\nimport jakarta.persistence.PersistenceContext;\n\
-      import jakarta.enterprise.context.ApplicationScoped;\n\n@ApplicationScoped\n\
-      public class ProductService {\n\n    @PersistenceContext\n    private EntityManager\
-      \ entityManager;\n\n    public void saveProduct(Product product) {\n       \
-      \ entityManager.persist(product);\n    }\n\n    // Assuming Product class is\
-      \ defined elsewhere in the application\n    public static class Product {\n\
-      \        // Product class implementation\n    }\n}"
+    code_snippet: <!-- pom.xml with jakarta.persistence-api or org.hibernate dependencies
+      -->
+    expected_fix: "<!-- Hibernate ORM specific dependencies -->\n<dependency>\n  \
+      \  <groupId>io.quarkus</groupId>\n    <artifactId>quarkus-hibernate-orm</artifactId>\n\
+      </dependency>\n\n<!-- JDBC driver dependencies -->\n<dependency>\n    <groupId>io.quarkus</groupId>\n\
+      \    <artifactId>quarkus-jdbc-postgresql</artifactId>\n</dependency>"
     '# konveyor_guidance': "Configure Quarkus 'hibernate-orm` and jakarta persistence.\
       \ \n Add the `quarkus-hibernate-orm` section and one for your preferred jdbc\
       \ solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!-- Hibernate\
@@ -1567,6 +1587,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: javaee-pom-to-quarkus-00080
   description: Use Quarkus junit artifact
   severity: low
@@ -1574,21 +1595,17 @@ rules:
   source: /Users/tsanders/Workspace/rulesets/default/generated/quarkus/216-javaee-pom-to-quarkus.windup.yaml
   test_cases:
   - id: tc001
-    language: java
+    language: xml
+    compilable: false
+    reason: XML configuration file - pom.xml dependency addition
     context: Use Quarkus junit artifact
-    code_snippet: "import org.junit.jupiter.api.Test;\nimport javax.persistence.EntityManager;\n\
-      import javax.inject.Inject;\n\npublic class SampleTest {\n\n    @Inject\n  \
-      \  EntityManager entityManager;\n\n    @Test\n    public void testPersistence()\
-      \ {\n        // Test logic using EntityManager\n        entityManager.persist(new\
-      \ Entity());\n    }\n}"
-    expected_fix: "import io.quarkus.test.junit.QuarkusTest;\nimport org.junit.jupiter.api.Test;\n\
-      import javax.persistence.EntityManager;\nimport javax.inject.Inject;\n\n@QuarkusTest\n\
-      public class SampleTest {\n\n    @Inject\n    EntityManager entityManager;\n\
-      \n    @Test\n    public void testPersistence() {\n        // Test logic using\
-      \ EntityManager\n        entityManager.persist(new Entity());\n    }\n}"
+    code_snippet: <!-- pom.xml with junit.junit dependency (JUnit 4) -->
+    expected_fix: "<!-- Quarkus junit specific dependency -->\n<dependency>\n    <groupId>io.quarkus</groupId>\n\
+      \    <artifactId>quarkus-junit5</artifactId>\n    <scope>test</scope>\n</dependency>"
     '# konveyor_guidance': "Use Quarkus junit artifact: \n\n ```\n <!-- Quarkus junit\
       \ specific dependency -->\n <dependency>\n <groupId>io.quarkus</groupId>\n <artifactId>quarkus-junit5</artifactId>\n\
       \ <scope>test</scope>\n </dependency>\n ```"
+  migration_complexity: low
 - rule_id: springboot-scheduled-to-quarkus-00000
   description: Replace the SpringBoot context artifact with Quarkus 'spring-scheduled'
     extension
@@ -1605,7 +1622,7 @@ rules:
       \ {\n\n    @Scheduled(fixedRate = 5000)\n    public void reportCurrentTime()\
       \ {\n        System.out.println(\"Current time: \" + System.currentTimeMillis());\n\
       \    }\n}"
-    expected_fix: "import io.quarkus.scheduler.Scheduled;\nimport javax.enterprise.context.ApplicationScoped;\n\
+    expected_fix: "import io.quarkus.scheduler.Scheduled;\nimport jakarta.enterprise.context.ApplicationScoped;\n\
       \n@ApplicationScoped\npublic class ScheduledTasks {\n\n    @Scheduled(every=\"\
       5s\")\n    public void reportCurrentTime() {\n        System.out.println(\"\
       Current time: \" + System.currentTimeMillis());\n    }\n}"
@@ -1613,6 +1630,7 @@ rules:
       \ extension\n\n Spring Scheduled is in spring-context artifact brought transitively\
       \ by any `org.springframework.boot:spring-boot-*` dependency\n Add Quarkus dependency\
       \ `io.quarkus:quarkus-spring-scheduled`"
+  migration_complexity: low
 - rule_id: javaee-faces-to-quarkus-00000
   description: Replace JSF Dependency with MyFaces
   severity: low
@@ -1643,6 +1661,7 @@ rules:
       \ <version>3.13.1</version>\n </dependency>\n <dependency>\n <groupId>io.quarkiverse.omnifaces</groupId>\n\
       \ <artifactId>quarkus-omnifaces</artifactId>\n <version>4.2.0</version>\n </dependency>\n\
       \ ```"
+  migration_complexity: low
 - rule_id: springboot-integration-to-quarkus-00010
   description: SpringBoot Integration flows are not supported.
   severity: high
@@ -1706,6 +1725,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: springboot-integration-to-quarkus-00020
   description: SpringBoot IntegrationFlow class usage is not supported.
   severity: high
@@ -1724,11 +1744,11 @@ rules:
       \ String::toUpperCase)\n                .handle(System.out::println)\n     \
       \           .get();\n    }\n}"
     expected_fix: "import org.apache.camel.builder.RouteBuilder;\nimport org.apache.camel.CamelContext;\n\
-      import javax.enterprise.context.ApplicationScoped;\nimport javax.inject.Inject;\n\
+      import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.inject.Inject;\n\
       \n@ApplicationScoped\npublic class CamelIntegrationConfig extends RouteBuilder\
       \ {\n\n    @Inject\n    CamelContext camelContext;\n\n    @Override\n    public\
       \ void configure() {\n        from(\"direct:inputChannel\")\n            .filter(body().isEqualTo(\"\
-      World\"))\n            .transform().body(String.class, String::toUpperCase)\n\
+      World\"))\n            .transform().body(String.class, body -> body.toUpperCase())\n\
       \            .process(exchange -> System.out.println(exchange.getIn().getBody()))\n\
       \            .end();\n    }\n}"
     '# konveyor_guidance': SpringBoot IntegrationFlow class usage is not supported.
@@ -1739,6 +1759,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-annotations-to-quarkus-00000
   description: Remove the SpringBoot @SpringBootApplication annotation
   severity: low
@@ -1766,6 +1787,7 @@ rules:
       \ at runtime. Doing this would allow the application to compile without modification,\
       \ but you\n would also need to maintain a Spring version along with the Quarkus\
       \ application."
+  migration_complexity: low
 - rule_id: springboot-shell-to-quarkus-00000
   description: Replace the SpringBoot Shell artifact with Quarkus 'picocli' extension
   severity: medium
@@ -1797,6 +1819,7 @@ rules:
       \ }\n    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: springboot-generic-catchall-00100
   description: Spring component requires investigation for compatibility with Quarkus
     extensions or possibility of code rewrite.
@@ -1844,6 +1867,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-plugins-to-quarkus-0000
   description: Replace the spring-boot-maven-plugin dependency
   severity: low
@@ -1865,6 +1889,7 @@ rules:
       \ `spring-boot-maven-plugin` dependency needs to be replaced with `quarkus-maven-plugin`,\
       \ so that the application is built with Quarkus, both for running on the JVM\
       \ and in native mode."
+  migration_complexity: low
 - rule_id: jakarta-faces-to-quarkus-00000
   description: Replace Jakarta Faces Dependency with MyFaces
   severity: low
@@ -1896,6 +1921,7 @@ rules:
       \ </dependency>\n <dependency>\n <groupId>io.quarkiverse.omnifaces</groupId>\n\
       \ <artifactId>quarkus-omnifaces</artifactId>\n <version>4.2.0</version>\n </dependency>\n\
       \ ```"
+  migration_complexity: low
 - rule_id: jakarta-faces-to-quarkus-00010
   description: Replace Jakarta Faces Dependency with MyFaces
   severity: low
@@ -1927,6 +1953,7 @@ rules:
       \ </dependency>\n <dependency>\n <groupId>io.quarkiverse.omnifaces</groupId>\n\
       \ <artifactId>quarkus-omnifaces</artifactId>\n <version>4.2.0</version>\n </dependency>\n\
       \ ```"
+  migration_complexity: low
 - rule_id: persistence-to-quarkus-00000
   description: Move persistence config to a properties file
   severity: low
@@ -1980,6 +2007,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: persistence-to-quarkus-00011
   description: '@Produces cannot annotate an EntityManager'
   severity: low
@@ -2014,6 +2042,7 @@ rules:
       \ ExtendedContext {{ ... }}\n ```\n and then inject your entity managers:\n\
       \ ```\n @ExtendedContext\n public EntityManager getEm() {{\n return em;\n }}\n\
       \ ```"
+  migration_complexity: low
 - rule_id: ee-to-quarkus-00000
   description: '@Stateless annotation must be replaced'
   severity: low
@@ -2044,6 +2073,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: ee-to-quarkus-00010
   description: '@Stateful annotation must be replaced'
   severity: medium
@@ -2074,6 +2104,7 @@ rules:
       \ on your application architecture. Review your application's requirements to\
       \ determine the appropriate scope.\n\n Note that it is recommended, as a good\
       \ practice, to keep state external from the service in Quarkus."
+  migration_complexity: low
 - rule_id: ee-to-quarkus-00020
   description: Method should be marked as @Transactional
   severity: medium
@@ -2108,6 +2139,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: high
 - rule_id: springboot-actuator-to-quarkus-0100
   description: Replace the Spring Boot Actuator dependency with Quarkus Smallrye Health
     extension
@@ -2161,6 +2193,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-actuator-to-quarkus-0200
   description: Replace Spring Health endpoint mapping
   severity: low
@@ -2203,6 +2236,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: jakarta-cdi-to-quarkus-00000
   description: Replace jakarta.enterprise:jakarta.enterprise.cdi-api dependency
   severity: low
@@ -2239,6 +2273,7 @@ rules:
       \ = name;\n    }\n}"
     '# konveyor_guidance': Dependency `jakarta.enterprise:jakarta.enterprise.cdi-api`
       has to be replaced with `io.quarkus:quarkus-arc` artifact.
+  migration_complexity: low
 - rule_id: jakarta-cdi-to-quarkus-00020
   description: Replace jakarta.inject:jakarta.inject-api dependency
   severity: low
@@ -2276,6 +2311,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': Dependency `jakarta.inject:jakarta.inject-api` has to be
       replaced with `io.quarkus:quarkus-arc` artifact.
+  migration_complexity: low
 - rule_id: jakarta-cdi-to-quarkus-00030
   description: '`beans.xml` descriptor content is ignored'
   severity: medium
@@ -2302,6 +2338,7 @@ rules:
     '# konveyor_guidance': "The `beans.xml` descriptor content is ignored and it could\
       \ be removed from the application. \n Refer to the guide referenced below to\
       \ check the supported CDI feature in Quarkus."
+  migration_complexity: low
 - rule_id: jakarta-cdi-to-quarkus-00040
   description: Producer annotation no longer required
   severity: low
@@ -2323,6 +2360,7 @@ rules:
       \ if the producer method is annotated with a scope annotation, a stereotype\
       \ or a qualifier..\n This field could be accessed using a `@Named` getter method\
       \ instead."
+  migration_complexity: low
 - rule_id: jakarta-cdi-to-quarkus-00050
   description: Stateless annotation can be replaced with scope
   severity: low
@@ -2355,6 +2393,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: cdi-to-quarkus-00000
   description: Replace javax.enterprise:cdi-api dependency
   severity: low
@@ -2388,6 +2427,7 @@ rules:
       \ {\n        this.name = name;\n        this.email = email;\n    }\n}"
     '# konveyor_guidance': Dependency `javax.enterprise:cdi-api` has to be replaced
       with `io.quarkus:quarkus-arc` artifact.
+  migration_complexity: low
 - rule_id: cdi-to-quarkus-00020
   description: Replace javax.inject:javax.inject dependency
   severity: low
@@ -2412,6 +2452,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': Dependency `javax.inject:javax.inject` has to be replaced
       with `io.quarkus:quarkus-arc` artifact.
+  migration_complexity: low
 - rule_id: cdi-to-quarkus-00030
   description: '`beans.xml` descriptor content is ignored'
   severity: medium
@@ -2438,6 +2479,7 @@ rules:
     '# konveyor_guidance': "`beans.xml` descriptor content is ignored and it could\
       \ be removed from the application. \n Refer to the guide referenced below to\
       \ check the supported CDI feature in Quarkus."
+  migration_complexity: low
 - rule_id: cdi-to-quarkus-00040
   description: Producer annotation no longer required
   severity: low
@@ -2459,6 +2501,7 @@ rules:
       \ if the producer method is annotated with a scope annotation, a stereotype\
       \ or a qualifier..\n This field could be accessed using a `@Named` getter method\
       \ instead."
+  migration_complexity: low
 - rule_id: springboot-jmx-to-quarkus-00000
   description: Spring JMX is not supported by Quarkus with GraalVM on a Native Image
   severity: critical
@@ -2483,6 +2526,7 @@ rules:
     '# konveyor_guidance': "Spring JMX XML configuration detected:\n\n Spring JMX\
       \ is not supported by Quarkus with the GraalVM Native compilation.\n Spring\
       \ JMX can be used with the Quarkus Hotspot compilation however."
+  migration_complexity: low
 - rule_id: springboot-jmx-to-quarkus-00001
   description: Spring JMX is not supported by Quarkus with GraalVM on a Native Image
   severity: critical
@@ -2505,6 +2549,7 @@ rules:
     '# konveyor_guidance': "Spring JMX annotation configuration detected:\n\n Spring\
       \ JMX is not supported by Quarkus with the GraalVM Native compilation.\n Spring\
       \ JMX can be used with the Quarkus Hotspot compilation however."
+  migration_complexity: low
 - rule_id: jakarta-jaxrs-to-quarkus-00010
   description: Replace jakarta JAX-RS dependency
   severity: low
@@ -2524,6 +2569,7 @@ rules:
       }"
     '# konveyor_guidance': Dependency `jakarta.ws.rs:jakarta.ws.rs-api` has to be
       replaced with `io.quarkus:quarkus-resteasy-reactive` artifact.
+  migration_complexity: low
 - rule_id: jakarta-jaxrs-to-quarkus-00020
   description: Jakarta JAX-RS activation is no longer necessary
   severity: low
@@ -2540,6 +2586,7 @@ rules:
       \ extends Application {\n    // Application configuration code\n}"
     '# konveyor_guidance': Jakarta JAX-RS activation is no longer necessary. You can
       set a root path like this but you don't have to.
+  migration_complexity: low
 - rule_id: springboot-metrics-to-quarkus-0100
   description: Replace the Micrometer dependency with Quarkus Microprofile 'metrics'
     extension
@@ -2585,6 +2632,7 @@ rules:
       \ MetricRegistry() {}\n\n    public Long getId() { return id; }\n    public\
       \ void setId(Long id) { this.id = id; }\n    public String getName() { return\
       \ name; }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-metrics-to-quarkus-0200
   description: Replace the Micrometer code with Microprofile Metrics code
   severity: high
@@ -2621,6 +2669,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-metrics-to-quarkus-0300
   description: Replace Spring Prometheus Metrics endpoint mapping
   severity: low
@@ -2652,6 +2701,7 @@ rules:
       \    public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: springboot-di-to-quarkus-00000
   description: Replace the SpringBoot Dependency Injection artifact with Quarkus 'spring-di'
     extension
@@ -2691,6 +2741,7 @@ rules:
       \ Quarkus `spring-di` extension\n\n Spring DI is in spring-beans artifact brought\
       \ transitively by any `org.springframework.boot:spring-boot-*` dependency\n\
       \ Add Quarkus dependency `io.quarkus:quarkus-spring-di`"
+  migration_complexity: low
 - rule_id: springboot-di-to-quarkus-00001
   description: 'For Spring DI the XML-based bean configuration metadata is not supported
     by Quarkus '
@@ -2719,6 +2770,7 @@ rules:
       \ {\n        System.out.println(\"Doing something...\");\n    }\n}"
     '# konveyor_guidance': Quarkus only supports the java-based configuration of Spring
       beans.
+  migration_complexity: low
 - rule_id: springboot-di-to-quarkus-00002
   description: Spring DI infrastructure classes not supported by Quarkus
   severity: medium
@@ -2755,6 +2807,7 @@ rules:
       \ id; }\n    public void setId(Long id) { this.id = id; }\n    public String\
       \ getName() { return name; }\n    public void setName(String name) { this.name\
       \ = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-6.2-00010
   description: EntityPersister#multiload method has changed
   severity: low
@@ -2790,6 +2843,7 @@ rules:
       \ contracts of `SessionImpl` so they can be easily swapped.\n Methods `isEventSource`\
       \ and `asEventSource` can also be used to ease the transition, available on\
       \ the `SharedSessionContractImplementor` contract."
+  migration_complexity: low
 - rule_id: hibernate-6.2-00020
   description: Executable#afterDeserialize method has changed
   severity: low
@@ -2838,6 +2892,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-6.2-00030
   description: JdbcType#getJdbcRecommendedJavaTypeMapping() method has changed
   severity: low
@@ -2880,6 +2935,7 @@ rules:
       \ Integer.class;\n                }\n            };\n        }\n    }\n}"
     '# konveyor_guidance': The return type of `JdbcType#getJdbcRecommendedJavaTypeMapping()`
       was changed from `BasicJavaType` to `JavaType`.
+  migration_complexity: low
 - rule_id: hibernate-6.2-00040
   description: Classes within the 'org.hibernate.cfg' package have been moved
   severity: low
@@ -2917,6 +2973,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-6.2-00050
   description: Classes within the 'org.hibernate.loader' package have been moved
   severity: low
@@ -2945,6 +3002,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00010
   description: Constants for Hibernate Search configuration property keys have changed
   severity: low
@@ -2974,6 +3032,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00020
   description: Property hibernate.search.analyzer not available anymore
   severity: low
@@ -3012,6 +3071,7 @@ rules:
       \ = title;\n    }\n}"
     '# konveyor_guidance': This property is not available anymore. To override the
       default analyzer, define a custom analyzer named default. See link.
+  migration_complexity: low
 - rule_id: hibernate-search-00030
   description: Property hibernate.search.autoregister_listeners not available anymore
   severity: low
@@ -3041,6 +3101,7 @@ rules:
       \        emf.close();\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.enabled`.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00040
   description: Property hibernate.search.batch_size not available anymore
   severity: low
@@ -3094,6 +3155,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00050
   description: The syntax for configuring AWS authentication changed in Hibernate
     Search 6.
@@ -3151,6 +3213,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: high
 - rule_id: hibernate-search-00060
   description: Property hibernate.search.batch_size not available anymore
   severity: low
@@ -3184,6 +3247,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00070
   description: Property hibernate.search.default.elasticsearch.discovery.default_scheme
     not available anymore
@@ -3220,6 +3284,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00080
   description: Property hibernate.search.default.elasticsearch.discovery.enabled not
     available anymore
@@ -3255,6 +3320,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00090
   description: Property hibernate.search.default.elasticsearch.discovery.refresh_interval
     not available anymore
@@ -3284,6 +3350,7 @@ rules:
       , \"10s\")\n            .start();\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.backend.discovery.refresh_interval`.'
+  migration_complexity: low
 - rule_id: hibernate-search-00100
   description: Property hibernate.search.*.elasticsearch.dynamic_mapping not available
     anymore
@@ -3323,6 +3390,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00105
   description: Property hibernate.search.default.elasticsearch.host not available
     anymore
@@ -3360,6 +3428,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: hibernate-search-00110
   description: Property hibernate.search.*.elasticsearch.index_management_wait_timeout
     not available anymore
@@ -3390,6 +3459,7 @@ rules:
       \ the Hibernate Search 6 equivalent: `hibernate.search.backend.schema_management.minimal_required_status_wait_timeout`\
       \ (for global defaults)\n or `hibernate.search.backend.indexes.<index-name>.schema_management.minimal_required_status_wait_timeout`\
       \ (per-index)."
+  migration_complexity: low
 - rule_id: hibernate-search-00120
   description: Property hibernate.search.*.elasticsearch.index_schema_management_strategy
     not available anymore
@@ -3420,6 +3490,7 @@ rules:
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.schema_management.strategy`
       (for global defaults). There is no equivalent for per-index configuration.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00140
   description: Property hibernate.search.default.elasticsearch.max_total_connection_per_route
     not available anymore
@@ -3454,6 +3525,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00150
   description: Property hibernate.search.default.elasticsearch.max_total_connection
     not available anymore
@@ -3474,8 +3546,8 @@ rules:
       \        fullTextEntityManager.getSearchFactory()\n            .unwrap(org.hibernate.search.engine.spi.SearchFactoryImplementor.class)\n\
       \            .getConfiguration()\n            .setProperty(\"hibernate.search.default.elasticsearch.max_total_connection\"\
       , \"10\");\n    }\n}"
-    expected_fix: "import javax.enterprise.context.ApplicationScoped;\nimport javax.persistence.EntityManager;\n\
-      import javax.persistence.PersistenceContext;\nimport org.hibernate.search.mapper.orm.Search;\n\
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.persistence.EntityManager;\n\
+      import jakarta.persistence.PersistenceContext;\nimport org.hibernate.search.mapper.orm.Search;\n\
       import org.hibernate.search.mapper.orm.session.SearchSession;\n\n@ApplicationScoped\n\
       public class SearchConfiguration {\n\n    @PersistenceContext\n    EntityManager\
       \ entityManager;\n\n    public void configureFullTextEntityManager() {\n   \
@@ -3487,6 +3559,7 @@ rules:
       \   }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.backend.max_connections`.'
+  migration_complexity: low
 - rule_id: hibernate-search-00160
   description: Property hibernate.search.default.elasticsearch.password not available
     anymore
@@ -3521,6 +3594,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00170
   description: Property hibernate.search.default.elasticsearch.path_prefix not available
     anymore
@@ -3556,6 +3630,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00180
   description: Property hibernate.search.default.elasticsearch.read_timeout not available
     anymore
@@ -3587,6 +3662,7 @@ rules:
       \        emf.close();\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.backend.read_timeout`.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00190
   description: Property hibernate.search.*.elasticsearch.refresh_after_write not available
     anymore
@@ -3623,6 +3699,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00200
   description: Property hibernate.search.default.elasticsearch.request_timeout not
     available anymore
@@ -3658,6 +3735,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00210
   description: Property hibernate.search.*.elasticsearch.required_index_status not
     available anymore
@@ -3690,6 +3768,7 @@ rules:
       \ the Hibernate Search 6 equivalent: `hibernate.search.backend.schema_management.minimal_required_status`\
       \ (for global defaults)\n or `hibernate.search.backend.indexes.<index-name>.schema_management.minimal_required_status`\
       \ (per-index)."
+  migration_complexity: low
 - rule_id: hibernate-search-00220
   description: Property hibernate.search.default.elasticsearch.username not available
     anymore
@@ -3725,6 +3804,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00230
   description: Property hibernate.search.*.exclusive_index_use not available anymore
   severity: low
@@ -3750,6 +3830,7 @@ rules:
       \n        em.close();\n        emf.close();\n    }\n}"
     '# konveyor_guidance': This property is not available anymore. There is no substitute
       in Hibernate Search 6.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00240
   description: Property hibernate.search.*.directory_provider not available anymore
   severity: low
@@ -3787,6 +3868,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00250
   description: Property hibernate.search.*.indexBase not available anymore
   severity: low
@@ -3824,6 +3906,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00260
   description: Property hibernate.search.*.indexName not available anymore
   severity: low
@@ -3870,6 +3953,7 @@ rules:
       \ return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00270
   description: Property hibernate.search.*.index_flush_interval not available anymore
   severity: low
@@ -3906,6 +3990,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00280
   description: Property hibernate.search.*.index_metadata_complete not available anymore
   severity: low
@@ -3934,6 +4019,7 @@ rules:
       \   }\n}"
     '# konveyor_guidance': No equivalent in Hibernate Search 6. This property was
       not documented in Hibernate Search 5.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00290
   description: Property hibernate.search.*.indexmanager not available anymore
   severity: low
@@ -3970,6 +4056,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00300
   description: Property hibernate.search.*.indexwriter not available anymore
   severity: low
@@ -4005,6 +4092,7 @@ rules:
       \ the Hibernate Search 6 equivalent: `hibernate.search.backend.io.writer` or\
       \ `hibernate.search.backend.io.merge` (for global defaults)\n or `hibernate.search.backend.indexes.<index-name>.io.writer`\
       \ or `hibernate.search.backend.indexes.<index-name>.io.merge` (per-index)."
+  migration_complexity: low
 - rule_id: hibernate-search-00310
   description: Property hibernate.search.*.locking_strategy not available anymore
   severity: low
@@ -4044,6 +4132,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00320
   description: Property hibernate.search.*.max_queue_length not available anymore
   severity: low
@@ -4090,6 +4179,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00330
   description: Property hibernate.search.default_null_token not available anymore
   severity: low
@@ -4123,6 +4213,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00340
   description: Property hibernate.search.*.reader not available anymore
   severity: low
@@ -4157,6 +4248,7 @@ rules:
       \ hibernate.search.backend.indexes.<index-name>.io.refresh_interval\n to a strictly\
       \ positive value (in milliseconds). See links for more information. Custom reader\
       \ strategies are no longer supported."
+  migration_complexity: trivial
 - rule_id: hibernate-search-00350
   description: Property hibernate.search.*.retry_marker_lookup not available anymore
   severity: low
@@ -4187,6 +4279,7 @@ rules:
       \ {\n            em.close();\n            emf.close();\n        }\n    }\n}"
     '# konveyor_guidance': This property is not available anymore. The filesystem-slave
       directory provider is no longer supported. See links for more information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00360
   description: Property hibernate.search.*.sharding_strategy not available anymore
   severity: low
@@ -4223,6 +4316,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: hibernate-search-00370
   description: Property hibernate.search.*.similarity not available anymore
   severity: low
@@ -4259,6 +4353,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00380
   description: Property hibernate.search.*.worker.backend not available anymore
   severity: low
@@ -4298,6 +4393,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: medium
 - rule_id: hibernate-search-00390
   description: Property hibernate.search.*.worker.execution not available anymore
   severity: low
@@ -4339,6 +4435,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: trivial
 - rule_id: hibernate-search-00400
   description: Property hibernate.search.*.worker not available anymore
   severity: low
@@ -4374,6 +4471,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00410
   description: Property hibernate.search.elasticsearch.analysis_definition_provider
     not available anymore
@@ -4403,6 +4501,7 @@ rules:
       \        emf.close();\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.backend.analysis.configurer`.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00420
   description: Property hibernate.search.elasticsearch.log.json_pretty_printing not
     available anymore
@@ -4437,6 +4536,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00430
   description: Property hibernate.search.elasticsearch.scroll_backtracking_window_size
     not available anymore
@@ -4471,6 +4571,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00440
   description: Property hibernate.search.elasticsearch.scroll_fetch_size not available
     anymore
@@ -4507,6 +4608,7 @@ rules:
       Search APIs, the "chunk size" is an argument to the scroll method. When using
       the Hibernate ORM or JPA adapters, the "chunk size" is set to the same value
       as the fetch size. See links for more information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00450
   description: Property hibernate.search.elasticsearch.scroll_timeout not available
     anymore
@@ -4544,6 +4646,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00460
   description: Property hibernate.search.enable_dirty_check not available anymore
   severity: low
@@ -4573,6 +4676,7 @@ rules:
       , true);\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.automatic_indexing.enable_dirty_check`.'
+  migration_complexity: low
 - rule_id: hibernate-search-00470
   description: Property hibernate.search.error_handler not available anymore
   severity: low
@@ -4606,6 +4710,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: trivial
 - rule_id: hibernate-search-00480
   description: Property hibernate.search.filter.cache_docidresults.size not available
     anymore
@@ -4629,20 +4734,22 @@ rules:
       \                .setProperty(\"hibernate.search.filter.cache_docidresults.size\"\
       , \"1000\");\n\n        // Business logic here\n\n        em.close();\n    \
       \    emf.close();\n    }\n}"
-    expected_fix: "import javax.persistence.EntityManager;\nimport javax.persistence.EntityManagerFactory;\n\
-      import javax.persistence.Persistence;\nimport org.hibernate.search.mapper.orm.Search;\n\
+    expected_fix: "import jakarta.persistence.EntityManager;\nimport jakarta.persistence.EntityManagerFactory;\n\
+      import jakarta.persistence.Persistence;\nimport org.hibernate.search.mapper.orm.Search;\n\
       import org.hibernate.search.mapper.orm.session.SearchSession;\n\npublic class\
       \ LegacySearchConfiguration {\n\n    public static void main(String[] args)\
       \ {\n        EntityManagerFactory emf = Persistence.createEntityManagerFactory(\"\
       myPersistenceUnit\");\n        EntityManager em = emf.createEntityManager();\n\
-      \        SearchSession searchSession = Search.session(em);\n\n        // Enabling\
-      \ statistics\n        searchSession.workspace().statistics().enabled(true);\n\
-      \n        // Business logic here\n\n        em.close();\n        emf.close();\n\
-      \    }\n}"
+      \        SearchSession searchSession = Search.session(em);\n\n        // Note:\
+      \ Statistics API not available in Hibernate Search 6+\n        // Consider upgrading\
+      \ to Hibernate Search 6.1+ for configurable low-level hit caching\n\n      \
+      \  // Business logic here\n\n        em.close();\n        emf.close();\n   \
+      \ }\n}"
     '# konveyor_guidance': This property is not available anymore. There's no equivalent
       for Hibernate Search 6. If you need caching for some of your Lucene queries,
       consider upgrading directly to Hibernate Search 6.1, which provides configurable
       Low-level hit caching. See link for more information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00490
   description: Property hibernate.search.filter.cache_strategy not available anymore
   severity: low
@@ -4679,6 +4786,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00500
   description: Property hibernate.search.generate_statistics not available anymore
   severity: low
@@ -4706,6 +4814,7 @@ rules:
     '# konveyor_guidance': This property is not available anymore. There's no equivalent
       for Hibernate Search 6. No equivalent in Hibernate Search 6. See links for more
       information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00510
   description: Property hibernate.search.index_uninverting_allowed not available anymore
   severity: low
@@ -4740,6 +4849,7 @@ rules:
     '# konveyor_guidance': Index uninverting was deprecated in Hibernate Search 5
       due to poor performance and is no longer allowed. All index fields that you
       want to sort on must be marked as sortable. See links for more information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00520
   description: Property hibernate.search.indexing_strategy not available anymore
   severity: low
@@ -4771,6 +4881,7 @@ rules:
       the Hibernate Search 6 equivalent: `hibernate.search.automatic_indexing.strategy`.
       Set to `none` to get the equivalent of `hibernate.search.indexing_strategy =
       manual` in Hibernate Search 5.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00530
   description: Property hibernate.search.jmx_bean_suffix not available anymore
   severity: low
@@ -4798,6 +4909,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': This property is not available anymore. See links for more
       information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00540
   description: Property hibernate.search.jmx_enabled not available anymore
   severity: low
@@ -4827,6 +4939,7 @@ rules:
       \      emf.close();\n    }\n}"
     '# konveyor_guidance': This property is not available anymore. See links for more
       information.
+  migration_complexity: trivial
 - rule_id: hibernate-search-00550
   description: Property hibernate.search.error_handler not available anymore
   severity: low
@@ -4862,6 +4975,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00560
   description: Property hibernate.search.lucene_version not available anymore
   severity: low
@@ -4894,6 +5008,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00570
   description: Property hibernate.search.model_mapping not available anymore
   severity: low
@@ -4927,6 +5042,7 @@ rules:
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.mapping.configurer`. A
       different interface should be implemented: see links for more information.'
+  migration_complexity: low
 - rule_id: hibernate-search-00580
   description: Property hibernate.search.query.database_retrieval_method not available
     anymore
@@ -4947,7 +5063,7 @@ rules:
       \            .getConfiguration()\n            .setProperty(\"hibernate.search.query.database_retrieval_method\"\
       , \"find_by_id\");\n    }\n}"
     expected_fix: "import org.hibernate.search.mapper.orm.Search;\nimport org.hibernate.search.mapper.orm.session.SearchSession;\n\
-      import javax.persistence.EntityManager;\nimport javax.persistence.Persistence;\n\
+      import jakarta.persistence.EntityManager;\nimport jakarta.persistence.Persistence;\n\
       \npublic class SearchConfiguration {\n\n    public void configureSearch() {\n\
       \        EntityManager em = Persistence.createEntityManagerFactory(\"myPersistenceUnit\"\
       ).createEntityManager();\n        SearchSession searchSession = Search.session(em);\n\
@@ -4956,6 +5072,7 @@ rules:
       \ in Hibernate Search 6\n    }\n}"
     '# konveyor_guidance': 'This property is no available anymore. No equivalent in
       Hibernate Search 6: entities are always loaded with a query.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00590
   description: Property hibernate.search.query.object_lookup_method not available
     anymore
@@ -4988,6 +5105,7 @@ rules:
       \        em.close();\n        emf.close();\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. Substitute with
       the Hibernate Search 6 equivalent: `hibernate.search.query.loading.cache_lookup.strategy`.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00600
   description: Property hibernate.search.similarity not available anymore
   severity: low
@@ -5006,23 +5124,22 @@ rules:
       \                             .getStatistics()\n                           \
       \  .getSearchFactory()\n                             .setProperty(\"hibernate.search.similarity\"\
       , \"org.apache.lucene.search.similarities.ClassicSimilarity\");\n    }\n}"
-    expected_fix: "import org.hibernate.search.mapper.orm.Search;\nimport org.hibernate.search.mapper.orm.cfg.HibernateOrmMapperSettings;\n\
-      import org.hibernate.search.mapper.orm.session.SearchSession;\nimport org.hibernate.search.engine.backend.analysis.AnalyzerNames;\n\
-      import org.hibernate.search.mapper.orm.mapping.HibernateOrmMappingConfigurer;\n\
-      import org.hibernate.search.mapper.orm.mapping.HibernateOrmSearchMappingConfigurer;\n\
-      \nimport javax.persistence.EntityManager;\nimport javax.persistence.Persistence;\n\
+    expected_fix: "import org.hibernate.search.mapper.orm.Search;\nimport org.hibernate.search.mapper.orm.session.SearchSession;\n\
+      \nimport jakarta.persistence.EntityManager;\nimport jakarta.persistence.Persistence;\n\
       \npublic class SearchConfiguration {\n\n    public void configureSearch() {\n\
       \        EntityManager em = Persistence.createEntityManagerFactory(\"myPersistenceUnit\"\
       ).createEntityManager();\n        SearchSession searchSession = Search.session(em);\n\
-      \n        searchSession.mapping(HibernateOrmSearchMappingConfigurer.class, mappingConfigurer\
-      \ -> {\n            mappingConfigurer.analyzer(AnalyzerNames.DEFAULT, analyzerConfigurer\
-      \ -> {\n                analyzerConfigurer.custom()\n                    .tokenizer(\"\
-      standard\")\n                    .tokenFilters(\"lowercase\", \"stop\");\n \
-      \           });\n        });\n    }\n}"
+      \n        // The following configuration setup is a placeholder as the original\
+      \ approach to set properties is not directly supported.\n        // Adjust according\
+      \ to the actual requirements and capabilities of Hibernate Search 6.\n     \
+      \   // This example does not directly correspond to setting a similarity as\
+      \ in the original code since that concept has changed in newer versions of Hibernate\
+      \ Search.\n    }\n}"
     '# konveyor_guidance': 'This property is not available anymore. There is no direct
       equivalent in Hibernate Search 6: the similarity is configured through the analysis
       configurer. The default similarity changed when this property is not configured:
       see links for more information.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-00610
   description: Property hibernate.search.worker.* not available anymore
   severity: low
@@ -5059,6 +5176,7 @@ rules:
       \ always performed on transaction commit or, when there is no transaction, on\
       \ session flush.\n Also, transactional backends, for example the JMS backend,\
       \ are no longer supported. See links for more information."
+  migration_complexity: trivial
 - rule_id: hibernate-search-00620
   description: Annotation @Analyzer not available anymore
   severity: medium
@@ -5102,6 +5220,7 @@ rules:
       \ for example with @Analyzer(impl = StandardAnalyzer.class).\n This is no longer\
       \ possible: analyzers are now always referenced by their name. However, you\
       \ can assign a name to a given analyzer instance using the Lucene analysis configurer."
+  migration_complexity: low
 - rule_id: hibernate-search-00630
   description: Annotation @AnalyzerDef(s) not available anymore
   severity: medium
@@ -5151,6 +5270,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00640
   description: Annotation @AnalyzerDiscriminator not available anymore
   severity: medium
@@ -5201,6 +5321,7 @@ rules:
       \ BookContent() {}\n\n    public Long getId() { return id; }\n    public void\
       \ setId(Long id) { this.id = id; }\n    public String getName() { return name;\
       \ }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00650
   description: Annotation @Boost not available anymore
   severity: medium
@@ -5237,6 +5358,7 @@ rules:
     '# konveyor_guidance': "Index-time boosting was deprecated in Hibernate Search\
       \ 5. It is no longer available in Hibernate Search 6.\n Instead, rely on query-time\
       \ boosting. See link for more information."
+  migration_complexity: low
 - rule_id: hibernate-search-00660
   description: Annotation @CacheFromIndex not available anymore
   severity: low
@@ -5269,6 +5391,7 @@ rules:
       \        this.author = author;\n    }\n}"
     '# konveyor_guidance': This annotation was deprecated and non-functional in Hibernate
       Search 5. It is no longer available in Hibernate Search 6.
+  migration_complexity: low
 - rule_id: hibernate-search-00670
   description: Annotation @CalendarBridge not available anymore
   severity: low
@@ -5305,6 +5428,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00680
   description: Annotation @CharFilterDef not available anymore
   severity: medium
@@ -5346,6 +5470,7 @@ rules:
       \ = description;\n    }\n}"
     '# konveyor_guidance': Annotation-based analyzer definitions are no longer supported.
       See link for more information.
+  migration_complexity: low
 - rule_id: hibernate-search-00690
   description: Annotation @ClassBridge(s) not available anymore
   severity: medium
@@ -5419,6 +5544,7 @@ rules:
       \ id; }\n    public void setId(Long id) { this.id = id; }\n    public String\
       \ getName() { return name; }\n    public void setName(String name) { this.name\
       \ = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00700
   description: Annotation @ContainedIn not available anymore
   severity: low
@@ -5463,6 +5589,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00710
   description: Annotation @DateBridge not available anymore
   severity: medium
@@ -5498,6 +5625,7 @@ rules:
       \n    public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00720
   description: Annotation @DocumentId has moved
   severity: low
@@ -5527,6 +5655,7 @@ rules:
       \ but moved to a different package: `org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId`.\n\
       \ However, it no longer exposes a name attribute, because the document ID is\
       \ no longer an index field, and thus it does not need a name."
+  migration_complexity: low
 - rule_id: hibernate-search-00730
   description: Annotation @DynamicBoost not available anymore
   severity: medium
@@ -5562,6 +5691,7 @@ rules:
     '# konveyor_guidance': "Index-time boosting was deprecated in Hibernate Search\
       \ 5. It is no longer available in Hibernate Search 6.\n Instead, rely on query-time\
       \ boosting. See link for more information."
+  migration_complexity: low
 - rule_id: hibernate-search-00740
   description: Facets have changed
   severity: medium
@@ -5620,6 +5750,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00750
   description: The @Field(s) annotation has been split into multiple annotations
   severity: medium
@@ -5652,6 +5783,7 @@ rules:
       \      this.author = author;\n    }\n}"
     '# konveyor_guidance': The @Field annotation was split into multiple annotations,
       specific to each field type. See link for more information.
+  migration_complexity: low
 - rule_id: hibernate-search-00760
   description: Annotation @FieldBridge not available anymore
   severity: low
@@ -5682,6 +5814,7 @@ rules:
       \ pageCount) {\n        this.pageCount = pageCount;\n    }\n}"
     '# konveyor_guidance': The bridge API was completely reworked in Hibernate Search
       6. See link for more information.
+  migration_complexity: low
 - rule_id: hibernate-search-00770
   description: The @FullTextFilterDef(s) annotation is not available anymore
   severity: low
@@ -5711,6 +5844,7 @@ rules:
       class MyFilter {\n    // Implementation details\n}"
     '# konveyor_guidance': Full-text filters have no direct equivalent in Hibernate
       Search 6. See link for more information.
+  migration_complexity: low
 - rule_id: hibernate-search-00780
   description: Annotation @Indexed has moved
   severity: low
@@ -5743,6 +5877,7 @@ rules:
       \ moved to a different package: `org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed`.\n\
       \ However, there are some related changes that must be addressed - see link\
       \ for more information."
+  migration_complexity: low
 - rule_id: hibernate-search-00790
   description: Annotation @IndexedEmbedded has moved
   severity: medium
@@ -5788,6 +5923,7 @@ rules:
       \ 6, but moved to a different package: `org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded`.\n\
       \ Some other changes within the annotation have been made. For more information,\
       \ see the link."
+  migration_complexity: low
 - rule_id: hibernate-search-00800
   description: The @Key annotation is not available anymore
   severity: low
@@ -5809,6 +5945,7 @@ rules:
       \n    public String getTitle() {\n        return title;\n    }\n\n    public\
       \ void setTitle(String title) {\n        this.title = title;\n    }\n}"
     '# konveyor_guidance': '`@Key` has no equivalent in Hibernate Search 6.'
+  migration_complexity: low
 - rule_id: hibernate-search-00810
   description: Annotation @Latitude has moved
   severity: low
@@ -5838,6 +5975,7 @@ rules:
       \   this.latitude = latitude;\n    }\n}"
     '# konveyor_guidance': '`@Latitude` is still available in Hibernate Search 6,
       but moved to a different package: `org.hibernate.search.annotations.Latitude`.'
+  migration_complexity: low
 - rule_id: hibernate-search-00820
   description: Annotation @Longitude has moved
   severity: low
@@ -5876,6 +6014,7 @@ rules:
       \ = longitude;\n    }\n}"
     '# konveyor_guidance': '`@Longitude` is still available in Hibernate Search 6,
       but moved to a different package: `org.hibernate.search.annotations.Longitude`.'
+  migration_complexity: low
 - rule_id: hibernate-search-00830
   description: Annotation @Longitude has moved
   severity: low
@@ -5933,6 +6072,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00840
   description: Annotation @NormalizerDef(s) not available anymore
   severity: medium
@@ -5987,6 +6127,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00850
   description: Annotation @NumericField(s) not available anymore
   severity: low
@@ -6015,6 +6156,7 @@ rules:
     '# konveyor_guidance': "@NumericField no longer exists in Hibernate Search 6.\n\
       \ Numeric types are indexed as numeric values by default, so this annotation\
       \ can simply be removed."
+  migration_complexity: low
 - rule_id: hibernate-search-00860
   description: Annotation @ProvidedId is no longer available
   severity: low
@@ -6046,6 +6188,7 @@ rules:
       \      this.author = author;\n    }\n}"
     '# konveyor_guidance': '`@ProvidedId` was deprecated in Hibernate Search 5. It
       no longer exists in Hibernate Search 6.'
+  migration_complexity: low
 - rule_id: hibernate-search-00870
   description: Annotation @SortableField(s) not available anymore
   severity: low
@@ -6074,6 +6217,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': '@SortableField(s) no longer exists in Hibernate Search
       6. Instead, use @*Field.sortable.'
+  migration_complexity: low
 - rule_id: hibernate-search-00880
   description: Annotation @Spatial(s) not available anymore
   severity: low
@@ -6123,6 +6267,7 @@ rules:
       \ Coordinates() {}\n\n    public Long getId() { return id; }\n    public void\
       \ setId(Long id) { this.id = id; }\n    public String getName() { return name;\
       \ }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00890
   description: Annotation @TikaBridge is no longer available
   severity: low
@@ -6150,6 +6295,7 @@ rules:
       \    }\n\n    public void setContent(String content) {\n        this.content\
       \ = content;\n    }\n}"
     '# konveyor_guidance': '@TikaBridge has no equivalent in Hibernate Search 6 yet.'
+  migration_complexity: low
 - rule_id: hibernate-search-00900
   description: Annotation @AnalyzerDef(s) not available anymore
   severity: medium
@@ -6220,6 +6366,7 @@ rules:
       \ id; }\n    public void setId(Long id) { this.id = id; }\n    public String\
       \ getName() { return name; }\n    public void setName(String name) { this.name\
       \ = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00910
   description: FullTextEntityManager and FullTextSession removed
   severity: medium
@@ -6261,6 +6408,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00920
   description: Full text queries now done via SDL - FullTextQueries have changed
   severity: medium
@@ -6283,15 +6431,14 @@ rules:
       \n        javax.persistence.Query jpaQuery = fullTextEntityManager.createFullTextQuery(luceneQuery,\
       \ Book.class);\n        jpaQuery.getResultList();\n    }\n}"
     expected_fix: "import jakarta.persistence.EntityManager;\nimport org.hibernate.search.mapper.orm.Search;\n\
-      import org.hibernate.search.mapper.orm.session.SearchSession;\nimport org.hibernate.search.engine.search.query.SearchQuery;\n\
-      import org.hibernate.search.mapper.orm.scope.SearchScope;\nimport org.hibernate.search.mapper.orm.entity.SearchIndexedEntity;\n\
-      \npublic class OldSearchExample {\n\n    private EntityManager entityManager;\n\
-      \n    public void performSearch(String searchTerm) {\n        SearchSession\
-      \ searchSession = Search.session(entityManager);\n        SearchScope<Book>\
-      \ scope = searchSession.scope(Book.class);\n\n        SearchQuery<Book> searchQuery\
-      \ = scope.search()\n            .where(f -> f.match()\n                .fields(\"\
-      title\", \"author\")\n                .matching(searchTerm))\n            .toQuery();\n\
-      \n        searchQuery.fetchAllHits();\n    }\n}"
+      import org.hibernate.search.mapper.orm.session.SearchSession;\n\npublic class\
+      \ OldSearchExample {\n\n    private EntityManager entityManager;\n\n    public\
+      \ void performSearch(String searchTerm) {\n        SearchSession searchSession\
+      \ = Search.session(entityManager);\n\n        searchSession.search(Book.class)\n\
+      \            .where(f -> f.match()\n                .fields(\"title\", \"author\"\
+      )\n                .matching(searchTerm))\n            .fetchAllHits();\n  \
+      \  }\n\n    // Assuming Book is a stub class to be defined elsewhere as per\
+      \ rule 3\n    public static class Book {\n    }\n}"
     '# konveyor_guidance': "Search APIs have changed significantly in order to implement\
       \ several improvements. The recommended way to build search\n queries in Hibernate\
       \ Search 6 is through the Hibernate Search DSL. See link for a thorough explanation\
@@ -6305,6 +6452,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: trivial
 - rule_id: hibernate-search-00930
   description: Full text queries now done via SDL - Lucene queries replaced with search
     predicates
@@ -6345,6 +6493,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00940
   description: Full text queries now done via DSL - Sort fields replaced with search
     sorts
@@ -6393,6 +6542,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00950
   description: ProjectionConstants no longer available
   severity: medium
@@ -6440,6 +6590,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00960
   description: Full text queries now done via SDL - Facets now called aggregations
   severity: medium
@@ -6493,6 +6644,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00970
   description: ErrorHandler API no longer available
   severity: medium
@@ -6548,6 +6700,7 @@ rules:
       \    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-00980
   description: The @Factory annotation is not available anymore
   severity: medium
@@ -6582,6 +6735,7 @@ rules:
       \ framework if such a feature is needed.\n This can be done by referencing the\
       \ bean name instead of referencing the bean class in your Hibernate Search mapping/configuration.\
       \ See link for more information."
+  migration_complexity: low
 - rule_id: hibernate-search-00990
   description: org.hibernate.search.exception.SearchException has been moved
   severity: low
@@ -6625,6 +6779,7 @@ rules:
       \ EntityManager() {}\n\n    public Long getId() { return id; }\n    public void\
       \ setId(Long id) { this.id = id; }\n    public String getName() { return name;\
       \ }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-01000
   description: Sharding has changed in Hibernate Search 6
   severity: medium
@@ -6663,6 +6818,7 @@ rules:
       \ 6, but it works differently, so the Hibernate Search 5 APIs are no longer\
       \ available.\n To implement static sharding in Hibernate Search 6, refer to\
       \ the link."
+  migration_complexity: low
 - rule_id: hibernate-search-01010
   description: SearchFactory is no longer available
   severity: medium
@@ -6695,6 +6851,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-01020
   description: MassIndexer has moved
   severity: low
@@ -6730,6 +6887,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-01030
   description: MassIndexer has moved
   severity: low
@@ -6750,18 +6908,20 @@ rules:
       \n        System.out.println(\"Job Status: \" + jobExecution.getBatchStatus());\n\
       \    }\n}"
     expected_fix: "import org.hibernate.search.batch.jsr352.core.massindexing.MassIndexingJob;\n\
-      import javax.batch.runtime.BatchRuntime;\nimport javax.batch.runtime.JobExecution;\n\
-      import javax.batch.runtime.JobOperator;\nimport java.util.Properties;\n\npublic\
-      \ class BatchIndexing {\n\n    public void startMassIndexing() {\n        JobOperator\
-      \ jobOperator = BatchRuntime.getJobOperator();\n        Properties jobParams\
-      \ = new Properties();\n        jobParams.setProperty(\"entityType\", \"com.example.MyEntity\"\
-      );\n\n        long executionId = jobOperator.start(MassIndexingJob.NAME, jobParams);\n\
-      \        JobExecution jobExecution = jobOperator.getJobExecution(executionId);\n\
+      import jakarta.batch.runtime.BatchRuntime;\nimport jakarta.batch.runtime.JobExecution;\n\
+      import jakarta.batch.operations.JobOperator;\nimport java.util.Properties;\n\
+      \npublic class BatchIndexing {\n\n    public void startMassIndexing() {\n  \
+      \      JobOperator jobOperator = BatchRuntime.getJobOperator();\n        Properties\
+      \ jobParams = new Properties();\n        jobParams.setProperty(\"entityType\"\
+      , \"com.example.MyEntity\");\n\n        long executionId = jobOperator.start(\"\
+      mass-indexing\", jobParams); // Assuming \"mass-indexing\" is the correct job\
+      \ name\n        JobExecution jobExecution = jobOperator.getJobExecution(executionId);\n\
       \n        System.out.println(\"Job Status: \" + jobExecution.getBatchStatus());\n\
       \    }\n}"
     '# konveyor_guidance': 'The mass indexing Batch (JSR-352) job mostly stays the
       same in Hibernate Search 6, but `MassIndexingJob` moved to a different package:
       `org.hibernate.search.batch.jsr352.core.massindexing.MassIndexingJob`.'
+  migration_complexity: trivial
 - rule_id: hibernate-search-01040
   description: Dependency must be migrated from Hibernate Search 5 to 6
   severity: low
@@ -6805,6 +6965,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00010
   description: Hibernate Search 6.1.* now requires using Hibernate ORM versions from
     the 5.6.x family.
@@ -6844,6 +7005,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00020
   description: org.hibernate.search.engine.cfg.spi.ConfigurationPropertySource has
     moved
@@ -6879,6 +7041,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00030
   description: org.hibernate.search.backend.elasticsearch.client.spi.ElasticsearchHttpClientConfigurer
     has moved
@@ -6912,6 +7075,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00040
   description: org.hibernate.search.backend.elasticsearch.client.spi.ElasticsearchHttpClientConfigurationContext
     has moved
@@ -6958,6 +7122,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00050
   description: org.hibernate.search.engine.common.timing.spi.Deadline has moved
   severity: low
@@ -6992,6 +7157,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00060
   description: org.hibernate.search.engine.backend.work.execution.spi.IndexIndexingPlanExecutionReport
     has moved
@@ -7028,6 +7194,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00070
   description: URLEncodedString#fromJsonString was removed
   severity: low
@@ -7050,6 +7217,7 @@ rules:
       \        System.out.println(\"Encoded URL from JSON: \" + encodedString);\n\
       \    }\n}"
     '# konveyor_guidance': '`URLEncodedString#fromJsonString` must be removed.'
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00080
   description: FieldPaths#absolutize(String, String, String) has been removed
   severity: low
@@ -7080,6 +7248,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': '`FieldPaths#absolutize(String, String, String)` must be
       removed.'
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00090
   description: IndexManagerImplementor#createIndexingPlan has changed
   severity: low
@@ -7116,6 +7285,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00100
   description: IndexIndexingPlan#executeAndReport has changed
   severity: low
@@ -7148,6 +7318,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00120
   description: IndexSchemaObjectNodeBuilder has changed
   severity: low
@@ -7194,6 +7365,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00130
   description: IndexSchemaObjectNodeBuilder has changed
   severity: low
@@ -7225,6 +7397,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00140
   description: IndexSchemaObjectNodeBuilder has changed
   severity: low
@@ -7260,6 +7433,7 @@ rules:
       \        }\n    }\n}"
     '# konveyor_guidance': '`org.hibernate.search.engine.backend.document.model.dsl.spi.IndexSchemaRootNodeBuilder`
       is now `org.hibernate.search.engine.backend.document.model.dsl.spi.IndexRootBuilder`'
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00150
   description: FromDocumentFieldValueConverter has been deprecated
   severity: low
@@ -7292,6 +7466,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00160
   description: ToDocumentFieldValueConverter has been deprecated
   severity: low
@@ -7326,6 +7501,7 @@ rules:
       \        return getClass().equals(other.getClass());\n    }\n}"
     '# konveyor_guidance': '`ToDocumentFieldValueConverter` has been deprecated, implement
       `ToDocumentValueConverter` instead.'
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00170
   description: MassIndexingFailureHandler has been deprecated
   severity: low
@@ -7375,6 +7551,7 @@ rules:
       \    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00180
   description: MassIndexingMonitor has been deprecated
   severity: low
@@ -7426,6 +7603,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate-search-6.1-00190
   description: Deprecated configuration settings
   severity: low
@@ -7449,6 +7627,7 @@ rules:
       \ \"true\");\n    }\n}"
     '# konveyor_guidance': 'Property has been deprecated: use the new configuration
       property that accepts `true`/`false` instead. See `HibernateOrmMapperSettings#AUTOMATIC_INDEXING_ENABLED`.'
+  migration_complexity: low
 - rule_id: hibernate-00005
   description: Implicit name determination for sequences and tables associated with
     identifier generation has changed
@@ -7492,6 +7671,7 @@ rules:
       \ entity, named `<entity name>_seq`. For an entity Person, a sequence person_seq\
       \ is expected to exist. \n It’s best to run hbm2ddl (e.g. by temporarily setting\
       \ `hbm2ddl.auto=create`) to obtain a list of DDL statements for the sequences."
+  migration_complexity: low
 - rule_id: hibernate-00010
   description: Approaches for specifying Types to use which are string-based have
     been removed
@@ -7530,6 +7710,7 @@ rules:
     '# konveyor_guidance': As part of the Hibernate ORM 6.0 release, mapping annotations
       have been modernised and made more type-safe. These annotations must be removed.
       See the User Guide for details about mapping your domain model.
+  migration_complexity: low
 - rule_id: hibernate6-00020
   description: String-based approaches for specifying Types to use have been removed
   severity: low
@@ -7559,6 +7740,7 @@ rules:
       have been modernised and made more type-safe. Annotation attributes accepting
       types as String have been removed. See the User Guide for details about mapping
       your domain model.
+  migration_complexity: low
 - rule_id: hibernate6-00030
   description: Basic mappings are no longer configurable through the BasicType contract
   severity: low
@@ -7602,6 +7784,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00040
   description: StandardBasicTypes class now exposes fields of type BasicTypeReference
   severity: low
@@ -7630,6 +7813,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00050
   description: Renaming of JavaTypeDescriptor contract
   severity: low
@@ -7671,6 +7855,7 @@ rules:
       \ }\n    public void setId(Long id) { this.id = id; }\n    public String getName()\
       \ { return name; }\n    public void setName(String name) { this.name = name;\
       \ }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00060
   description: Renaming of SqlTypeDescriptor contract
   severity: low
@@ -7709,6 +7894,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00070
   description: The CompositeUserType interface has been reimplemented
   severity: low
@@ -7775,6 +7961,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00080
   description: Property hibernate.hql.bulk_id_strategy has changed
   severity: low
@@ -7811,6 +7998,7 @@ rules:
     '# konveyor_guidance': The configuration property `hibernate.hql.bulk_id_strategy`
       was changed to `hibernate.query.mutation_strategy` which now refers to classes
       or objects implementing `org.hibernate.query.sqm.mutation.spi.SqmMultiTableMutationStrategy`.
+  migration_complexity: trivial
 - rule_id: hibernate6-00090
   description: Stream#close() must be called explicitly to close the underlying resources
   severity: low
@@ -7850,6 +8038,7 @@ rules:
       \ { return id; }\n    public void setId(Long id) { this.id = id; }\n    public\
       \ String getName() { return name; }\n    public void setName(String name) {\
       \ this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00100
   description: The signature of the Interceptor#onSave method has been changed
   severity: low
@@ -7876,6 +8065,7 @@ rules:
     '# konveyor_guidance': The signature of the `Interceptor#onSave` method has been
       changed to account for the general change in expected identifier type from `Serializable`
       to `Object`. See migration guide for more information.
+  migration_complexity: low
 - rule_id: hibernate6-00110
   description: The contents of the loader.collection package have been restructured
   severity: low
@@ -7900,6 +8090,7 @@ rules:
     '# konveyor_guidance': The contents of the `loader.collection` package were restructured
       into `loader.ast.spi` and `loader.ast.internal` as well as adapted to the SQM
       API.
+  migration_complexity: low
 - rule_id: hibernate6-00120
   description: The contents of the loader.custom package have been moved
   severity: low
@@ -7929,6 +8120,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00130
   description: The contents of the loader.entity and loader.plan packages have been
     removed
@@ -7977,6 +8169,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00140
   description: The contents of sql.ordering have moved
   severity: low
@@ -8015,6 +8208,7 @@ rules:
       \   }\n}"
     '# konveyor_guidance': The contents of `sql.ordering` were adapted and moved to
       `metamodel.mapping.ordering.ast`.
+  migration_complexity: low
 - rule_id: hibernate6-00150
   description: Some classes of the sql package that were previously used for building
     SQL were removed
@@ -8054,6 +8248,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00160
   description: Support for basic property mappings with multiple columns was removed
   severity: low
@@ -8096,6 +8291,7 @@ rules:
       \ {}\n\n    public Long getId() { return id; }\n    public void setId(Long id)\
       \ { this.id = id; }\n    public String getName() { return name; }\n    public\
       \ void setName(String name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00170
   description: Legacy Hibernate Criteria API has been removed
   severity: low
@@ -8136,6 +8332,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00180
   description: The Query#iterate() method has been removed
   severity: low
@@ -8167,6 +8364,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00190
   description: Using NativeQuery to call SQL functions and procedures is no longer
     supported
@@ -8201,6 +8399,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00200
   description: Using NativeQuery to call SQL functions and procedures is no longer
     supported
@@ -8229,6 +8428,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00210
   description: Hibernate no longer provides built-in support for integrating itself
     with JMX environments
@@ -8270,6 +8470,7 @@ rules:
       \ SessionFactory() {}\n\n    public Long getId() { return id; }\n    public\
       \ void setId(Long id) { this.id = id; }\n    public String getName() { return\
       \ name; }\n    public void setName(String name) { this.name = name; }\n}"
+  migration_complexity: trivial
 - rule_id: hibernate6-00220
   description: Hibernate no longer provides built-in support for integrating itself
     with JACC environments
@@ -8303,6 +8504,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': Hibernate no longer provides built-in support for integrating
       itself with JACC environments.
+  migration_complexity: trivial
 - rule_id: hibernate6-00230
   description: Removed hibernate classloader properties
   severity: low
@@ -8326,6 +8528,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': 'These properties are deprecated: use `hibernate.classLoaders`
       instead.'
+  migration_complexity: low
 - rule_id: hibernate6-00240
   description: Removed hibernate properties
   severity: low
@@ -8354,6 +8557,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': 'This property has been removed: use `jakarta.persistence.create-database-schemas`
       or `hibernate.hbm2ddl.create_namespaces` instead'
+  migration_complexity: trivial
 - rule_id: hibernate6-00250
   description: Renamed hibernate property hibernate.ejb.metamodel.population
   severity: low
@@ -8377,6 +8581,7 @@ rules:
       myPersistenceUnit\", properties);\n    }\n}"
     '# konveyor_guidance': 'This property has been removed: please use `hibernate.jpa.metamodel.population`
       instead'
+  migration_complexity: trivial
 - rule_id: hibernate6-00251
   description: Renamed hibernate property hibernate.ejb.cfgfile
   severity: low
@@ -8401,6 +8606,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': 'This property has been removed: please use `hibernate.cfg_xml_file`
       instead'
+  migration_complexity: trivial
 - rule_id: hibernate6-00252
   description: Renamed hibernate property hibernate.ejb.xml_files
   severity: low
@@ -8430,6 +8636,7 @@ rules:
       \    }\n}"
     '# konveyor_guidance': 'This property has been removed: please use `hibernate.orm_xml_files`
       instead'
+  migration_complexity: trivial
 - rule_id: hibernate6-00253
   description: Renamed hibernate property hibernate.hbmxml.files
   severity: low
@@ -8461,6 +8668,7 @@ rules:
       \ Long getId() { return id; }\n    public void setId(Long id) { this.id = id;\
       \ }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00254
   description: Renamed hibernate property hibernate.ejb.loaded.classes
   severity: low
@@ -8493,6 +8701,7 @@ rules:
       \  public Long getId() { return id; }\n    public void setId(Long id) { this.id\
       \ = id; }\n    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00255
   description: The hibernate property under 'hibernate.ejb' has been renamed.
   severity: low
@@ -8527,6 +8736,7 @@ rules:
       \ getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n\
       \    public String getName() { return name; }\n    public void setName(String\
       \ name) { this.name = name; }\n}"
+  migration_complexity: low
 - rule_id: hibernate6-00257
   description: Renamed hibernate property hibernate.ejb.entitymanager_factory_name
   severity: low
@@ -8549,6 +8759,7 @@ rules:
       }"
     '# konveyor_guidance': 'This property has been removed: please use `hibernate.session_factory_name`
       instead'
+  migration_complexity: trivial
 - rule_id: hibernate6-00270
   description: Community dialects moved to a separate module
   severity: low
@@ -8579,6 +8790,7 @@ rules:
       \ to a separate Maven artifact: `org.hibernate.orm:hibernate-community-dialects`.\n\
       \n Note that the new artifact is not included in the EAP 8 distribution and\
       \ will have to be added manually."
+  migration_complexity: low
 - rule_id: hibernate6-00280
   description: Multitenancy in Hibernate ORM has been simplified
   severity: low
@@ -8611,6 +8823,7 @@ rules:
       \ with the new @TenantId annotation, Hibernate ORM will assume discriminator-based\
       \ multitenancy (which is a new feature).\n \n See links for information on how\
       \ to migrate."
+  migration_complexity: low
 prompt: 'You are helping migrate Java EE code to Quarkus based on static analysis
   rules.
 

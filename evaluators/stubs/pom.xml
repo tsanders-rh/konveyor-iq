@@ -145,6 +145,26 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.search</groupId>
+            <artifactId>hibernate-search-mapper-orm</artifactId>
+            <version>7.0.0.Final</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-core</artifactId>
+            <version>4.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Legacy javax.enterprise (for backward compatibility) -->
         <dependency>
             <groupId>javax.enterprise</groupId>

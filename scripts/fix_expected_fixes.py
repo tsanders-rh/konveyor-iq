@@ -476,28 +476,32 @@ def main():
         results = [result]
         return validator.print_overall_summary(results)
 
-    # Run initial validation to show what needs fixing
-    print(f"\n{'='*80}")
-    print("INITIAL VALIDATION")
-    print(f"{'='*80}\n")
-
-    validator = ExpectedFixValidator(verbose=False)
-    validation_result = validator.validate_file(args.file)
-
-    if validation_result["failed"] == 0:
-        print("\n✓ All expected_fix code segments compile successfully!")
-        print("Nothing to fix.\n")
-        return 0
-
-    print(f"\nFound {validation_result['failed']} compilation failure(s).")
-    print("Proceeding with automated fixes...\n")
-
     # Parse complexity filter if provided
     complexity_filter = None
     if args.complexity:
         from benchmarks.schema import MigrationComplexity
         complexity_filter = [c.strip() for c in args.complexity.split(',')]
-        print(f"Filtering to complexity levels: {', '.join(complexity_filter)}\n")
+        print(f"\n{'='*80}")
+        print(f"Filtering to complexity levels: {', '.join(complexity_filter)}")
+        print(f"{'='*80}\n")
+        print("Note: Skipping initial validation when using complexity filter.")
+        print("Only rules matching the specified complexity levels will be processed.\n")
+    else:
+        # Run initial validation only when NOT filtering by complexity
+        print(f"\n{'='*80}")
+        print("INITIAL VALIDATION")
+        print(f"{'='*80}\n")
+
+        validator = ExpectedFixValidator(verbose=False)
+        validation_result = validator.validate_file(args.file)
+
+        if validation_result["failed"] == 0:
+            print("\n✓ All expected_fix code segments compile successfully!")
+            print("Nothing to fix.\n")
+            return 0
+
+        print(f"\nFound {validation_result['failed']} compilation failure(s).")
+        print("Proceeding with automated fixes...\n")
 
     # Create fixer and attempt fixes
     fixer = ExpectedFixFixer(

@@ -1,429 +1,254 @@
-name: "Java EE to Quarkus Migration"
-description: "Test cases for migrating Java EE applications to Quarkus framework"
-version: "1.0.0"
-
+name: Java EE to Quarkus Migration
+description: Test cases for migrating Java EE applications to Quarkus framework
+version: 1.0.0
 metadata:
-  source: "Konveyor AI Migration Rules"
-  language: "java"
-  framework_from: "Java EE"
-  framework_to: "Quarkus"
-  migration_source: "java-ee"
-  migration_target: "quarkus"
+  source: Konveyor AI Migration Rules
+  language: java
+  framework_from: Java EE
+  framework_to: Quarkus
+  migration_source: java-ee
+  migration_target: quarkus
+prompt: 'You are helping migrate Java EE code to Quarkus based on static analysis
+  rules.
 
-# Optional: Custom prompt template
-# Migration guidance is injected via {migration_guidance} based on migration_source/migration_target labels
-# If you omit this field entirely, uses default from config.yaml
-prompt: |
-  You are helping migrate Java EE code to Quarkus based on static analysis rules.
 
   {migration_guidance}
 
+
   Rule Violation:
+
   {rule_description}
 
+
   Konveyor Migration Guidance:
+
   {konveyor_message}
 
+
   Original Code:
+
   ```{language}
+
   {code_snippet}
+
   ```
+
 
   Context: {context}
 
+
   Please provide:
-  1. The COMPLETE corrected code that resolves the violation (include ALL original code - classes, fields, methods, everything)
+
+  1. The COMPLETE corrected code that resolves the violation (include ALL original
+  code - classes, fields, methods, everything)
+
   2. A brief explanation of the changes made
 
+
   IMPORTANT:
+
   - Provide the ENTIRE class with ALL fields and methods, not just the parts you changed
+
   - Use Jakarta EE (jakarta.*) packages, not Spring Framework
+
   - Follow Quarkus best practices
 
+
   Format your response as:
+
   FIXED CODE:
+
   ```{language}
+
   [your complete fixed code here]
+
   ```
 
+
   EXPLANATION:
+
   [your explanation here]
 
+  '
 rules:
-  - rule_id: "ee-to-quarkus-00000"
-    description: "Replace @Stateless EJB annotation with @ApplicationScoped CDI"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "@Stateless -> @ApplicationScoped"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
-
-    test_cases:
-      - id: "tc001"
-        language: "java"
-        context: "Simple stateless bean migration"
-        code_snippet: |
-          import javax.ejb.Stateless;
-
-          @Stateless
-          public class UserService {
-              private Database database = new Database();
-
-              public User findUser(Long id) {
-                  return database.find(id);
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-
-          @ApplicationScoped
-          public class UserService {
-              private Database database = new Database();
-
-              public User findUser(Long id) {
-                  return database.find(id);
-              }
-          }
-
-        expected_metrics:
-          functional_correctness: true
-          introduces_violations: false
-
-      - id: "tc002"
-        language: "java"
-        context: "Stateless bean with dependency injection"
-        code_snippet: |
-          import javax.ejb.Stateless;
-          import javax.ejb.EJB;
-
-          @Stateless
-          public class OrderService {
-              @EJB
-              private UserService userService;
-
-              public Order createOrder(Long userId) {
-                  User user = userService.findUser(userId);
-                  return new Order(user);
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import jakarta.inject.Inject;
-
-          @ApplicationScoped
-          public class OrderService {
-              @Inject
-              private UserService userService;
-
-              public Order createOrder(Long userId) {
-                  User user = userService.findUser(userId);
-                  return new Order(user);
-              }
-          }
-
-  - rule_id: "jakarta-package-00000"
-    description: "Update @PersistenceContext to use jakarta.persistence"
-    severity: "high"
-    category: "migration"
-    # Note: Generic jakarta package migration, no specific Konveyor rule
-
-    test_cases:
-      - id: "tc003"
-        language: "java"
-        context: "Entity Manager injection"
-        code_snippet: |
-          import javax.persistence.EntityManager;
-          import javax.persistence.PersistenceContext;
-
-          public class UserRepository {
-              @PersistenceContext
-              private EntityManager em;
-
-              public User save(User user) {
-                  em.persist(user);
-                  return user;
-              }
-          }
-
-        expected_fix: |
-          import jakarta.persistence.EntityManager;
-          import jakarta.persistence.PersistenceContext;
-
-          public class UserRepository {
-              @PersistenceContext
-              private EntityManager em;
-
-              public User save(User user) {
-                  em.persist(user);
-                  return user;
-              }
-          }
-
-  - rule_id: "jakarta-transaction-00000"
-    description: "Replace javax.transaction with jakarta.transaction"
-    severity: "medium"
-    category: "migration"
-    # Note: Generic jakarta package migration, no specific Konveyor rule
-
-    test_cases:
-      - id: "tc004"
-        language: "java"
-        context: "Transactional method"
-        code_snippet: |
-          import javax.transaction.Transactional;
-
-          public class PaymentService {
-              @Transactional
-              public void processPayment(Payment payment) {
-                  // process payment
-              }
-          }
-
-        expected_fix: |
-          import jakarta.transaction.Transactional;
-
-          public class PaymentService {
-              @Transactional
-              public void processPayment(Payment payment) {
-                  // process payment
-              }
-          }
-
-  - rule_id: "ee-to-quarkus-00010"
-    description: "@Stateful EJB to CDI bean with @SessionScoped"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "@Stateful -> @SessionScoped or @ApplicationScoped"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
-
-    test_cases:
-      - id: "tc005"
-        language: "java"
-        context: "Stateful session bean to CDI"
-        code_snippet: |
-          import javax.ejb.Stateful;
-
-          @Stateful
-          public class ShoppingCart {
-              private Order order = new Order();
-
-              public void addItem(User user) {
-                  order.setUser(user);
-              }
-
-              public Order getOrder() {
-                  return order;
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.SessionScoped;
-
-          @SessionScoped
-          public class ShoppingCart {
-              private Order order = new Order();
-
-              public void addItem(User user) {
-                  order.setUser(user);
-              }
-
-              public Order getOrder() {
-                  return order;
-              }
-          }
-
-  - rule_id: "ee-to-quarkus-00020"
-    description: "EJB container-managed transactions to @Transactional"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "EJB transaction -> @Transactional"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"
-
-    test_cases:
-      - id: "tc006"
-        language: "java"
-        context: "Stateless EJB with implicit transactions"
-        code_snippet: |
-          import javax.ejb.Stateless;
-
-          @Stateless
-          public class AccountService {
-              private Database database = new Database();
-
-              public void transfer(User from, User to) {
-                  database.find(from.getId());
-                  database.find(to.getId());
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import jakarta.transaction.Transactional;
-
-          @ApplicationScoped
-          public class AccountService {
-              private Database database = new Database();
-
-              @Transactional
-              public void transfer(User from, User to) {
-                  database.find(from.getId());
-                  database.find(to.getId());
-              }
-          }
-
-  - rule_id: "persistence-to-quarkus-00011"
-    description: "Remove @Produces from EntityManager producers"
-    severity: "medium"
-    category: "migration"
-    migration_pattern: "@PersistenceContext @Produces -> Direct injection"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/201-persistence-to-quarkus.windup.yaml"
-
-    test_cases:
-      - id: "tc007"
-        language: "java"
-        context: "EntityManager producer with @Produces"
-        code_snippet: |
-          import javax.enterprise.context.ApplicationScoped;
-          import javax.enterprise.inject.Produces;
-          import javax.persistence.EntityManager;
-          import javax.persistence.PersistenceContext;
-
-          @ApplicationScoped
-          public class EntityManagerProducer {
-              @Produces
-              @PersistenceContext
-              private EntityManager em;
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import jakarta.persistence.EntityManager;
-          import jakarta.persistence.PersistenceContext;
-
-          @ApplicationScoped
-          public class EntityManagerProducer {
-              @PersistenceContext
-              private EntityManager em;
-          }
-
-  - rule_id: "ee-to-quarkus-00001"
-    description: "Replace @EJB injection with @Inject"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "@EJB -> @Inject"
-    # Note: This rule ID doesn't exist in Konveyor ruleset, custom test case
-
-    test_cases:
-      - id: "tc008"
-        language: "java"
-        context: "Multiple EJB injections"
-        code_snippet: |
-          import javax.ejb.Stateless;
-          import javax.ejb.EJB;
-
-          @Stateless
-          public class CompositeService {
-              @EJB
-              private UserService userService;
-
-              @EJB
-              private OrderService orderService;
-
-              public Order processUserOrder(Long userId) {
-                  User user = userService.findUser(userId);
-                  return orderService.createOrder(userId);
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import jakarta.inject.Inject;
-
-          @ApplicationScoped
-          public class CompositeService {
-              @Inject
-              private UserService userService;
-
-              @Inject
-              private OrderService orderService;
-
-              public Order processUserOrder(Long userId) {
-                  User user = userService.findUser(userId);
-                  return orderService.createOrder(userId);
-              }
-          }
-
-  - rule_id: "ee-to-quarkus-00030"
-    description: "Replace @Singleton EJB with CDI @Singleton or @ApplicationScoped"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "@Singleton (EJB) -> @Singleton or @ApplicationScoped (CDI)"
-    # Note: This rule ID doesn't exist in Konveyor ruleset, custom test case
-
-    test_cases:
-      - id: "tc009"
-        language: "java"
-        context: "Singleton EJB to CDI"
-        code_snippet: |
-          import javax.ejb.Singleton;
-          import javax.ejb.Startup;
-
-          @Singleton
-          @Startup
-          public class ConfigurationService {
-              private Database database = new Database();
-
-              public void init() {
-                  database.find(1L);
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import io.quarkus.runtime.StartupEvent;
-          import jakarta.enterprise.event.Observes;
-
-          @ApplicationScoped
-          public class ConfigurationService {
-              private Database database = new Database();
-
-              public void init(@Observes StartupEvent event) {
-                  database.find(1L);
-              }
-          }
-
-  - rule_id: "remote-ejb-to-quarkus-00000"
-    description: "Message-driven beans require manual migration"
-    severity: "high"
-    category: "migration"
-    migration_pattern: "@MessageDriven -> Quarkus messaging"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/202-remote-ejb-to-quarkus.windup.yaml"
-
-    test_cases:
-      - id: "tc010"
-        language: "java"
-        context: "Simple message-driven bean"
-        code_snippet: |
-          import javax.ejb.MessageDriven;
-          import javax.jms.Message;
-          import javax.jms.MessageListener;
-
-          @MessageDriven
-          public class OrderMessageListener implements MessageListener {
-              public void onMessage(Message message) {
-                  // Process message
-              }
-          }
-
-        expected_fix: |
-          import jakarta.enterprise.context.ApplicationScoped;
-          import org.eclipse.microprofile.reactive.messaging.Incoming;
-
-          @ApplicationScoped
-          public class OrderMessageListener {
-              @Incoming("orders")
-              public void onMessage(String message) {
-                  // Process message
-              }
-          }
+- rule_id: ee-to-quarkus-00000
+  description: Replace @Stateless EJB annotation with @ApplicationScoped CDI
+  severity: high
+  category: migration
+  migration_pattern: '@Stateless -> @ApplicationScoped'
+  source: https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
+  test_cases:
+  - id: tc001
+    language: java
+    context: Simple stateless bean migration
+    code_snippet: "import javax.ejb.Stateless;\n\n@Stateless\npublic class UserService\
+      \ {\n    private Database database = new Database();\n\n    public User findUser(Long\
+      \ id) {\n        return database.find(id);\n    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\n\n@ApplicationScoped\n\
+      public class UserService {\n    private Database database = new Database();\n\
+      \n    public User findUser(Long id) {\n        return database.find(id);\n \
+      \   }\n}\n"
+    expected_metrics:
+      functional_correctness: true
+      introduces_violations: false
+  - id: tc002
+    language: java
+    context: Stateless bean with dependency injection
+    code_snippet: "import javax.ejb.Stateless;\nimport javax.ejb.EJB;\n\n@Stateless\n\
+      public class OrderService {\n    @EJB\n    private UserService userService;\n\
+      \n    public Order createOrder(Long userId) {\n        User user = userService.findUser(userId);\n\
+      \        return new Order(user);\n    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.inject.Inject;\n\
+      \n@ApplicationScoped\npublic class OrderService {\n    @Inject\n    private\
+      \ UserService userService;\n\n    public Order createOrder(Long userId) {\n\
+      \        User user = userService.findUser(userId);\n        return new Order(user);\n\
+      \    }\n}\n"
+  migration_complexity: low
+- rule_id: jakarta-package-00000
+  description: Update @PersistenceContext to use jakarta.persistence
+  severity: high
+  category: migration
+  test_cases:
+  - id: tc003
+    language: java
+    context: Entity Manager injection
+    code_snippet: "import javax.persistence.EntityManager;\nimport javax.persistence.PersistenceContext;\n\
+      \npublic class UserRepository {\n    @PersistenceContext\n    private EntityManager\
+      \ em;\n\n    public User save(User user) {\n        em.persist(user);\n    \
+      \    return user;\n    }\n}\n"
+    expected_fix: "import jakarta.persistence.EntityManager;\nimport jakarta.persistence.PersistenceContext;\n\
+      \npublic class UserRepository {\n    @PersistenceContext\n    private EntityManager\
+      \ em;\n\n    public User save(User user) {\n        em.persist(user);\n    \
+      \    return user;\n    }\n}\n"
+  migration_complexity: low
+- rule_id: jakarta-transaction-00000
+  description: Replace javax.transaction with jakarta.transaction
+  severity: medium
+  category: migration
+  test_cases:
+  - id: tc004
+    language: java
+    context: Transactional method
+    code_snippet: "import javax.transaction.Transactional;\n\npublic class PaymentService\
+      \ {\n    @Transactional\n    public void processPayment(Payment payment) {\n\
+      \        // process payment\n    }\n}\n"
+    expected_fix: "import jakarta.transaction.Transactional;\n\npublic class PaymentService\
+      \ {\n    @Transactional\n    public void processPayment(Payment payment) {\n\
+      \        // process payment\n    }\n}\n"
+  migration_complexity: low
+- rule_id: ee-to-quarkus-00010
+  description: '@Stateful EJB to CDI bean with @SessionScoped'
+  severity: high
+  category: migration
+  migration_pattern: '@Stateful -> @SessionScoped or @ApplicationScoped'
+  source: https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
+  test_cases:
+  - id: tc005
+    language: java
+    context: Stateful session bean to CDI
+    code_snippet: "import javax.ejb.Stateful;\n\n@Stateful\npublic class ShoppingCart\
+      \ {\n    private Order order = new Order();\n\n    public void addItem(User\
+      \ user) {\n        order.setUser(user);\n    }\n\n    public Order getOrder()\
+      \ {\n        return order;\n    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.SessionScoped;\n\n@SessionScoped\n\
+      public class ShoppingCart {\n    private Order order = new Order();\n\n    public\
+      \ void addItem(User user) {\n        order.setUser(user);\n    }\n\n    public\
+      \ Order getOrder() {\n        return order;\n    }\n}\n"
+  migration_complexity: low
+- rule_id: ee-to-quarkus-00020
+  description: EJB container-managed transactions to @Transactional
+  severity: high
+  category: migration
+  migration_pattern: EJB transaction -> @Transactional
+  source: https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
+  test_cases:
+  - id: tc006
+    language: java
+    context: Stateless EJB with implicit transactions
+    code_snippet: "import javax.ejb.Stateless;\n\n@Stateless\npublic class AccountService\
+      \ {\n    private Database database = new Database();\n\n    public void transfer(User\
+      \ from, User to) {\n        database.find(from.getId());\n        database.find(to.getId());\n\
+      \    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.transaction.Transactional;\n\
+      \n@ApplicationScoped\npublic class AccountService {\n    private Database database\
+      \ = new Database();\n\n    @Transactional\n    public void transfer(User from,\
+      \ User to) {\n        database.find(from.getId());\n        database.find(to.getId());\n\
+      \    }\n}\n"
+  migration_complexity: low
+- rule_id: persistence-to-quarkus-00011
+  description: Remove @Produces from EntityManager producers
+  severity: medium
+  category: migration
+  migration_pattern: '@PersistenceContext @Produces -> Direct injection'
+  source: https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/201-persistence-to-quarkus.windup.yaml
+  test_cases:
+  - id: tc007
+    language: java
+    context: EntityManager producer with @Produces
+    code_snippet: "import javax.enterprise.context.ApplicationScoped;\nimport javax.enterprise.inject.Produces;\n\
+      import javax.persistence.EntityManager;\nimport javax.persistence.PersistenceContext;\n\
+      \n@ApplicationScoped\npublic class EntityManagerProducer {\n    @Produces\n\
+      \    @PersistenceContext\n    private EntityManager em;\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.persistence.EntityManager;\n\
+      import jakarta.persistence.PersistenceContext;\n\n@ApplicationScoped\npublic\
+      \ class EntityManagerProducer {\n    @PersistenceContext\n    private EntityManager\
+      \ em;\n}\n"
+  migration_complexity: low
+- rule_id: ee-to-quarkus-00001
+  description: Replace @EJB injection with @Inject
+  severity: high
+  category: migration
+  migration_pattern: '@EJB -> @Inject'
+  test_cases:
+  - id: tc008
+    language: java
+    context: Multiple EJB injections
+    code_snippet: "import javax.ejb.Stateless;\nimport javax.ejb.EJB;\n\n@Stateless\n\
+      public class CompositeService {\n    @EJB\n    private UserService userService;\n\
+      \n    @EJB\n    private OrderService orderService;\n\n    public Order processUserOrder(Long\
+      \ userId) {\n        User user = userService.findUser(userId);\n        return\
+      \ orderService.createOrder(userId);\n    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport jakarta.inject.Inject;\n\
+      \n@ApplicationScoped\npublic class CompositeService {\n    @Inject\n    private\
+      \ UserService userService;\n\n    @Inject\n    private OrderService orderService;\n\
+      \n    public Order processUserOrder(Long userId) {\n        User user = userService.findUser(userId);\n\
+      \        return orderService.createOrder(userId);\n    }\n}\n"
+  migration_complexity: low
+- rule_id: ee-to-quarkus-00030
+  description: Replace @Singleton EJB with CDI @Singleton or @ApplicationScoped
+  severity: high
+  category: migration
+  migration_pattern: '@Singleton (EJB) -> @Singleton or @ApplicationScoped (CDI)'
+  test_cases:
+  - id: tc009
+    language: java
+    context: Singleton EJB to CDI
+    code_snippet: "import javax.ejb.Singleton;\nimport javax.ejb.Startup;\n\n@Singleton\n\
+      @Startup\npublic class ConfigurationService {\n    private Database database\
+      \ = new Database();\n\n    public void init() {\n        database.find(1L);\n\
+      \    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport io.quarkus.runtime.StartupEvent;\n\
+      import jakarta.enterprise.event.Observes;\n\n@ApplicationScoped\npublic class\
+      \ ConfigurationService {\n    private Database database = new Database();\n\n\
+      \    public void init(@Observes StartupEvent event) {\n        database.find(1L);\n\
+      \    }\n}\n"
+  migration_complexity: low
+- rule_id: remote-ejb-to-quarkus-00000
+  description: Message-driven beans require manual migration
+  severity: high
+  category: migration
+  migration_pattern: '@MessageDriven -> Quarkus messaging'
+  source: https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/202-remote-ejb-to-quarkus.windup.yaml
+  test_cases:
+  - id: tc010
+    language: java
+    context: Simple message-driven bean
+    code_snippet: "import javax.ejb.MessageDriven;\nimport javax.jms.Message;\nimport\
+      \ javax.jms.MessageListener;\n\n@MessageDriven\npublic class OrderMessageListener\
+      \ implements MessageListener {\n    public void onMessage(Message message) {\n\
+      \        // Process message\n    }\n}\n"
+    expected_fix: "import jakarta.enterprise.context.ApplicationScoped;\nimport org.eclipse.microprofile.reactive.messaging.Incoming;\n\
+      \n@ApplicationScoped\npublic class OrderMessageListener {\n    @Incoming(\"\
+      orders\")\n    public void onMessage(String message) {\n        // Process message\n\
+      \    }\n}\n"
+  migration_complexity: medium
