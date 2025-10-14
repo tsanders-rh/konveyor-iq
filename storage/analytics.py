@@ -3,7 +3,7 @@ Analytics and query module for historical performance analysis.
 """
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from sqlalchemy import func, desc, and_
+from sqlalchemy import func, desc, and_, Integer
 from sqlalchemy.orm import Session
 
 from .models import TestResult, Rule, EvaluationRun, RulePerformanceSummary
@@ -38,7 +38,7 @@ class Analytics:
             func.date(TestResult.executed_at).label('date'),
             TestResult.model_name,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed'),
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed'),
             func.avg(TestResult.response_time_ms).label('avg_response_time'),
             func.avg(TestResult.estimated_cost).label('avg_cost')
         ).filter(
@@ -89,7 +89,7 @@ class Analytics:
         query = self.session.query(
             TestResult.model_name,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed'),
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed'),
             func.avg(TestResult.response_time_ms).label('avg_response_time'),
             func.sum(TestResult.estimated_cost).label('total_cost'),
             func.avg(TestResult.explanation_quality_score).label('avg_explanation_score')
@@ -143,7 +143,7 @@ class Analytics:
             Rule.description,
             Rule.migration_complexity,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed')
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed')
         ).join(
             Rule, TestResult.rule_id == Rule.rule_id
         ).filter(
@@ -265,7 +265,7 @@ class Analytics:
         query = self.session.query(
             Rule.migration_complexity,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed'),
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed'),
             func.avg(TestResult.response_time_ms).label('avg_response_time')
         ).join(
             Rule, TestResult.rule_id == Rule.rule_id
@@ -316,7 +316,7 @@ class Analytics:
             TestResult.rule_id,
             TestResult.model_name,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed')
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed')
         ).filter(
             TestResult.executed_at >= recent_cutoff
         ).group_by(
@@ -339,7 +339,7 @@ class Analytics:
             TestResult.rule_id,
             TestResult.model_name,
             func.count(TestResult.id).label('total'),
-            func.sum(func.cast(TestResult.passed, int)).label('passed')
+            func.sum(func.cast(TestResult.passed, Integer)).label('passed')
         ).filter(
             TestResult.executed_at >= historical_cutoff,
             TestResult.executed_at < recent_cutoff
