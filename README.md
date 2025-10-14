@@ -11,6 +11,7 @@ A comprehensive framework for evaluating LLM performance on application moderniz
 - 🎯 **Multi-dimensional evaluation**: Functional correctness, security, code quality, explainability
 - ⚡ **Graceful interruption** with progress saving and resume capability
 - 🔍 **Real Java compilation** with 200+ JARs from Maven Central
+- 💾 **Database storage** (SQLite/PostgreSQL) for historical tracking and trend analysis
 
 ## 🚀 Quick Start
 
@@ -309,6 +310,51 @@ Edit `config.yaml` to specify:
 - **Security tools**: Pattern-based or Semgrep
 - **Report format**: HTML, Markdown
 - **Parallelization**: Number of concurrent workers
+- **Storage**: File (JSON), SQLite, or PostgreSQL
+
+## 💾 Database Storage (Optional)
+
+Track model performance over time with relational database storage:
+
+```bash
+# Install dependencies
+pip install sqlalchemy
+
+# Enable in config.yaml
+storage:
+  type: "sqlite"
+  path: "konveyor_iq.db"
+
+reporting:
+  write_to_database: true
+
+# Initialize database
+python db_cli.py init
+
+# Run evaluations (results auto-saved to database)
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+
+# Query historical data
+python db_cli.py query runs              # Recent evaluations
+python db_cli.py query models --days 30  # Model comparison
+python db_cli.py query rules             # All rules by pass rate
+python db_cli.py query complexity        # Pass rates by difficulty
+python db_cli.py query regressions       # Detect performance drops
+```
+
+**Features:**
+- 📊 Track model performance trends over time
+- 🔍 Identify rules needing prompt engineering
+- 💰 Cost analysis and forecasting
+- 📈 Regression detection and alerting
+- 👥 Team collaboration via PostgreSQL
+
+**Backends:**
+- **SQLite** - Local database, zero setup (recommended)
+- **PostgreSQL** - Team/production use, multi-user support
+- **File** - Default JSON storage (no historical queries)
+
+See [docs/database_storage.md](docs/database_storage.md) for complete guide.
 
 ## 🎓 Example Results
 
@@ -343,3 +389,5 @@ Apache 2.0
 - [WORKFLOW.md](WORKFLOW.md) - Recommended workflow
 - [docs/SETUP.md](docs/SETUP.md) - Installation guide
 - [docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md) - Classification details
+- [docs/database_storage.md](docs/database_storage.md) - Database storage guide
+- [docs/database_setup_guide.md](docs/database_setup_guide.md) - Database deployment
