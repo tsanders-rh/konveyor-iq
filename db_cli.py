@@ -53,7 +53,7 @@ def init_database(args):
 
 
 def query_failing_rules(args):
-    """Query rules with low pass rates."""
+    """Query rules with optional pass rate filter."""
     config = load_config(args.config)
     storage_config = config.get('storage', {'type': 'sqlite', 'path': 'konveyor_iq.db'})
 
@@ -63,27 +63,91 @@ def query_failing_rules(args):
         session = storage.backend._get_session()
         analytics = Analytics(session)
 
-        failing_rules = analytics.get_failing_rules(
-            threshold=args.threshold,
-            min_tests=args.min_tests,
-            days=args.days
-        )
+        # If no threshold specified, show all rules
+        if args.threshold is None:
+            # Get all rules without threshold filter
+            from sqlalchemy import func
+            from storage.models import TestResult, Rule, Integer
+            from datetime import datetime, timedelta
 
-        if not failing_rules:
-            print(f"No rules found with pass rate < {args.threshold}%")
-            return 0
+            cutoff_date = datetime.now() - timedelta(days=args.days)
 
-        print(f"\nRules with pass rate < {args.threshold}% (last {args.days} days):\n")
-        print(f"{'Rule ID':<40} {'Complexity':<12} {'Pass Rate':<12} {'Tests'}")
-        print("-" * 80)
-
-        for rule in failing_rules:
-            print(
-                f"{rule['rule_id']:<40} "
-                f"{rule['complexity'] or 'N/A':<12} "
-                f"{rule['pass_rate']:>6.1f}%     "
-                f"{rule['passed_tests']}/{rule['total_tests']}"
+            query = session.query(
+                TestResult.rule_id,
+                Rule.description,
+                Rule.migration_complexity,
+                func.count(TestResult.id).label('total'),
+                func.sum(func.cast(TestResult.passed, Integer)).label('passed')
+            ).join(
+                Rule, TestResult.rule_id == Rule.rule_id
+            ).filter(
+                TestResult.executed_at >= cutoff_date
+            ).group_by(
+                TestResult.rule_id,
+                Rule.description,
+                Rule.migration_complexity
+            ).having(
+                func.count(TestResult.id) >= args.min_tests
             )
+
+            all_rules = []
+            for row in query.all():
+                pass_rate = (row.passed / row.total * 100) if row.total > 0 else 0
+                all_rules.append({
+                    'rule_id': row.rule_id,
+                    'description': row.description,
+                    'complexity': row.migration_complexity,
+                    'total_tests': row.total,
+                    'passed_tests': row.passed,
+                    'pass_rate': pass_rate
+                })
+
+            # Sort by pass rate ascending (worst first)
+            all_rules.sort(key=lambda x: x['pass_rate'])
+
+            if not all_rules:
+                print(f"No rules found with at least {args.min_tests} test(s) in last {args.days} days")
+                session.close()
+                storage.close()
+                return 0
+
+            print(f"\nAll Rules (last {args.days} days, min {args.min_tests} tests):\n")
+            print(f"{'Rule ID':<40} {'Complexity':<12} {'Pass Rate':<12} {'Tests'}")
+            print("-" * 80)
+
+            for rule in all_rules:
+                print(
+                    f"{rule['rule_id']:<40} "
+                    f"{rule['complexity'] or 'N/A':<12} "
+                    f"{rule['pass_rate']:>6.1f}%     "
+                    f"{rule['passed_tests']}/{rule['total_tests']}"
+                )
+
+        else:
+            # Filter by threshold
+            failing_rules = analytics.get_failing_rules(
+                threshold=args.threshold,
+                min_tests=args.min_tests,
+                days=args.days
+            )
+
+            if not failing_rules:
+                print(f"No rules found with pass rate < {args.threshold}%")
+                session.close()
+                storage.close()
+                return 0
+
+            print(f"\nRules with pass rate < {args.threshold}% (last {args.days} days):\n")
+            print(f"{'Rule ID':<40} {'Complexity':<12} {'Pass Rate':<12} {'Tests'}")
+            print("-" * 80)
+
+            for rule in failing_rules:
+                print(
+                    f"{rule['rule_id']:<40} "
+                    f"{rule['complexity'] or 'N/A':<12} "
+                    f"{rule['pass_rate']:>6.1f}%     "
+                    f"{rule['passed_tests']}/{rule['total_tests']}"
+                )
 
         session.close()
     else:
@@ -352,11 +416,11 @@ def main():
     query_parser = subparsers.add_parser('query', help='Query database')
     query_subparsers = query_parser.add_subparsers(dest='query_type')
 
-    # Query failing rules
-    rules_parser = query_subparsers.add_parser('rules', help='Query failing rules')
-    rules_parser.add_argument('--threshold', type=float, default=50.0, help='Pass rate threshold')
-    rules_parser.add_argument('--min-tests', type=int, default=3, help='Minimum tests required')
-    rules_parser.add_argument('--days', type=int, default=30, help='Days to look back')
+    # Query rules
+    rules_parser = query_subparsers.add_parser('rules', help='Query rules (all or filtered by pass rate)')
+    rules_parser.add_argument('--threshold', type=float, default=None, help='Pass rate threshold (show rules below this %; omit to show all)')
+    rules_parser.add_argument('--min-tests', type=int, default=1, help='Minimum tests required (default: 1)')
+    rules_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
 
     # Query trends
     trends_parser = query_subparsers.add_parser('trends', help='Query performance trends')
