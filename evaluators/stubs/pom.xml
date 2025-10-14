@@ -158,6 +158,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Hibernate Search Elasticsearch Backend -->
+        <dependency>
+            <groupId>org.hibernate.search</groupId>
+            <artifactId>hibernate-search-backend-elasticsearch</artifactId>
+            <version>6.2.2.Final</version>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>

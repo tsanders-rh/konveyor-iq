@@ -207,14 +207,12 @@ class EvaluationEngine:
         for rule in test_suite.rules:
             # Check if we've reached the limit
             if self.limit and completed_test_cases >= self.limit:
-                print(f"\n✓ Reached test case limit ({self.limit})")
                 break
             print(f"Rule: {rule.rule_id} ({len(rule.test_cases)} test cases)")
 
             for test_case in rule.test_cases:
                 # Check if we've reached the limit
                 if self.limit and completed_test_cases >= self.limit:
-                    print(f"\n✓ Reached test case limit ({self.limit})")
                     break
 
                 print(f"  Test case: {test_case.id}")
@@ -275,6 +273,10 @@ class EvaluationEngine:
 
                 # Increment test case counter (after all models have evaluated this test case)
                 completed_test_cases += 1
+
+        # Print summary if limit was reached
+        if self.limit and completed_test_cases >= self.limit:
+            print(f"\n✓ Reached test case limit ({self.limit})")
 
         return all_results
 

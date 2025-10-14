@@ -2,6 +2,8 @@
 Google Gemini model adapter.
 """
 import os
+import sys
+import contextlib
 from typing import Dict, Any
 import google.generativeai as genai
 
@@ -13,6 +15,10 @@ class GoogleModel(BaseModel):
 
     def __init__(self, name: str, config: Dict[str, Any]):
         super().__init__(name, config)
+
+        # Suppress gRPC ALTS warnings
+        os.environ['GRPC_VERBOSITY'] = 'ERROR'
+        os.environ['GLOG_minloglevel'] = '2'
 
         # Initialize Google Generative AI
         api_key = config.get("api_key", os.getenv("GOOGLE_API_KEY"))
@@ -54,10 +60,12 @@ class GoogleModel(BaseModel):
                 max_output_tokens=kwargs.get("max_tokens", self.max_tokens),
             )
 
-            response = self.model.generate_content(
-                prompt,
-                generation_config=generation_config
-            )
+            # Suppress gRPC ALTS warnings by temporarily redirecting stderr
+            with self._suppress_stderr():
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
 
             generated_text = response.text
 
@@ -89,6 +97,25 @@ class GoogleModel(BaseModel):
 
         except Exception as e:
             raise Exception(f"Google Gemini API error: {str(e)}")
+
+    @contextlib.contextmanager
+    def _suppress_stderr(self):
+        """Context manager to suppress stderr output (for gRPC warnings)."""
+        # Save the original stderr file descriptor
+        stderr_fd = sys.stderr.fileno()
+        saved_stderr_fd = os.dup(stderr_fd)
+
+        try:
+            # Redirect stderr to /dev/null at the file descriptor level
+            # This catches C/C++ level output from gRPC
+            devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull_fd, stderr_fd)
+            os.close(devnull_fd)
+            yield
+        finally:
+            # Restore original stderr
+            os.dup2(saved_stderr_fd, stderr_fd)
+            os.close(saved_stderr_fd)
 
     def _estimate_tokens(self, text: str) -> int:
         """
