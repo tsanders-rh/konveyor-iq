@@ -28,6 +28,13 @@ from evaluators import (
 )
 from reporters import HTMLReporter, MarkdownReporter
 
+# Import database writer (optional - only used if configured)
+try:
+    from storage.writer import DatabaseWriter
+    DATABASE_SUPPORT = True
+except ImportError:
+    DATABASE_SUPPORT = False
+
 
 class EvaluationEngine:
     """Main evaluation engine."""
@@ -363,7 +370,12 @@ class EvaluationEngine:
                 "prompt_source": prompt_source,
                 "compilable": test_case.compilable if test_case.compilable is not None else True,
                 "non_compilable_reason": test_case.reason if test_case.compilable is False else None,
-                "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
+                "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None,
+                # Rule metadata for database storage
+                "rule_description": rule.description,
+                "rule_severity": rule.severity.value if rule.severity else None,
+                "rule_category": rule.category if hasattr(rule, 'category') else None,
+                "source_url": rule.source if hasattr(rule, 'source') else None
             }
 
         except Exception as e:
@@ -569,7 +581,12 @@ class EvaluationEngine:
             "passed": False,
             "failure_reason": f"Error: {error}",
             "estimated_cost": 0.0,
-            "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
+            "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None,
+            # Rule metadata for database storage
+            "rule_description": rule.description,
+            "rule_severity": rule.severity.value if rule.severity else None,
+            "rule_category": rule.category if hasattr(rule, 'category') else None,
+            "source_url": rule.source if hasattr(rule, 'source') else None
         }
 
 
@@ -670,6 +687,49 @@ def main():
     print()
     print(f"Raw results saved to: {results_file}")
     print(f"  → file://{results_file.absolute()}")
+
+    # Write to database if configured
+    storage_config = config.get('storage', {})
+    write_to_db = config.get('reporting', {}).get('write_to_database', False)
+
+    if write_to_db and DATABASE_SUPPORT and storage_config.get('type') in ['sqlite', 'postgresql']:
+        print("\nWriting results to database...")
+        try:
+            # Get git info if available
+            git_commit = None
+            git_branch = None
+            try:
+                import subprocess
+                git_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+                git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+            except:
+                pass
+
+            with DatabaseWriter(storage_config) as db_writer:
+                run_id = db_writer.start_run(
+                    name=f"{test_suite.name} - {timestamp}",
+                    test_suite_name=test_suite.name,
+                    test_suite_version=test_suite.version,
+                    config_snapshot=json.dumps(config),
+                    git_commit=git_commit,
+                    git_branch=git_branch
+                )
+
+                # Convert results to list if dict
+                results_list = results if isinstance(results, list) else results.get('results', [])
+
+                # Write results in batches
+                db_writer.write_results_batch(run_id, results_list)
+
+                print(f"✓ Results written to database (run_id: {run_id})")
+                print(f"  Query with: python db_cli.py query runs")
+
+        except Exception as e:
+            print(f"⚠ Warning: Failed to write to database: {e}")
+            print("  Results still saved to JSON files")
+    elif write_to_db and not DATABASE_SUPPORT:
+        print("\n⚠ Warning: write_to_database is enabled but storage module not installed")
+        print("  Install: pip install sqlalchemy")
 
     # Generate reports
     report_config = {

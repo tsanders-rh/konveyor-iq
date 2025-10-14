@@ -1,0 +1,10 @@
+# Database storage dependencies for Konveyor IQ
+
+# Core ORM (required for SQLite and PostgreSQL)
+sqlalchemy>=2.0.0
+
+# PostgreSQL adapter (optional - only needed if using PostgreSQL)
+# Uncomment if you plan to use PostgreSQL:
+# psycopg2-binary>=2.9.0
+
+# Note: SQLite support is built into Python stdlib - no additional packages needed
