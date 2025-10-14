@@ -147,6 +147,8 @@ python evaluate.py \
 
 ### HTML Reports
 
+**[📊 View Live Sample Report](https://tsanders-rh.github.io/konveyor-iq/)** - Interactive demo (no installation required)
+
 Professional Grafana-style reports with:
 
 - 🎨 **Dark theme** with Konveyor branding
