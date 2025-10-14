@@ -547,7 +547,66 @@ python export.py \
 
 ## Low Priority (Nice to Have)
 
-### 10. Parallel & Incremental Evaluation
+### 10. GitHub Pages Sample Report
+
+**Status:** 🔵 Planned
+**Priority:** Low
+**Complexity:** Low
+**Impact:** Medium - Improves documentation and showcases features
+
+**Description:**
+Host a live sample HTML evaluation report on GitHub Pages to showcase the Grafana-style reports, complexity breakdown tables, and multi-model comparison features without requiring users to install or run the framework.
+
+**Implementation:**
+```bash
+# Generate sample report
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml \
+  --filter-complexity trivial,low,medium --limit 25
+
+# Setup GitHub Pages
+git checkout --orphan gh-pages
+cp results/evaluation_report_*.html index.html
+git add index.html
+git commit -m "Add sample evaluation report"
+git push origin gh-pages
+```
+
+**Features:**
+- Live, interactive sample report
+- Multiple models for comparison (GPT-4, Claude, GPT-3.5)
+- Mix of complexity levels (TRIVIAL, LOW, MEDIUM)
+- Real failures showing error analysis
+- ~20-30 test cases (realistic but not overwhelming)
+- Stable URL for README and documentation
+
+**Benefits:**
+- Immediate visual impact - shows off UI before installation
+- Better decision-making for potential users
+- Demonstrates complexity classification system
+- Showcases all report features (charts, badges, failure analysis)
+- Can be linked from README and conference presentations
+- No setup required to view
+
+**README Update:**
+```markdown
+### HTML Reports
+
+**[📊 View Live Sample Report](https://tsanders-rh.github.io/konveyor-iq/)** - Interactive demo
+
+Professional Grafana-style reports with:
+- Complexity breakdown table
+- Model ranking with composite scoring
+...
+```
+
+**Files to Create/Update:**
+- `gh-pages` branch with `index.html`
+- Update README.md with link to live report
+- Optional: `docs/sample_report.md` explaining what's shown
+
+---
+
+### 11. Parallel & Incremental Evaluation
 
 **Status:** 🔴 Not Started
 **Priority:** Low
