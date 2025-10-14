@@ -418,7 +418,7 @@ def main():
 
     # Query rules
     rules_parser = query_subparsers.add_parser('rules', help='Query rules (all or filtered by pass rate)')
-    rules_parser.add_argument('--threshold', type=float, default=None, help='Pass rate threshold (show rules below this %; omit to show all)')
+    rules_parser.add_argument('--threshold', type=float, default=None, help='Pass rate threshold (show rules below this percent, omit to show all)')
     rules_parser.add_argument('--min-tests', type=int, default=1, help='Minimum tests required (default: 1)')
     rules_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
 
