@@ -133,6 +133,23 @@ prompts:
     - "Fix the following code to resolve the static analysis violation: {rule_description}\n\n{code_snippet}"
     - "The code below violates rule {rule_id}. Please correct it.\n\n{code_snippet}"
 
+# Storage configuration
+# Controls where evaluation results are stored
+storage:
+  # Storage backend: 'file', 'sqlite', or 'postgresql'
+  type: "file"  # Default: file-based JSON storage
+
+  # For file backend
+  path: "results/"
+
+  # For sqlite backend (optional - enables historical tracking)
+  # type: "sqlite"
+  # path: "konveyor_iq.db"
+
+  # For postgresql backend (optional - for team/production use)
+  # type: "postgresql"
+  # connection_string: "${DATABASE_URL}"  # postgresql://user:password@localhost:5432/konveyor_iq
+
 # Reporting
 reporting:
   formats:
@@ -141,6 +158,10 @@ reporting:
   output_dir: "results/"
   include_failure_examples: true
   max_failure_examples: 10
+
+  # Write results to database (in addition to files)
+  # Requires storage.type to be 'sqlite' or 'postgresql'
+  write_to_database: false
 
 # Execution
 execution:
