@@ -370,7 +370,12 @@ class EvaluationEngine:
                 "prompt_source": prompt_source,
                 "compilable": test_case.compilable if test_case.compilable is not None else True,
                 "non_compilable_reason": test_case.reason if test_case.compilable is False else None,
-                "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
+                "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None,
+                # Rule metadata for database storage
+                "rule_description": rule.description,
+                "rule_severity": rule.severity.value if rule.severity else None,
+                "rule_category": rule.category if hasattr(rule, 'category') else None,
+                "source_url": rule.source if hasattr(rule, 'source') else None
             }
 
         except Exception as e:
@@ -576,7 +581,12 @@ class EvaluationEngine:
             "passed": False,
             "failure_reason": f"Error: {error}",
             "estimated_cost": 0.0,
-            "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None
+            "migration_complexity": rule.migration_complexity.value if rule.migration_complexity else None,
+            # Rule metadata for database storage
+            "rule_description": rule.description,
+            "rule_severity": rule.severity.value if rule.severity else None,
+            "rule_category": rule.category if hasattr(rule, 'category') else None,
+            "source_url": rule.source if hasattr(rule, 'source') else None
         }
 
 
