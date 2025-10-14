@@ -153,7 +153,8 @@ class ExpectedFixFixer:
         expected_fix: str,
         compilation_error: str,
         context: str,
-        migration_guidance: str = ""
+        migration_guidance: str = "",
+        attempt_number: int = 1
     ) -> str:
         """Build prompt for LLM to fix compilation error."""
         guidance_section = ""
@@ -161,6 +162,14 @@ class ExpectedFixFixer:
             guidance_section = f"""
 MIGRATION GUIDANCE:
 {migration_guidance}
+"""
+
+        # Add retry context if this is a subsequent attempt
+        retry_context = ""
+        if attempt_number > 1:
+            retry_context = f"""
+⚠️  RETRY ATTEMPT {attempt_number}: Your previous fix attempt still had compilation errors.
+The error below is from YOUR last attempt. Please fix this NEW error.
 """
 
         return f"""You are fixing a compilation error in a code migration example.
@@ -177,7 +186,7 @@ EXPECTED FIX (after migration - CURRENTLY HAS COMPILATION ERROR):
 ```java
 {expected_fix}
 ```
-
+{retry_context}
 COMPILATION ERROR:
 ```
 {compilation_error}
@@ -187,14 +196,15 @@ Your task: Fix ONLY the compilation error in the EXPECTED FIX code while preserv
 
 IMPORTANT RULES:
 1. Fix ONLY the compilation error - don't change the migration approach
-2. If there's an ambiguous import (e.g., both javax.jms.Message and org.eclipse.microprofile.reactive.messaging.Message):
+2. Use Jakarta EE packages (jakarta.*) NOT Java EE (javax.*)
+3. If there's an ambiguous import (e.g., both javax.jms.Message and org.eclipse.microprofile.reactive.messaging.Message):
    - Remove the conflicting import OR use fully qualified names
    - Prefer simpler types (String) over complex types if semantically equivalent
-3. If a class is undefined (e.g., Employee, User):
+4. If a class is undefined (e.g., Employee, User):
    - Keep the code as-is (stub classes will be added separately)
    - This is NOT a compilation error you should fix
-4. Preserve all imports, annotations, and migration patterns from the original expected fix
-5. Return ONLY the complete fixed Java code, no explanations
+5. Preserve all imports, annotations, and migration patterns from the original expected fix
+6. Return ONLY the complete fixed Java code, no explanations
 
 Format your response as:
 FIXED CODE:
@@ -251,13 +261,14 @@ FIXED CODE:
         for attempt in range(1, max_attempts + 1):
             print(f"\nAttempt {attempt}/{max_attempts}...")
 
-            # Build prompt
+            # Build prompt with attempt number for context
             prompt = self.build_fix_prompt(
                 original_code,
                 current_fix,
                 compilation_error,
                 context,
-                migration_guidance
+                migration_guidance,
+                attempt_number=attempt
             )
 
             # Get fix from LLM
@@ -284,11 +295,16 @@ FIXED CODE:
             else:
                 print(f"  ✗ Fix still has compilation errors")
                 if self.verbose:
-                    print(f"\n{error_msg}\n")
+                    print(f"\nCompilation error:\n{error_msg}\n")
+                else:
+                    # Show a snippet of the error even in non-verbose mode
+                    error_preview = error_msg.split('\n')[0][:100]
+                    print(f"     Error: {error_preview}...")
 
-                # Update for next attempt
+                # Update for next attempt - pass the NEW error to LLM
                 current_fix = fixed_code
                 compilation_error = error_msg
+                print(f"  → Will retry with updated compilation error feedback")
 
         print(f"\n  ✗ Failed to fix after {max_attempts} attempts")
         return None
