@@ -123,6 +123,8 @@ postgresql://user:password@localhost:5432/konveyor_iq
 
 ## Database Schema
 
+See **[storage/schema.md](../storage/schema.md)** for the full Entity Relationship Diagram (ERD) and detailed schema documentation.
+
 ### Core Tables
 
 **evaluation_runs** - Top-level evaluation runs

@@ -146,6 +146,8 @@ storage.close()
 
 ## Database Schema
 
+See **[schema.md](schema.md)** for the Entity Relationship Diagram (ERD) with visual representation and detailed table descriptions.
+
 ### Core Tables
 
 - **evaluation_runs** - Top-level runs
@@ -155,7 +157,7 @@ storage.close()
 - **cost_tracking** - Cost per run
 - **performance_alerts** - Anomaly detection (future)
 
-See `schema.sql` for full DDL.
+See `schema.sql` for full DDL and `schema.md` for ERD and query examples.
 
 ## Backends
 
