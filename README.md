@@ -1,619 +1,343 @@
 # Konveyor AI Evaluation Framework
 
-A comprehensive evaluation framework for assessing LLM performance in application modernization. Evaluates AI-generated code fixes for Konveyor rule violations across functional correctness, code quality, security, and explainability—with professional Grafana-style reporting for cost estimation and model selection.
+A comprehensive framework for evaluating LLM performance on application modernization tasks. Automatically generates test cases from Konveyor rules, validates code migrations, and produces professional reports with migration complexity analysis.
 
-## Overview
+## ✨ Key Features
 
-This framework evaluates LLM performance across multiple dimensions:
-- **Functional Correctness**: Does the fix resolve the violation and compile/run?
-  - Pattern-based validation (fallback when no analyzer available)
-  - Konveyor analyzer integration (optional)
-  - Auto-import stripping for missing stubs
-- **Code Quality**: Readability, style adherence, complexity metrics
-- **Security & Safety**: Avoids insecure patterns
-- **Efficiency**: Computational performance
-- **Explainability**: Quality of explanations/comments
-- **Robustness**: Consistency across prompt variations
-- **Response Time**: Latency metrics
+- 🤖 **Automatic test generation** from 2,680+ Konveyor rules with LLM code generation
+- 📊 **Migration complexity classification** (TRIVIAL → EXPERT) with expected AI success rates
+- 🔄 **Agentic workflows** for self-correcting code generation and fixing
+- 📈 **Professional HTML reports** with Grafana-style design and complexity breakdowns
+- 🎯 **Multi-dimensional evaluation**: Functional correctness, security, code quality, explainability
+- ⚡ **Graceful interruption** with progress saving and resume capability
+- 🔍 **Real Java compilation** with 200+ JARs from Maven Central
 
-## Project Structure
-
-```
-konveyor-iq/
-├── benchmarks/              # Test datasets
-│   ├── rules/              # Rule definitions
-│   └── test_cases/         # Violation test cases
-│       ├── generated/      # Auto-generated from Konveyor rules
-│       └── *.yaml          # Manual test suites
-├── config/                  # Configuration files
-│   └── migration_guidance.yaml  # Migration-specific prompts
-├── docs/                    # Documentation
-│   ├── SETUP.md            # Installation and quick start guide
-│   ├── COMPLEXITY_CLASSIFICATION.md  # Migration complexity system
-│   ├── generating_tests.md # Test generation guide
-│   ├── validating_expected_fixes.md
-│   ├── automating_test_case_fixes.md
-│   └── KONVEYOR_ISSUE_*.md # Issue reports for Konveyor team
-├── evaluators/             # Metric implementations
-│   ├── functional.py       # Functional correctness checks
-│   ├── quality.py          # Code quality metrics
-│   ├── security.py         # Security analysis
-│   ├── efficiency.py       # Performance metrics
-│   ├── explainability.py   # Explanation quality
-│   └── stubs/             # Java compilation dependencies
-│       ├── pom.xml        # Maven dependencies (real JARs)
-│       ├── lib/           # Downloaded JARs (200+)
-│       ├── src/           # Custom stub source files
-│       ├── stubs.jar      # Compiled custom stubs
-│       └── build.sh       # Rebuild custom stubs
-├── models/                 # LLM adapters
-│   ├── base.py            # Base model interface
-│   ├── openai_adapter.py  # OpenAI models
-│   ├── anthropic_adapter.py # Claude models
-│   └── google_adapter.py  # Google Gemini models
-├── reporters/              # Report generation
-│   ├── html_reporter.py   # HTML dashboard (Grafana-style)
-│   ├── markdown_reporter.py # Markdown reports
-│   └── templates/         # Report templates
-├── scripts/                # Utility scripts
-│   ├── generate_tests.py  # Generate test cases from Konveyor rules
-│   ├── validate_expected_fixes.py  # Validate test case code compiles
-│   └── fix_expected_fixes.py      # Auto-fix compilation errors with LLM
-├── results/                # Evaluation outputs (gitignored)
-├── config.yaml             # Main configuration
-├── config.example.yaml     # Example configuration
-├── evaluate.py             # Main evaluation script
-└── requirements.txt        # Python dependencies
-```
-
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# Configure models and benchmarks
+# 2. Configure API keys
 cp config.example.yaml config.yaml
-# Edit config.yaml with your API keys and settings
+# Edit config.yaml with your OpenAI/Anthropic API keys
 
-# Run evaluation (sequential)
-python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml
+# 3. Setup Java dependencies (one-time)
+cd evaluators/stubs && mvn clean package && cd ../..
 
-# Run evaluation with parallel execution (faster for multiple models)
-python evaluate.py --benchmark benchmarks/test_cases/java-migration.yaml --parallel 4
+# 4. Generate test suite with auto-generated code
+python scripts/generate_tests.py --all-rulesets --target quarkus \
+  --auto-generate --validate --model gpt-4-turbo
+
+# 5. Classify by complexity
+python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml
+
+# 6. Run evaluation
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+
+# 7. View results
+open results/evaluation_report_*.html
 ```
 
-For the complete workflow from test generation to evaluation, see [WORKFLOW.md](WORKFLOW.md).
-For detailed usage including parallel execution options, see [USAGE.md](USAGE.md).
+**See [WORKFLOW.md](WORKFLOW.md) for the complete recommended workflow.**
 
-## Generating Test Cases Automatically ⚡
+## 📋 Migration Complexity Classification
 
-**NEW:** Automatically generate test case templates from Konveyor rulesets!
+Automatically categorizes rules by difficulty to set appropriate AI expectations:
+
+| Complexity | AI Success | Example | Automation Strategy |
+|-----------|-----------|---------|---------------------|
+| **TRIVIAL** | 95%+ | `javax.*` → `jakarta.*` namespace changes | ✅ Full automation |
+| **LOW** | 80%+ | `@Stateless` → `@ApplicationScoped` | ✅ Automation with light review |
+| **MEDIUM** | 60%+ | JMS → Reactive Messaging patterns | ⚡ AI acceleration + developer completion |
+| **HIGH** | 30-50% | Spring Security → Quarkus Security | 🔍 AI scaffolding + expert review |
+| **EXPERT** | <30% | Custom security realms, internal APIs | 📋 AI checklist + human migration |
+
+**Why it matters:** Segmented analysis reveals AI value at each difficulty level, not just overall pass rate.
+
+See [docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md) for details.
+
+## 📦 Test Generation
+
+Generate test cases from Konveyor rulesets with automatic code generation:
 
 ```bash
-# Generate from a single ruleset
-python scripts/generate_tests.py \
-    --ruleset https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml
-
-# Generate from ALL Quarkus rulesets (30+ rulesets)
-python scripts/generate_tests.py --all-quarkus
-
-# 🚀 Generate from ALL Konveyor rulesets (337+ rulesets across all categories)
-python scripts/generate_tests.py --all-rulesets
-
-# 🎯 Filter by migration path (Java EE → Quarkus) - scans ALL rulesets
-python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus
-# Creates: java-ee-to-quarkus.yaml with 39 aggregated test cases
-
-# 🎯 Filter by target only (any source → EAP8) - scans ALL rulesets
-python scripts/generate_tests.py --all-rulesets --target eap8
-# Creates: eap8.yaml with 235 rules from 2,680 total rules across 337 rulesets
-
-# 🤖 AUTO-GENERATE code examples with LLM (no manual TODO-filling!)
+# Generate from specific migration path (Java EE → Quarkus)
 python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
-    --auto-generate --model gpt-4-turbo
-# Generates complete code_snippet and expected_fix for every rule!
+  --auto-generate --validate --model gpt-4-turbo
 
-# ⚡ Use local rulesets repo (100x faster, no rate limits!)
+# With local rulesets (100x faster, no API rate limits)
 git clone https://github.com/konveyor/rulesets.git ~/projects/rulesets
-python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
-    --local-rulesets ~/projects/rulesets
+python scripts/generate_tests.py --all-rulesets --target quarkus \
+  --local-rulesets ~/projects/rulesets \
+  --auto-generate --validate --model gpt-4-turbo
+
+# Process in batches for large test suites
+python scripts/generate_tests.py --all-rulesets --target quarkus \
+  --auto-generate --model gpt-4-turbo \
+  --batch-size 20
 ```
 
-### Label-Based Filtering
+**Features:**
+- ✅ Auto-generates `code_snippet` and `expected_fix` using LLM
+- ✅ `--validate` flag: Agentic workflow compiles and auto-fixes errors
+- ✅ **Ctrl+C** to pause and save progress - resume by re-running same command
+- ✅ Auto-detects language from rules (Java, XML, YAML, properties)
+- ✅ Includes Konveyor migration guidance in prompts
 
-Generate **migration-focused test suites** by filtering rules based on source/target labels. Use `--all-rulesets` to scan **all 337+ Konveyor rulesets** across all categories (quarkus, eap, spring-boot, camel, azure, etc.):
-
-- `--all-rulesets --source java-ee --target quarkus` - Java EE to Quarkus migrations
-- `--all-rulesets --source eap7 --target eap8` - EAP7 to EAP8 migrations (235 rules)
-- `--all-rulesets --target quarkus` - All migrations TO Quarkus from any source
-- `--all-rulesets --source springboot` - All migrations FROM Spring Boot to any target
-
-When using filters, all matching rules across all scanned rulesets are **aggregated into a single test suite file**, making it easy to evaluate specific migration scenarios.
-
-**Coverage:** `--all-rulesets` scans 2,680+ rules across 337+ rulesets from all categories, providing comprehensive migration coverage beyond just Quarkus migrations.
-
-### Generated Templates
-
-This creates test case templates with:
-- ✅ Rule metadata (ID, description, severity) pre-filled
-- ✅ **Automatic language detection** (Java, XML, YAML, properties) from rule conditions
-- ✅ Source URL for automatic Konveyor guidance integration
-- ✅ Code hints extracted from rule conditions
-- ✅ TODO placeholders for code examples (or auto-generated with `--auto-generate`)
-- ✅ Konveyor migration guidance as comments
-
-**Output:** `benchmarks/test_cases/generated/*.yaml`
-
-**Without `--auto-generate`:** Fill in TODOs manually
-**With `--auto-generate`:** Code examples are generated automatically using LLM!
-
-Then simply run evaluation:
-```bash
-python evaluate.py --benchmark benchmarks/test_cases/generated/java-ee-to-quarkus.yaml
-```
+**Output:** `benchmarks/test_cases/generated/quarkus.yaml`
 
 See [docs/generating_tests.md](docs/generating_tests.md) for full documentation.
 
-## Validating and Fixing Test Cases
+## 🔧 Test Validation & Fixing
 
-Ensure your test cases are high-quality with automated validation and fixing:
-
-### Validate Expected Fixes
-
-Check that all `expected_fix` code in test cases compiles successfully:
+### Validate Test Cases
 
 ```bash
-# Validate all test cases (fast, no API key needed)
-python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
-
-# Show detailed output for all tests
-python scripts/validate_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --verbose
+# Check compilation status
+python scripts/validate_expected_fixes.py benchmarks/test_cases/generated/quarkus.yaml
 ```
 
-### Classify Migration Complexity
-
-**NEW:** Automatically classify rules by migration difficulty to set appropriate AI expectations:
+### Auto-Fix Compilation Errors
 
 ```bash
-# Preview classifications (no modifications)
-python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml --dry-run
-
-# Apply classifications to YAML
-python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml
-
-# Show detailed scoring
-python scripts/classify_rule_complexity.py benchmarks/test_cases/generated/quarkus.yaml --verbose
-```
-
-**Complexity levels:**
-- **TRIVIAL** (95%+ AI success): Namespace changes, mechanical find/replace
-- **LOW** (80%+ success): Simple API equivalents (@Stateless → @ApplicationScoped)
-- **MEDIUM** (60%+ success): Context understanding (JMS → Reactive Messaging)
-- **HIGH** (30-50% success): Architectural changes (Spring Security → Quarkus Security)
-- **EXPERT** (<30% success): Human review needed (custom realms, performance-critical)
-
-See [docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md) for complete workflow.
-
-### Automatically Fix Compilation Errors
-
-Use an LLM to automatically fix compilation errors in `expected_fix` code:
-
-```bash
-# Preview what would be fixed (no modifications)
-python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml --dry-run
-
-# Apply fixes (validates first, then fixes failures)
-python scripts/fix_expected_fixes.py --file benchmarks/test_cases/generated/quarkus.yaml
-
 # Fix by complexity level (recommended: start with TRIVIAL/LOW)
 python scripts/fix_expected_fixes.py \
   --file benchmarks/test_cases/generated/quarkus.yaml \
   --complexity trivial,low
 
-# Fix specific rule only
+# Preview fixes without applying
 python scripts/fix_expected_fixes.py \
   --file benchmarks/test_cases/generated/quarkus.yaml \
-  --rule-id jms-to-reactive-quarkus-00010
-
-# Use different model for fixing
-python scripts/fix_expected_fixes.py \
-  --file benchmarks/test_cases/generated/quarkus.yaml \
-  --model claude-3-7-sonnet-latest
+  --dry-run
 ```
 
-The fix script:
-- ✅ Automatically validates before fixing
-- ✅ Skips if everything compiles
-- ✅ Uses LLM to intelligently fix compilation errors
+**Features:**
+- ✅ Agentic workflow: Iterates with compilation error feedback (max 3 attempts)
+- ✅ Migration-specific guidance (Java EE → Quarkus patterns)
+- ✅ **Ctrl+C** to pause - progress saved incrementally
+- ✅ Auto-skips non-compilable tests (marked with reasons)
 - ✅ Validates each fix before applying
-- ✅ Updates YAML files in place
 
-**Common fixes:**
-- Ambiguous imports (javax.jms.Message vs reactive.messaging.Message)
-- Incorrect interface implementations
-- Type mismatches
-- Missing imports
+See [docs/automating_test_case_fixes.md](docs/automating_test_case_fixes.md) for details.
 
-See [docs/validating_expected_fixes.md](docs/validating_expected_fixes.md) and [docs/automating_test_case_fixes.md](docs/automating_test_case_fixes.md) for details.
+## 📊 Evaluation & Reports
 
-## Adding Test Cases Manually
+### Run Evaluation
 
-Alternatively, create YAML files manually in `benchmarks/test_cases/`:
-
-```yaml
-test_suite: "Java EE to Quarkus Migration"
-rules:
-  - rule_id: "java-deprecated-api-001"
-    description: "Replace javax.ejb with CDI annotations"
-    severity: "high"
-    source: "https://github.com/konveyor/rulesets/blob/main/default/generated/quarkus/200-ee-to-quarkus.windup.yaml"  # Optional: Link to Konveyor rule
-    test_cases:
-      - id: "tc001"
-        code_snippet: |
-          @Stateless
-          public class UserService {
-              // code
-          }
-        expected_fix: |
-          @ApplicationScoped
-          public class UserService {
-              // code
-          }
-        context: "EJB to CDI migration"
-        expected_metrics:
-          functional_correctness: true
-          introduces_violations: false
-```
-
-### Konveyor Rule Integration
-
-When you provide a `source` URL pointing to a Konveyor ruleset, the framework automatically:
-1. Fetches the corresponding rule from the Konveyor repository
-2. Extracts the official migration guidance (`message` field)
-3. Includes it in the LLM prompt under "Konveyor Migration Guidance"
-
-This ensures the LLM receives authoritative migration guidance directly from Konveyor's ruleset definitions.
-
-**Example:** For rule `ee-to-quarkus-00000`, the framework fetches:
-> "Stateless EJBs can be converted to a CDI bean by replacing the `@Stateless` annotation with a scope eg `@ApplicationScoped`"
-
-And includes it in the prompt sent to the LLM, improving migration accuracy.
-
-### Konveyor Rule Issues
-
-If you discover issues with Konveyor rule guidance (e.g., contradictory examples, incorrect migration patterns), document them in `docs/` for the Konveyor team.
-
-**Example:** See `docs/KONVEYOR_ISSUE_JMS_REACTIVE_MESSAGING.md` for documentation of incorrect guidance in `jms-to-reactive-quarkus-00020`.
-
-## Configuration
-
-Edit `config.yaml` to specify:
-- Models to evaluate (OpenAI, Anthropic)
-- Evaluation dimensions to include
-- Static analysis configuration:
-  - Set `analyzer_command: null` to use pattern-based validation (no external tool needed)
-  - Set `analyzer_command: "/path/to/konveyor-analyzer"` to use real analyzer
-- Prompt templates optimized for Quarkus/Jakarta EE migrations
-- Report format preferences
-
-## Features
-
-### Pattern-Based Functional Validation
-
-When no static analysis tool is available, the framework uses pattern-based validation to check if violations are resolved:
-
-```python
-# Checks if old patterns are removed and new patterns are added
-patterns = {
-    "ee-to-quarkus-00000": {
-        "old": ["@Stateless", "import javax.ejb.Stateless"],
-        "new": ["@ApplicationScoped"],
-    }
-}
-```
-
-**Supported migration patterns:**
-- Java EE to Quarkus (EJB → CDI)
-- javax.* → jakarta.* package migrations
-- Message-driven beans → Reactive messaging
-- Persistence API migrations
-
-### Migration Guidance System
-
-**Centralized, technology-specific migration guidance** ensures LLMs receive accurate migration patterns:
-
-**How it works:**
-1. Test suites specify `migration_source` and `migration_target` labels (e.g., `java-ee` → `quarkus`)
-2. Framework loads matching guidance from `config/migration_guidance.yaml`
-3. Guidance is injected into prompts via `{migration_guidance}` placeholder
-4. LLMs receive both base prompts AND specific migration patterns
-
-**Supported migration paths:**
-- Java EE → Quarkus (with messaging, singleton, startup patterns)
-- Spring Boot → Quarkus (config, DI, data access patterns)
-- EAP7 → EAP8
-- And more...
-
-**Example guidance** (Java EE → Quarkus messaging):
-```
-MESSAGING MIGRATIONS:
-- @MessageDriven beans → Use MicroProfile Reactive Messaging (@Incoming)
-- REMOVE "implements MessageListener" interface entirely
-- Use org.eclipse.microprofile.reactive.messaging.Message NOT jakarta.jms.Message
-```
-
-See `config/migration_guidance.yaml` for all patterns.
-
-### Enhanced Error Reporting
-
-**Human-readable compilation error explanations** help developers understand and fix issues:
-
-**In HTML/Markdown reports:**
-- ⚠️ **Compilation Error** section with plain-English explanation
-- **Error Details** with full compiler output
-- Examples:
-  - "Interface Implementation Error: The class implements an interface but doesn't provide all required methods..."
-  - "Type Mismatch: The code is calling a method with the wrong parameter types..."
-  - "Missing Dependency: The code uses a package that isn't available in the classpath..."
-
-**Failure reasons include:**
-- Compilation error count and details
-- New violations introduced (with count)
-- Security issues (with severity count)
-
-### Auto-Import Stripping
-
-The framework automatically strips import statements that cause compilation failures due to missing stubs:
-
-1. Attempts compilation
-2. If "package does not exist" error occurs
-3. Removes failing import statements
-4. Retries compilation
-
-This prevents false failures when LLMs add extra (harmless) imports.
-
-### Java Compilation Dependencies
-
-**Real JARs from Maven Central** provide complete API coverage for compilation validation:
-
-The framework uses `evaluators/stubs/pom.xml` to download real dependency JARs:
-
-```xml
-<!-- Jakarta EE 10 API -->
-<dependency>
-  <groupId>jakarta.platform</groupId>
-  <artifactId>jakarta.jakartaee-api</artifactId>
-  <version>10.0.0</version>
-</dependency>
-
-<!-- Quarkus Platform BOM -->
-<dependency>
-  <groupId>io.quarkus.platform</groupId>
-  <artifactId>quarkus-bom</artifactId>
-  <version>3.6.0</version>
-</dependency>
-
-<!-- MicroProfile APIs -->
-<!-- Quarkus Extensions (REST, messaging, Panache, Spring compatibility) -->
-<!-- Legacy javax.* APIs for backward compatibility -->
-```
-
-**Download dependencies:**
 ```bash
-cd evaluators/stubs
-mvn clean package
+# Evaluate all complexity levels
+python evaluate.py --benchmark benchmarks/test_cases/generated/quarkus.yaml
+
+# Filter by complexity
+python evaluate.py \
+  --benchmark benchmarks/test_cases/generated/quarkus.yaml \
+  --filter-complexity trivial,low
+
+# Exclude EXPERT level
+python evaluate.py \
+  --benchmark benchmarks/test_cases/generated/quarkus.yaml \
+  --exclude-complexity expert
+
+# Parallel execution for multiple models
+python evaluate.py \
+  --benchmark benchmarks/test_cases/generated/quarkus.yaml \
+  --parallel 4
 ```
 
-This downloads 200+ JARs covering:
-- ✅ Jakarta EE 10 (jakarta.*)
-- ✅ Java EE (javax.* for legacy code)
-- ✅ Quarkus extensions (REST, messaging, Panache, Spring APIs)
-- ✅ MicroProfile APIs (Config, Reactive Messaging, Health, Metrics)
-- ✅ Hibernate, Kafka, and more
+### HTML Reports
 
-**Custom domain stubs** (User, Order, Database, etc.) remain in `stubs.jar` for test-specific classes.
+Professional Grafana-style reports with:
 
-### Security Analysis
+- 🎨 **Dark theme** with Konveyor branding
+- 📊 **Complexity breakdown table** - Pass rates by difficulty level (TRIVIAL → EXPERT)
+- 🏆 **Model ranking** with composite scoring across all dimensions
+- 🔍 **Individual test cards** with complexity badges
+- 📈 **Interactive charts** - Response time, cost analysis, performance metrics
+- 🔒 **Security analysis** - Vulnerability detection with severity levels
+- 💡 **Explainability metrics** - Comment density, explanation quality scores
+- ⚠️ **Detailed failure analysis** - Diff highlighting, compilation errors
 
-**Hybrid approach** - uses best available method:
+**Output:** `results/evaluation_report_*.html`
 
-1. **Semgrep** (if installed): Comprehensive Java security analysis with OWASP Top 10 coverage
-2. **Pattern-based** (fallback): Fast, built-in security checks for common vulnerabilities
+## 🎯 Evaluation Dimensions
 
-**Pattern-based security checks:**
-- **SQL Injection**: String concatenation in queries
-- **Hardcoded Credentials**: Passwords, API keys in code
-- **XXE Vulnerabilities**: Unsafe XML parsers
-- **Weak Random**: Using `Random` instead of `SecureRandom` for security
-- **Path Traversal**: Unsafe file operations
-- **Insecure Deserialization**: ObjectInputStream without validation
+Tests evaluate LLM performance across:
 
-**Migration-specific checks:**
-- **Missing Authorization**: Lost @RolesAllowed in EJB → CDI migration
-- **Unprotected Endpoints**: JAX-RS endpoints without security
-- **Missing Transactions**: Lost @Transactional for data integrity
-- **CSRF Protection**: Disabled CSRF on state-changing endpoints
-- **Insecure HTTP**: Custom SSL configuration without validation
+1. **Functional Correctness** (40% weight)
+   - Compiles successfully
+   - Resolves original violation
+   - No new violations introduced
 
-**Enable Semgrep** (optional):
+2. **Compilation Rate** (15% weight)
+   - Valid Java syntax
+   - Correct imports and dependencies
+
+3. **Code Quality** (15% weight)
+   - Cyclomatic complexity
+   - Maintainability index
+   - Style adherence
+
+4. **Security** (15% weight)
+   - No SQL injection vulnerabilities
+   - No hardcoded credentials
+   - Migration-specific checks (lost @RolesAllowed, etc.)
+   - Optional Semgrep integration for comprehensive analysis
+
+5. **Explainability** (10% weight)
+   - Explanation quality score (0-10)
+   - Comment density (10-30% ideal)
+
+6. **Performance Metrics** (5% weight)
+   - Response time
+   - Cost efficiency
+
+## 🔒 Security Analysis
+
+Hybrid approach for comprehensive security scanning:
+
 ```bash
+# Install Semgrep (optional but recommended)
 pip install semgrep
 
-# Update config.yaml
+# Uncomment in config.yaml:
 security:
   tools:
     - semgrep
 ```
 
-### Explainability Analysis
+**Without Semgrep:** Fast pattern-based checks for common vulnerabilities
+**With Semgrep:** Comprehensive taint analysis and framework-specific rules
 
-**Heuristic-based evaluation** of code explanation quality:
-
-**Explanation Quality Score (0-10):**
-- Evaluates the quality of LLM-generated explanations
-- Checks for:
-  - **Change description**: Explains what was modified
-  - **Reason/justification**: Explains why the change was needed
-  - **Technical context**: Mentions relevant frameworks/patterns
-  - **Migration-specific**: References source/target technologies
-  - **Adequate length**: Not too brief (100+ chars) or verbose (2000+ chars)
-- Scoring thresholds:
-  - **7.0+**: GREEN (excellent explanation)
-  - **5.0-7.0**: ORANGE (acceptable)
-  - **<5.0**: RED (poor explanation)
-
-**Comment Density (0-100%):**
-- Measures ratio of comment lines to total lines in generated code
-- Ideal range: **10-30%**
-  - **10-30%**: GREEN (well-documented)
-  - **>0% but not ideal**: ORANGE (under/over-commented)
-  - **0%**: GRAY (no comments)
-- Considers both inline comments (`//`) and block comments (`/* */`)
-- Excludes blank lines from calculation
-
-**Impact on Model Ranking:**
-- Explainability contributes **10%** to overall composite score
-- Average of explanation quality (scaled 0-100) and comment density score
-- Encourages models to provide clear, well-documented fixes
-
-## Reports
-
-### HTML Reports (Interactive)
-
-Professional Grafana-style dark theme with Konveyor branding and interactive visualizations:
-
-- 🎨 **Grafana-style dark theme** with professional appearance
-- 🔷 **Konveyor logo branding** in report header
-- 📊 Model comparison charts with Chart.js (interactive, responsive)
-- 📈 Response time distributions
-- 🎯 **Per-rule performance breakdown** with scalable rule selector dropdown:
-  - Shows top 10 worst performing rules by default
-  - Individual rule drill-down capability
-  - Optimized for large rulesets (200-400 rules)
-- 🏆 **Top performing models ranking** with comprehensive composite scoring:
-  - **40%** Pass rate (functional correctness)
-  - **15%** Compilation rate
-  - **15%** Code quality (complexity + maintainability)
-  - **15%** Security (fewer issues = higher score)
-  - **10%** Explainability (explanation quality + comment density)
-  - **2.5%** Response time (speed)
-  - **2.5%** Cost efficiency
-  - Displays all metrics for top 3 models with medal rankings
-- 🔍 **Enhanced failure analysis**:
-  - Click-to-expand failure cards
-  - **Diff highlighting** - incorrect lines highlighted in red
-  - Expected code vs generated code side-by-side
-  - **Detailed failure explanations** based on metrics
-  - Filter by failure type (compilation, regression, security)
-  - Color-coded badges for quick identification
-  - Compilation error details
-  - **Security issues display** with severity-based color coding:
-    - 🔴 HIGH severity (red) - Critical security vulnerabilities
-    - 🟠 MEDIUM severity (orange) - Important security concerns
-    - 🔵 LOW severity (blue) - Minor security issues
-    - Line numbers (when available from Semgrep)
-    - Detailed descriptions for each issue
-  - **Code quality and explainability metrics** visualization:
-    - Cyclomatic complexity, maintainability index, style violations
-    - Explanation quality score (0-10 scale)
-    - Comment density percentage with ideal range highlighting (10-30%)
-
-### Markdown Reports
-- Per-model performance summary
-- Per-rule accuracy breakdown
-- Comparative analysis across models
-- Failure examples with code snippets
-- Cost analysis (tokens/requests)
-
-## Evaluation Criteria
-
-Tests **pass** only if ALL of the following are true:
-- ✅ **Compiles successfully** (with Java stubs)
-- ✅ **Resolves the original violation** (pattern-based or analyzer-based check)
-- ✅ **Does not introduce new violations**
-- ✅ **No high-severity security issues**
-
-Tests **fail** if ANY of these occur:
-- ❌ Compilation error (even after import stripping)
-- ❌ Original violation pattern still present in code
-- ❌ New static analysis violations introduced
-- ❌ High-severity security issues detected
-
-## Example Results
+## 📁 Project Structure
 
 ```
-Pass Rate by Model (Java EE → Quarkus):
-- gpt-4-turbo:    80% (8/10 tests passed)
-- gpt-4o:         80% (8/10 tests passed)
-- gpt-3.5-turbo:  80% (8/10 tests passed)
-
-Common failure reasons:
-- Does not resolve violation (4x) - Wrong migration pattern
-- Compilation error (2x) - Missing stubs or syntax errors
+konveyor-iq/
+├── benchmarks/              # Test datasets
+│   └── test_cases/
+│       └── generated/       # Auto-generated from Konveyor rules
+├── config/                  # Configuration files
+│   └── migration_guidance.yaml  # Migration-specific prompts
+├── docs/                    # Documentation
+│   ├── SETUP.md
+│   ├── COMPLEXITY_CLASSIFICATION.md
+│   ├── generating_tests.md
+│   └── automating_test_case_fixes.md
+├── evaluators/              # Metric implementations
+│   ├── functional.py        # Compilation & pattern validation
+│   ├── security.py          # Security analysis
+│   ├── quality.py           # Code quality metrics
+│   └── stubs/              # Java compilation dependencies
+│       ├── pom.xml         # Maven dependencies (200+ JARs)
+│       └── lib/            # Downloaded JARs
+├── models/                  # LLM adapters
+│   ├── openai_adapter.py
+│   ├── anthropic_adapter.py
+│   └── google_adapter.py
+├── reporters/               # Report generation
+│   └── html_reporter.py    # Grafana-style HTML reports
+├── scripts/                 # Utility scripts
+│   ├── generate_tests.py   # Generate from Konveyor rules
+│   ├── classify_rule_complexity.py  # Classify difficulty
+│   ├── validate_expected_fixes.py   # Validate compilation
+│   └── fix_expected_fixes.py       # Auto-fix errors
+├── config.yaml              # Main configuration
+├── evaluate.py              # Main evaluation script
+├── WORKFLOW.md              # Recommended workflow
+└── requirements.txt         # Python dependencies
 ```
 
-## Extending the Framework
+## 📚 Documentation
 
-### Adding New Migration Patterns
+- **[WORKFLOW.md](WORKFLOW.md)** - Complete workflow from generation to evaluation
+- **[WORKFLOW_GENERATING_TESTS.md](WORKFLOW_GENERATING_TESTS.md)** - Technical architecture and JAR system
+- **[docs/SETUP.md](docs/SETUP.md)** - Installation and configuration
+- **[docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md)** - Classification system details
+- **[docs/generating_tests.md](docs/generating_tests.md)** - Test generation guide
+- **[docs/automating_test_case_fixes.md](docs/automating_test_case_fixes.md)** - Auto-fixing workflow
+- **[docs/validating_expected_fixes.md](docs/validating_expected_fixes.md)** - Validation guide
 
-Edit `evaluators/functional.py` to add pattern definitions:
+## 🛠️ Advanced Features
 
-```python
-patterns = {
-    "your-rule-id": {
-        "old": ["@OldAnnotation", "import old.package"],
-        "new": ["@NewAnnotation", "import new.package"],
-    }
-}
+### Agentic Workflows
+
+Both test generation and fixing use agentic workflows for self-correction:
+
+1. **Generate code** → Compile → Get errors
+2. **Fix errors with LLM** (passes error feedback)
+3. **Validate fix** → Compile → Repeat if needed (max 3 attempts)
+
+This dramatically improves compilation success rates (50% → 85%+).
+
+### Graceful Interruption
+
+Press **Ctrl+C** (or Cmd+C) to pause long-running scripts:
+- Finishes current operation
+- Saves all progress to YAML
+- Shows summary
+- Resume by re-running same command
+
+Supported in: `generate_tests.py`, `fix_expected_fixes.py`
+
+### Migration Guidance System
+
+Centralized, technology-specific guidance in `config/migration_guidance.yaml`:
+
+- Java EE → Quarkus patterns
+- Spring Boot → Quarkus patterns
+- Messaging migrations
+- Security migrations
+
+Automatically injected into prompts based on test suite metadata.
+
+### Konveyor Rule Integration
+
+When test cases reference Konveyor rules via `source` URL:
+1. Framework fetches official rule from GitHub
+2. Extracts migration guidance (`message` field)
+3. Includes in LLM prompt under "Konveyor Migration Guidance"
+
+Ensures LLM receives authoritative migration patterns.
+
+## 🔧 Configuration
+
+Edit `config.yaml` to specify:
+- **Models**: OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), Google (Gemini)
+- **Evaluation dimensions**: Enable/disable metrics
+- **Security tools**: Pattern-based or Semgrep
+- **Report format**: HTML, Markdown
+- **Parallelization**: Number of concurrent workers
+
+## 🎓 Example Results
+
+```
+Pass Rate by Complexity (gpt-4-turbo):
+- TRIVIAL: 96% (24/25 tests)
+- LOW:     84% (21/25 tests)
+- MEDIUM:  68% (17/25 tests)
+- HIGH:    44% (11/25 tests)
+- EXPERT:  20% (5/25 tests)
+
+Overall: 78% (78/125 tests)
 ```
 
-### Adding New Stubs
+This segmentation demonstrates AI value at each difficulty level.
 
-1. Create stub file in `evaluators/stubs/src/`
-2. Run `./build.sh` to rebuild `stubs.jar`
-3. Add auto-import mapping in `evaluators/functional.py` if needed
+## 🤝 Contributing
 
-### Customizing Prompts
+Contributions welcome! Areas of interest:
+- New migration patterns for `evaluators/functional.py`
+- Additional migration guidance for `config/migration_guidance.yaml`
+- Enhanced security rules
+- New LLM adapters
 
-**Prompts are now defined in test case files**, not `config.yaml`. This allows each migration scenario to have technology-appropriate guidance.
-
-Add a `prompt` field to your test suite YAML. See `benchmarks/test_cases/java-ee-quarkus-migration.yaml` for a complete example.
-
-The prompt template can use these placeholders:
-- `{rule_description}` - Description of the rule being violated
-- `{konveyor_message}` - Official Konveyor migration guidance (auto-fetched)
-- `{language}` - Programming language (e.g., java)
-- `{code_snippet}` - Original code with violation
-- `{context}` - Additional context for the test case
-
-**Example test suite structure:**
-```yaml
-name: "Java EE to Quarkus Migration"
-description: "Test cases for Java EE to Quarkus"
-version: "1.0.0"
-
-prompt: |
-  You are helping migrate Java EE code to Quarkus...
-  [Your custom prompt template with placeholders]
-
-rules:
-  - rule_id: "..."
-    description: "..."
-    test_cases:
-      - id: "tc001"
-        code_snippet: |
-          // Your code here
-```
-
-**Auto-generated prompts:** When using `--all-rulesets` with `--source` and `--target` filters, appropriate prompts are automatically generated for:
-- Java EE → Quarkus
-- EAP7 → EAP8
-- Spring Boot → Quarkus
-- And more...
-
-**Fallback:** If no prompt is specified in the test suite, the framework falls back to `config.yaml` prompts for backward compatibility.
-
-## License
+## 📄 License
 
 Apache 2.0
+
+---
+
+**Quick Links:**
+- [WORKFLOW.md](WORKFLOW.md) - Recommended workflow
+- [docs/SETUP.md](docs/SETUP.md) - Installation guide
+- [docs/COMPLEXITY_CLASSIFICATION.md](docs/COMPLEXITY_CLASSIFICATION.md) - Classification details

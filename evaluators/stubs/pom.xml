@@ -165,6 +165,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>4.7.5</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Legacy javax.enterprise (for backward compatibility) -->
         <dependency>
             <groupId>javax.enterprise</groupId>

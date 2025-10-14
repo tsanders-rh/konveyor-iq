@@ -761,6 +761,8 @@ rules:
   test_cases:
   - id: tc001
     language: java
+    compilable: false
+    reason: "Requires internal Quarkus/Wildfly security APIs (RedirectingFormAuthenticationMechanism, InMemorySecurityRealm) not available in stubs. EXPERT-level migration requiring architectural changes."
     context: Replace the SpringBoot Security artifact with Quarkus 'spring-security'
       extension
     code_snippet: "package com.example.demo;\n\nimport org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;\n\

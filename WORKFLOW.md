@@ -7,11 +7,21 @@
 # Generate from all Quarkus rulesets
 python scripts/generate_tests.py --all-quarkus
 
-# Or generate from specific migration path
-python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus
+# Or generate from specific migration path with auto-generation
+python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+  --auto-generate --model gpt-4-turbo
+
+# With validation (agentic workflow - compiles and fixes errors automatically)
+python scripts/generate_tests.py --all-rulesets --source java-ee --target quarkus \
+  --auto-generate --validate --model gpt-4-turbo
 ```
 
 **Output:** `benchmarks/test_cases/generated/quarkus.yaml` (or similar)
+
+**Pro tips:**
+- Use `--auto-generate --validate` for higher quality test cases (compiles on first try)
+- Process in batches with `--batch-size 20` for large test suites
+- Press **Ctrl+C** to pause and save progress - re-run same command to resume
 
 ### 2. Classify Migration Complexity
 ```bash
@@ -62,10 +72,18 @@ python scripts/fix_expected_fixes.py \
 ```
 
 **Key features:**
-- ✅ Now includes migration guidance (Java EE → Quarkus patterns)
+- ✅ Agentic workflow: Iterates until compilation succeeds (max 3 attempts)
+- ✅ Passes compilation errors to LLM for self-correction
+- ✅ Includes migration guidance (Java EE → Quarkus patterns)
 - ✅ Explicitly instructs LLM to use `jakarta.*` not `javax.*`
 - ✅ Skips non-compilable tests automatically
 - ✅ Validates each fix before applying
+
+**Pro tips:**
+- Large test suites? Process incrementally - progress saved after each fix
+- Press **Ctrl+C** to interrupt gracefully - re-run same command to resume
+- Use `--verbose` to see detailed LLM responses and compilation errors
+- Use `--dry-run` first to preview what would be fixed
 
 ### 5. Re-validate
 ```bash
@@ -102,10 +120,11 @@ open results/evaluation_report_*.html
 ```
 
 **Look for:**
-- Pass rate segmented by complexity level
-- Model performance across difficulty spectrum
-- Detailed failure analysis with compilation errors
-- Security issues and code quality metrics
+- **Complexity breakdown table** - Shows pass rates by difficulty level (TRIVIAL → EXPERT)
+- **Model performance comparison** - See which models excel at each complexity tier
+- **Individual test cards** - Each shows complexity badge and detailed results
+- **Detailed failure analysis** - Compilation errors, security issues, code quality
+- **Security metrics** - Vulnerability detection and code quality scores
 
 ## Expected Success Rates
 
@@ -128,6 +147,25 @@ open results/evaluation_report_*.html
 - Spring → Quarkus security migrations (need manual patterns)
 
 **Solution:** Either manually fix or mark as `compilable: false` with reason.
+
+### "Script taking too long / want to pause?"
+**Solution:** Press **Ctrl+C** (or Cmd+C on Mac) to gracefully interrupt:
+- Finishes current fix/generation
+- Saves all progress to YAML file
+- Shows summary of completed work
+- Re-run the same command to resume from where you left off
+
+Both `generate_tests.py` and `fix_expected_fixes.py` support graceful interruption.
+
+### "Want to preview fixes before applying?"
+**Solution:** Use `--dry-run` flag:
+```bash
+python scripts/fix_expected_fixes.py \
+  --file benchmarks/test_cases/generated/quarkus.yaml \
+  --complexity trivial,low \
+  --dry-run
+```
+Shows what would be fixed without modifying files.
 
 ### "No module named 'yaml'" or "No module named 'pydantic'"
 **Solution:** Install dependencies:
